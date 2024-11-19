@@ -10,7 +10,8 @@ using std::endl;
 
 using namespace amrex;
 
-//TODO: Add conditional mean to averaging func over multiple plot files
+// TODO: Add conditional mean to averaging func over multiple plot files
+// TODO: Merge with jPDF tool
 
 static
 std::string
@@ -48,7 +49,7 @@ print_usage (int,
               << "   output_plotfile=[0/1]   : Output JPDFs in plotfile format      (default=1)\n"
               << "   vars= var1 var2 var3    : Variable list; JPDF will be evaluated for each pair\n"
               << "   useminmax%i= min max    : Use min/max for var %i\n"
-              << "   aveg_var = var          : Variable that will be averaged conditioned on vars\n"
+              << "   condMean_vars = var     : Variable that will be averaged conditioned on vars\n"
 	          << "   nBins=n                 : Number of bins in each direction for JPDF (default=64)\n"
               << "   finestLevel=n           : Finest level at which to evaluate JPDFs\n"
               << "   outSuffix=str           : Suffix to add to the plfile name as an alt dir for results (default="")\n"
@@ -165,8 +166,8 @@ main (int   argc,
         pp.query("do_average",do_average);
         if (do_average&&verbose)
             std::cout << "   + forming average" << std::endl;
-        if (do_average)
-            Error("Do average is not fully implemented -> the conditional mean is not computed over all plot files, just the jPDF.");
+        // if (do_average)
+        //     Error("Do average is not fully implemented -> the conditional mean is not computed over all plot files, just the jPDF.");
 
         // Get plot file
         int nPlotFiles(pp.countval("infile"));
@@ -196,40 +197,78 @@ main (int   argc,
         int nBins(64);
         pp.query("nBins",nBins);
 
-        // Variables to load; a joint pdf of each pair will be evaluated
-        int nVars_tot(pp.countval("vars"));
-        if (nVars_tot<2)
+        // Reading variables ...
+        // Variables for jPDF; a joint pdf of each pair will be evaluated
+        int nVars_jpdf(pp.countval("vars"));
+        if (nVars_jpdf<2)
             Error("Need to specify at least two variables.");
-
-        int nVars_jpdf(nVars_tot);  // number of variables for jpdfs
         
-        // Add averaged var and save index in ix_averVar
-        nVars_tot++;      
-        int ix_averVar(nVars_tot-1);
+        Vector<std::string> whichVar_jPDF(nVars_jpdf);
+        if (verbose)
+            std::cout << "Variable list:" << std::endl;
+        // Read in variable list
+        for(int v=0; v<nVars_jpdf; v++) {
+            pp.get("vars", whichVar_jPDF[v], v);
+            if (verbose)
+                std::cout << "   " << whichVar_jPDF[v] << std::endl;
+        }
 
-        // number of variables to load from the plot file is now nVars_tot
+        // Variables for conditional mean
+        int nVars_condMean(pp.countval("condMean_vars"));
+        int nVars_tot(nVars_jpdf); // Total num of varables is jPDF vars plus unique condMean vars
+        Vector<std::string> whichVar_condMean(nVars_condMean);
+        if (verbose)
+            std::cout << "Variable list for conditional mean:" << std::endl;
+        // Read in variable list
+        for(int v=0; v<nVars_condMean; v++) {
+            pp.get("condMean_vars", whichVar_condMean[v], v);
+            if (verbose)
+                std::cout << "   " << whichVar_condMean[v] << std::endl;
+            // Check if variable is contained in whichVar_jPDF
+            int is_unique(1);
+            for(int k=0; k<nVars_jpdf; k++) {
+                if (whichVar_condMean[v]==whichVar_jPDF[k]){
+                    is_unique = 0;
+                    break;
+                }
+            }
+            nVars_tot += is_unique;
+        }
+
+        // Create a set of jPDF vars plus unique condMean vars; save the indices of the condMeanVars is ix_condMean
+        Vector<std::string> whichVar(nVars_tot);
+        Vector<int> ix_condMean(nVars_condMean);
+        if (verbose)
+            std::cout << "Combined variable list:" << std::endl;
+        for(int v=0; v<nVars_jpdf; v++) {
+            whichVar[v] = whichVar_jPDF[v];
+            if (verbose)
+                std::cout << "   " << v << " : " << whichVar_jPDF[v] << std::endl;
+        }
+        int ix_fill(nVars_jpdf);
+        for(int v=0; v<nVars_condMean; v++) {
+            int dupplicat_ix(-1);
+            for(int k=0; k<nVars_jpdf; k++) {
+                if (whichVar_condMean[v]==whichVar_jPDF[k]) {
+                    dupplicat_ix = k;
+                    break;
+                }
+            }
+            if (dupplicat_ix==-1) {
+                whichVar[ix_fill] = whichVar_condMean[v];
+                ix_condMean[v] = ix_fill;
+                if (verbose)
+                    std::cout << "   " << ix_condMean[v] << "=" << ix_fill << " : " << whichVar[ix_fill] << std::endl;
+                ix_fill++;
+            } else {
+                ix_condMean[v] = dupplicat_ix;
+                if (verbose)
+                    std::cout << "   -- condMeanVar '" << whichVar_condMean[v] << "' already on position " << ix_condMean[v] << std::endl;
+            }
+        }
 
         // Intersect variable number (nVars_tot does not include intersect variable)
         int ix_isVar=nVars_tot;
-
-        Vector<std::string> whichVar(nVars_tot);
-        if (verbose)
-            std::cout << "Variable list:" << std::endl;
-        // Read in variable list - adjusting for stoichiometry
-        for(int v=0; v<nVars_jpdf; v++) {
-            pp.get("vars", whichVar[v], v);
-            if (verbose)
-                std::cout << "   " << whichVar[v] << std::endl;
-        }
-
-        // Variable for condMean
-        int nVars_aver(pp.countval("average_var"));
-        if (nVars_aver!=1)
-            Error("Provide exactly one average_var");
-        pp.get("average_var", whichVar[ix_averVar], 0);
-
-        if (verbose)
-            std::cout << "Variable to average: " << whichVar[ix_averVar] << std::endl;
         
         // Copy the names of the variable for output filenames, replacing dodgy characters
         Vector<std::string> whichVarOut(nVars_tot);
@@ -245,6 +284,7 @@ main (int   argc,
         Vector< Vector<Real> > binAvArray(nPairs);
         Vector< Vector<Real> > binAvX1Array(nPairs);
         Vector< Vector<Real> > binAvX2Array(nPairs);
+        Vector< Vector< Vector<Real> > > binAvCondMeanArray(nPairs, Vector< Vector<Real> >(nVars_condMean, Vector<Real>(nBins*nBins,0)));
         Vector<Real> vMin(nVars_jpdf);
         Vector<Real> vMax(nVars_jpdf);
 
@@ -322,15 +362,16 @@ main (int   argc,
             Vector< Vector<Real> > binArray(nPairs);
             Vector< Vector<Real> > binX1Array(nPairs);
             Vector< Vector<Real> > binX2Array(nPairs);
-            Vector< Vector<Real> > binCondMeanArray(nPairs);
-
 
             for (int iPair=0; iPair<nPairs; iPair++) {
                 binArray[iPair].resize(nBins*nBins,0);
                 binX1Array[iPair].resize(nBins*nBins,0);
                 binX2Array[iPair].resize(nBins*nBins,0);
-                binCondMeanArray[iPair].resize(nBins*nBins,0);
             }
+
+            // Vector for the conditional means 
+            // for each pair, nVars_condMean vectors with nBins^2 bins each are prepared
+            Vector< Vector< Vector<Real> > > binCondMeanArray(nPairs, Vector< Vector<Real> >(nVars_condMean, Vector<Real>(nBins*nBins,0)));
 
             if (do_average && iPlot==0) {
                 for (int iPair=0; iPair<nPairs; iPair++) {
@@ -393,12 +434,19 @@ main (int   argc,
                     Real *bin=binArray[iPair].dataPtr();
                     Real *binX1=binX1Array[iPair].dataPtr();
                     Real *binX2=binX2Array[iPair].dataPtr();
-                    Real *binCondMean=binCondMeanArray[iPair].dataPtr();
+                    Vector <Real*> binCondMeans(nVars_condMean);
+                    for (int v=0; v<nVars_condMean; v++) {
+                        binCondMeans[v]=binCondMeanArray[iPair][v].dataPtr();
+                    }
                     Real *binAv, *binAvX1, *binAvX2;
+                    Vector <Real*> binAvCondMeans(nVars_condMean);
                     if (do_average) {
                         binAv = binAvArray[iPair].dataPtr();
                         binAvX1 = binAvX1Array[iPair].dataPtr();
                         binAvX2 = binAvX2Array[iPair].dataPtr();
+                        for (int v=0; v<nVars_condMean; v++) {
+                            binAvCondMeans[v]=binAvCondMeanArray[iPair][v].dataPtr();
+                        }                     
                     }
                     
                     for (int iLevel=0; iLevel<nLevels; iLevel++) {
@@ -411,7 +459,10 @@ main (int   argc,
                             const Real *cPtr  = myFab.dataPtr(cVar); // Conditioning
                             const Real *v1Ptr = myFab.dataPtr(var1); 
                             const Real *v2Ptr = myFab.dataPtr(var2);
-                            const Real *vAverPtr = myFab.dataPtr(ix_averVar);
+                            Vector<const Real*> condVarPtrs(nVars_condMean);
+                            for (int v=0; v<nVars_condMean; v++) {
+                                condVarPtrs[v] = myFab.dataPtr(ix_condMean[v]);
+                            }
                             const Real *isPtr = myFab.dataPtr(ix_isVar); // Intersect
 
                             const Box&  bx    = ntmfi.validbox();
@@ -463,11 +514,16 @@ main (int   argc,
                                                 bin[v1i*nBins+v2i]+=Vol;
                                                 binX1[v1i*nBins+v2i]+=Vol*v1Ptr[cell];
                                                 binX2[v1i*nBins+v2i]+=Vol*v2Ptr[cell];
-                                                binCondMean[v1i*nBins+v2i]+=Vol*vAverPtr[cell];
+                                                for (int v=0; v<nVars_condMean; v++) {
+                                                    binCondMeans[v][v1i*nBins+v2i]+=Vol*condVarPtrs[v][cell];
+                                                }
                                                 if (do_average) {
                                                     binAv[v1i*nBins+v2i]+=Vol;
                                                     binAvX1[v1i*nBins+v2i]+=Vol*v1Ptr[cell];
                                                     binAvX2[v1i*nBins+v2i]+=Vol*v2Ptr[cell];
+                                                    for (int v=0; v<nVars_condMean; v++) {
+                                                        binAvCondMeans[v][v1i*nBins+v2i]+=Vol*condVarPtrs[v][cell];
+                                                    }
                                                 }
                                             }
                                         }
@@ -502,9 +558,11 @@ main (int   argc,
                 ParallelDescriptor::ReduceRealSum(bin,binArray[iPair].size(),ParallelDescriptor::IOProcessorNumber());
                 ParallelDescriptor::ReduceRealSum(binX1,binX1Array[iPair].size(),ParallelDescriptor::IOProcessorNumber());
                 ParallelDescriptor::ReduceRealSum(binX2,binX2Array[iPair].size(),ParallelDescriptor::IOProcessorNumber());
-
-                Real *binCondMean=binCondMeanArray[iPair].dataPtr();
-                ParallelDescriptor::ReduceRealSum(binCondMean,binCondMeanArray[iPair].size(),ParallelDescriptor::IOProcessorNumber());
+                
+                for (int v=0; v<nVars_condMean; v++) {
+                    Real *binCondMean=binCondMeanArray[iPair][v].dataPtr();
+                    ParallelDescriptor::ReduceRealSum(binCondMean,binCondMeanArray[iPair][v].size(),ParallelDescriptor::IOProcessorNumber());
+                }
             }
 
             // Output the data to file
@@ -538,7 +596,11 @@ main (int   argc,
                         Real *bin=binArray[iPair].dataPtr();
                         Real *binX1=binX1Array[iPair].dataPtr();
                         Real *binX2=binX2Array[iPair].dataPtr();
-                        Real *binCondMean=binCondMeanArray[iPair].dataPtr();
+
+                        Vector <Real*> binCondMeans(nVars_condMean);
+                        for (int v=0; v<nVars_condMean; v++) {
+                            binCondMeans[v]=binCondMeanArray[iPair][v].dataPtr();
+                        }
 
                         // Divide Xi by bin vol to average (has to come first)
                         for (int v1i=0, i=0; v1i<nBins; v1i++) {
@@ -549,7 +611,9 @@ main (int   argc,
                                 if (div>0) {
                                     binX1[i]/=div;
                                     binX2[i]/=div;
-                                    binCondMean[i]/=div;
+                                    for (int v=0; v<nVars_condMean; v++) {
+                                        binCondMeans[v][i]/=div;
+                                    }
                                 } else { // This is the bit that breaks the derivation of the 1D pdfs
                                     binX1[i] = v1;
                                     binX2[i] = v2;
@@ -594,7 +658,6 @@ main (int   argc,
                                 fprintf(file,"\n");
                             }
                             fclose(file);
-                            std::cout << "   SUCCESS" << std::endl;
                             // Format: var1 range
                             filename = infile + outSuffix + "/Pdf_" + whichVarOut[var1] + "_x.dat";
                             std::cout << "Opening file " << filename << std::endl;
@@ -602,7 +665,6 @@ main (int   argc,
                             for (int v1i=0; v1i<nBins; v1i++)
                                 fprintf(file,"%e\n",vMin[var1] + dv1*(0.5+(Real)v1i));
                             fclose(file);
-                            std::cout << "   SUCCESS" << std::endl;
                             // Format: var2 range
                             filename = infile + outSuffix + "/Pdf_" + whichVarOut[var2] + "_x.dat";
                             std::cout << "Opening file " << filename << std::endl;
@@ -610,7 +672,6 @@ main (int   argc,
                             for (int v2i=0; v2i<nBins; v2i++)
                                 fprintf(file,"%e\n",vMin[var2] + dv2*(0.5+(Real)v2i));
                             fclose(file);
-                            std::cout << "   SUCCESS" << std::endl;
                             // PdfX1
                             filename = infile + outSuffix + "/PdfX1_" + whichVarOut[var1] + "_" + whichVarOut[var2] + ".dat";
                             std::cout << "Opening file " << filename << std::endl;
@@ -621,7 +682,6 @@ main (int   argc,
                                 fprintf(file,"\n");
                             }
                             fclose(file);
-                            std::cout << "   SUCCESS" << std::endl;
                             // PdfX2
                             filename = infile + outSuffix + "/PdfX2_" + whichVarOut[var1] + "_" + whichVarOut[var2] + ".dat";
                             std::cout << "Opening file " << filename << std::endl;
@@ -632,18 +692,18 @@ main (int   argc,
                                 fprintf(file,"\n");
                             }
                             fclose(file);
-                            std::cout << "   SUCCESS" << std::endl;
-                            // Format: condMean matrix
-                            filename = infile + outSuffix + "/condMean_" + whichVarOut[ix_averVar] + "_on_" + whichVarOut[var1] + "_" + whichVarOut[var2] + ".dat";
-                            std::cout << "Opening file " << filename << std::endl;
-                            file = fopen(filename.c_str(),"w");
-                            for (int v1i=0; v1i<nBins; v1i++) {
-                                for (int v2i=0; v2i<nBins; v2i++)
-                                    fprintf(file,"%e ",binCondMean[v1i*nBins+v2i]);
-                                fprintf(file,"\n");
+                            for (int v=0; v<nVars_condMean; v++) {
+                                // Format: condMean matrix
+                                filename = infile + outSuffix + "/condMean_" + whichVarOut[ix_condMean[v]] + "_on_" + whichVarOut[var1] + "_" + whichVarOut[var2] + ".dat";
+                                std::cout << "Opening file " << filename << std::endl;
+                                file = fopen(filename.c_str(),"w");
+                                for (int v1i=0; v1i<nBins; v1i++) {
+                                    for (int v2i=0; v2i<nBins; v2i++)
+                                        fprintf(file,"%e ",binCondMeans[v][v1i*nBins+v2i]);
+                                    fprintf(file,"\n");
+                                }
+                                fclose(file);
                             }
-                            fclose(file);
-                            std::cout << "   SUCCESS" << std::endl;
                         }
 
                         if (output_tecplot) {
@@ -873,6 +933,11 @@ main (int   argc,
                 ParallelDescriptor::ReduceRealSum(binAv,binAvArray[iPair].size(),ParallelDescriptor::IOProcessorNumber());
                 ParallelDescriptor::ReduceRealSum(binAvX1,binAvX1Array[iPair].size(),ParallelDescriptor::IOProcessorNumber());
                 ParallelDescriptor::ReduceRealSum(binAvX2,binAvX2Array[iPair].size(),ParallelDescriptor::IOProcessorNumber());
+
+                for (int v=0; v<nVars_condMean; v++) {
+                    Real *binAvCondMean=binAvCondMeanArray[iPair][v].dataPtr();
+                    ParallelDescriptor::ReduceRealSum(binAvCondMean,binAvCondMeanArray[iPair][v].size(),ParallelDescriptor::IOProcessorNumber());
+                }
             }
 
             // Output the data to file
@@ -887,11 +952,11 @@ main (int   argc,
 
                 int iPair = 0;
 
-                for (int var1=0; var1<nVars_tot; var1++) {
+                for (int var1=0; var1<nVars_jpdf; var1++) {
                     // Change in var1 between each bin
                     Real dv1 = (vMax[var1]-vMin[var1])/(Real)nBins;
 
-                    for (int var2 = var1+1; var2<nVars_tot; var2++) {
+                    for (int var2 = var1+1; var2<nVars_jpdf; var2++) {
                         // Change in var2 between each bin
                         Real dv2 = (vMax[var2]-vMin[var2])/(Real)nBins;
             
@@ -899,6 +964,11 @@ main (int   argc,
                         Real *binAv=binAvArray[iPair].dataPtr();
                         Real *binAvX1=binAvX1Array[iPair].dataPtr();
                         Real *binAvX2=binAvX2Array[iPair].dataPtr();
+
+                        Vector <Real*> binAvCondMeans(nVars_condMean);
+                        for (int v=0; v<nVars_condMean; v++) {
+                            binAvCondMeans[v]=binAvCondMeanArray[iPair][v].dataPtr();
+                        }
             
                         // Divide Xi by bin vol to average (has to come first)
                         for (int v1i=0, i=0; v1i<nBins; v1i++) {
@@ -909,6 +979,9 @@ main (int   argc,
                                 if (div>0) {
                                     binAvX1[i]/=div;
                                     binAvX2[i]/=div;
+                                    for (int v=0; v<nVars_condMean; v++) {
+                                        binAvCondMeans[v][i]/=div;
+                                    }
                                 } else {
                                     binAvX1[i] = v1;
                                     binAvX2[i] = v2;
@@ -986,6 +1059,18 @@ main (int   argc,
                                 fprintf(file,"\n");
                             }
                             fclose(file);
+                            for (int v=0; v<nVars_condMean; v++) {
+                                // Format: condMean matrix
+                                filename = infile + outSuffix + "/condMean_" + whichVarOut[ix_condMean[v]] + "_on_" + whichVarOut[var1] + "_" + whichVarOut[var2] + ".dat";
+                                std::cout << "Opening file " << filename << std::endl;
+                                file = fopen(filename.c_str(),"w");
+                                for (int v1i=0; v1i<nBins; v1i++) {
+                                    for (int v2i=0; v2i<nBins; v2i++)
+                                        fprintf(file,"%e ",binAvCondMeans[v][v1i*nBins+v2i]);
+                                    fprintf(file,"\n");
+                                }
+                                fclose(file);
+                            }
                         }
             
                         if (output_tecplot) {
