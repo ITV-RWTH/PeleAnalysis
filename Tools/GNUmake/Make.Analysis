@@ -24,6 +24,10 @@ ifeq ($(USE_PARTICLES),TRUE)
   Adirs += Particle
 endif
 
+ifeq ($(USE_EB),TRUE)
+  Adirs +=  EB
+endif
+
 Bpack += $(foreach dir, $(Adirs), $(AMREX_HOME)/Src/$(dir)/Make.package)
 Blocs += $(foreach dir, $(Adirs), $(AMREX_HOME)/Src/$(dir))
 

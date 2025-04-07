@@ -11,6 +11,10 @@ PELE_ANALYSIS_HOME = ..
 #AMREX_HOME = ../../PelePhysics/Submodules/amrex
 
 
+# Own Paths
+PELE_PHYSICS_HOME=/home/ng746933/itv/Tools/PeleLMeX/Submodules/PelePhysics
+AMREX_HOME = /home/ng746933/itv/Tools/PeleLMeX/Submodules/PelePhysics/Submodules/amrex
+
 # AMReX
 DEBUG	      = FALSE
 DIM	      	  = 2
@@ -18,9 +22,10 @@ PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = FALSE
+USE_MPI       = TRUE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
+USE_EB        = TRUE
 
 # Executable
 # Uncomment the desired exec
@@ -41,6 +46,7 @@ USE_CUDA      = FALSE
 #EBASE   = flattenAMRFile
 #EBASE   = generateTestPlt
 #EBASE   = grad
+#EBASE   = grad_EB_V2
 #EBASE   = integral
 #EBASE   = isoMEF
 #EBASE   = isosurface
@@ -123,3 +129,8 @@ endif
 Blocs := .
 
 include $(PELE_ANALYSIS_HOME)/Tools/GNUmake/Make.Analysis
+
+ifeq ($(USE_EB), TRUE)
+   EB_DIR := $(PELE_ANALYSIS_HOME)/Src/EBUserDefined
+   CXXFLAGS += -I$(EB_DIR)
+endif
