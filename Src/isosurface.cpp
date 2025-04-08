@@ -8,7 +8,6 @@
 
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_FillPatchUtil.H>
-#include <AMReX_PlotFileUtil.H>
 #include "makelevelset3.h"
 
 using namespace amrex;

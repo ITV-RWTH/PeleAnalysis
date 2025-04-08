@@ -29,6 +29,7 @@ USE_EB        = TRUE
 
 # Executable
 # Uncomment the desired exec
+<<<<<<< HEAD
 #EBASE   = template
 #EBASE   = amrToFE
 #EBASE   = arithmetics
@@ -46,6 +47,7 @@ USE_EB        = TRUE
 #EBASE   = flattenAMRFile
 #EBASE   = generateTestPlt
 #EBASE   = grad
+#EBASE   = grad_EB
 #EBASE   = grad_EB_V2
 #EBASE   = integral
 #EBASE   = isoMEF
@@ -71,6 +73,7 @@ USE_EB        = TRUE
 ##EBASE   = mergeMEF
 ##EBASE   = multMEF
 ##EBASE   = sliceMEF
+##EBASE   = SpeedTest
 ##EBASE   = smoothMEF
 
 

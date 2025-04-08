@@ -1,20 +1,22 @@
 #include <string>
 #include <iostream>
 
+// General AMReX Utils
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
-#include <AMReX_DataServices.H>
+//#include <AMReX_DataServices.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_MLMG.H>
+
+// Non-EB Solver
 #ifndef AMREX_USE_EB
 #include <AMReX_MLPoisson.H>
 #endif
 
-// //EB
+// For EB
 #ifdef AMREX_USE_EB
-#include <AMReX.H>
-#include <AMReX_EBMultiFabUtil.H>
+#include <AMReX_EBMultiFabUtil.H> 
 #include <AMReX_MLEBABecLap.H>
 #include <pelelmex_prob_parm.H>
 #include <PeleLMeX_EBUserDefined.H>
@@ -48,36 +50,45 @@ main (int   argc,
     if (argc < 2) {
       print_usage(argc,argv);
     }
-
-    // ---------------------------------------------------------------------
+    const Real pf_strt_time_io = ParallelDescriptor::second();
+    //------------------------------------------------------------------------------------------
     // Set defaults input values
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
     std::string gradVar       = "temp";
     std::string infile        = "";  
     int finestLevel           = 1000;
     int nAuxVar               = 0;
-    int verbose                = 1;
+    int verbose               = 1;
+    int n_files               = 4; 
 
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
     // ParmParse
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
     ParmParse pp;
 
     if (pp.contains("help")) {
       print_usage(argc,argv);
     }
+    // General settings
     pp.query("verbose",verbose);
+
     pp.get("infile",infile);
+    if (infile.empty()) {
+      Abort("Plotfile not specified, Use infile=");
+    }
     if (verbose > 0) Print() << "infile = " << infile << std::endl; 
+
     pp.query("gradVar",gradVar);
     if (verbose > 0) Print() << "Choosen gradVar: " << gradVar << std::endl;
+    
     pp.query("finestLevel",finestLevel);
 
-    // std::string path;
-    // pp.get("path",path);
-    // Print() << "output path = " << path << std::endl; 
+    pp.query("amr.n_files",n_files);  // Changes how many files the written pltfile contains
+    
+    std::string outfile(getFileRoot(infile) + "_gt"); 
+    pp.query("outfile",outfile);  // Ability to change pltfile path and name
 
-
+#if 0
     // Initialize DataService
     if (verbose > 0) Print() << "Initialising DataService!" << std::endl;
     DataServices::SetBatchMode();
@@ -90,15 +101,19 @@ main (int   argc,
 
     AmrData& amrData = dataServices.AmrDataRef();
     if (verbose > 0) Print() << "Initialised DataService!" << std::endl;
+#endif
+
+    // Alternative
+    PlotFileData pf(infile);
 
     // Plotfile global infos
     if (verbose > 0) Print() << "Initialising global infos!" << std::endl;
-    finestLevel = std::min(finestLevel,amrData.FinestLevel());
+    finestLevel = std::min(finestLevel,pf.finestLevel());
     int Nlev = finestLevel + 1;
     if (verbose > 0) Print() << "finestLevel = " << finestLevel << "!" << std::endl;
-    const Vector<std::string>& plotVarNames = amrData.PlotVarNames();
-    RealBox rb(&(amrData.ProbLo()[0]), 
-               &(amrData.ProbHi()[0]));
+    const Vector<std::string>& plotVarNames = pf.varNames();
+    RealBox rb(&(pf.probLo()[0]), 
+               &(pf.probHi()[0]));
 
     // Gradient variable
     if (verbose > 0) Print() << "Checking for gradVar!" << std::endl;
@@ -119,9 +134,9 @@ main (int   argc,
          pp.get("Aux_Variables", AuxVar[ivar],ivar);
     }
 
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
     // Variables index management
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
     if (verbose > 0) Print() << "Index Management!" << std::endl;
     const int idCst = 0;
     int nCompIn = idCst + 1;
@@ -133,8 +148,12 @@ main (int   argc,
     {
         inVarNames.resize(nCompIn+nAuxVar);
         for (int ivar=0; ivar<nAuxVar; ++ivar) {
-            if ( amrData.StateNumber(AuxVar[ivar]) < 0 ) {
-               amrex::Abort("Unknown auxiliary variable name: "+AuxVar[ivar]);
+            // if ( amrData.StateNumber(AuxVar[ivar]) < 0 ) { // StateNumber function isn't available in PlotFileData
+            //    amrex::Abort("Unknown auxiliary variable name: "+AuxVar[ivar]); 
+            // }
+            auto it = std::find(plotVarNames.begin(), plotVarNames.end(), AuxVar[ivar]);
+            if (it == plotVarNames.end()) {
+                amrex::Abort("Unknown auxiliary variable name: " + AuxVar[ivar]);
             }
             inVarNames[nCompIn] = AuxVar[ivar];
             nCompIn ++;
@@ -166,9 +185,9 @@ main (int   argc,
 
     int coord = 0;
 
-    // ---------------------------------------------------------------------
-    // Let's start the real work
-    // ---------------------------------------------------------------------
+  //------------------------------------------------------------------------------------------
+  // Initialising MultiFabs and loading the pltfile Data
+  //------------------------------------------------------------------------------------------
     
 
     if (verbose > 0) Print() << "Start of gradient computation!" << std::endl;
@@ -180,6 +199,7 @@ main (int   argc,
 
     // Read data on all the levels
     if (verbose > 0) Print() << "Reading data on all levels!" << std::endl;
+  #if 0 
     for (int lev=0; lev<Nlev; ++lev) {
       const BoxArray ba = amrData.boxArray(lev);
       grids[lev] = ba;
@@ -193,11 +213,30 @@ main (int   argc,
       if (verbose > 0) Print() << "Fill Boundary!" << std::endl;
       state[lev].FillBoundary(idCst,1,geoms[lev].periodicity());
     }
+  #endif
+  
+  // Alternative Way to load
+  for (int lev=0; lev<Nlev; ++lev) {
+    // Load data into Vector<Vector<MultiFab>> 
+    const BoxArray ba = pf.boxArray(lev);
+    grids[lev] = ba;
+    dmap[lev] = pf.DistributionMap(lev);
+    geoms[lev] = Geometry(pf.probDomain(lev),&rb,coord,&(is_per[0]));
+    state[lev].define(grids[lev], dmap[lev], nCompOut, nGrow);
+    state[lev].setVal(0.0);
+    for (int n=0; n< inVarNames.size(); ++n) {
+      const MultiFab& src = pf.get(lev, inVarNames[n]);
+      MultiFab::Copy(state[lev], src, 0, n, 1, 0);
+    }
+    state[lev].FillBoundary(idCst,1,geoms[lev].periodicity());
+    Print() << "...done reading the plotfile data at level " << lev << "..." << std::endl;
+  }
+  
 
 
 
 //------------------------------------------------------------------------------------------
-// EB SECTION
+// Build the EB
 //------------------------------------------------------------------------------------------
 #ifdef AMREX_USE_EB
 
@@ -217,8 +256,7 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
   int max_lvl_eb = finestLevel;
   ppeb2.query("max_level_generation", max_lvl_eb);
 
-  // Generate the EB data at prev_max_lvl_eb and create consistent coarse
-  // version from there.
+  // Generate the EB data at max_lvl_eb
   if (geom_type == "UserDefined") {
     EBUserDefined(
       geoms[max_lvl_eb], req_coarsening_level, max_coarsening_level);
@@ -228,8 +266,7 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
       geoms[max_lvl_eb], req_coarsening_level, max_coarsening_level);
   }
 
-//-------------------------------------------------------------------------------------------------
-
+  // Setting up an eb_factory for the solver to use
   if (verbose > 0) Print() << "Setting up EBFactory!" << std::endl;
   Vector<std::unique_ptr<EBFArrayBoxFactory>> eb_factory(Nlev);
   for (int lev = 0; lev < Nlev; ++lev) {
@@ -241,8 +278,9 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
 
 #endif
 
-
+//------------------------------------------------------------------------------------------
 // Solver Section
+//------------------------------------------------------------------------------------------
 #ifdef AMREX_USE_EB
     if (verbose > 0) Print() << "Setting up solver!" << std::endl;
     LPInfo info_apply;
@@ -272,7 +310,6 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
           }
        }
     }
-    
     poisson_eb.setDomainBC(lo_bc, hi_bc);
 
 
@@ -298,12 +335,11 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
     MLMG mlmg_eb(poisson_eb);
     mlmg_eb.apply(GetVecOfPtrs(laps), GetVecOfPtrs(phi));
     mlmg_eb.getFluxes(GetVecOfArrOfPtrs(grad), GetVecOfPtrs(phi), MLMG::Location::FaceCentroid);
-    //mlmg_eb.getFluxes(GetVecOfArrOfPtrs(grad), GetVecOfPtrs(phi), MLMG::Location::FaceCenter);
 #else
 
-//------------------------------------------------------------------------------------------------
-// Alternative if USE_EB = FALSE
-//------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+// Alternative solver if USE_EB = FALSE
+//------------------------------------------------------------------------------------------
 
     // Get face-centered gradients from MLMG 
     if (verbose > 0) Print() << "Setting up solver!" << std::endl;
@@ -364,11 +400,13 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
     for (int lev = 0; lev < Nlev; ++lev) {
         // Convert to cell avg gradient
         MultiFab gradAlias(state[lev], amrex::make_alias, idGr, AMREX_SPACEDIM);
-        EB_average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));  // if grad[lev] isn't build with ebfactory the function is equal to average_face_to_cellcenter(...);
-
+        //EB_average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));  // if grad[lev] isn't build with ebfactory the function is equal to average_face_to_cellcenter(...);
+        //average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));
         #ifdef AMREX_USE_EB
-          // Not needed when using MLEBABecLap
+          EB_average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));
+          // *(-1) Not needed when using MLEBABecLap
         #else
+          average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));
           gradAlias.mult(-1.0);
         #endif
 #ifdef AMREX_USE_OMP
@@ -389,9 +427,9 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
         } 
     }
 
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
     // Write the results
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
     Vector<std::string> nnames(nCompOut);
     for (int i=0; i<nCompIn; ++i) {
       nnames[i] = inVarNames[i];
@@ -402,17 +440,16 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
     nnames[idGr+2] = gradVar + "_gz";
 #endif  
     nnames[idGr+AMREX_SPACEDIM] = "||grad"+ gradVar+ "||";
-    std::string outfile(getFileRoot(infile) + "_gt"); pp.query("outfile",outfile);
-    //std::string outfile(path + "_gt"); pp.query("outfile",outfile);
-
     if (verbose > 0) Print() << "Writing results to " << outfile << std::endl;
     Vector<int> isteps(Nlev, 0);
     Vector<IntVect> refRatios(Nlev-1,{AMREX_D_DECL(2, 2, 2)});
-    //amrex::WriteMultiLevelPlotfile("volFrac_output", Nlev, GetVecOfConstPtrs(volFracMF), varnames, geoms, 0.0, isteps, refRatios);
-    VisMF::SetNOutFiles(4);
-    Real time = amrData.Time();
+    VisMF::SetNOutFiles(n_files);
+    Real time = pf.time();
     amrex::WriteMultiLevelPlotfile(outfile, Nlev, GetVecOfConstPtrs(state), nnames,
                                    geoms, time, isteps, refRatios);
+    const Real pf_end_time_io = ParallelDescriptor::second();
+    Real pf_io_time = pf_end_time_io - pf_strt_time_io;
+    Print() << "Duration: " << pf_io_time << " s" << std::endl;                                  
                  
   }
 
