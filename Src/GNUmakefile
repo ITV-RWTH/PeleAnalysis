@@ -31,6 +31,7 @@ USE_EB        = TRUE
 #EBASE		= template
 #EBASE         = grad
 EBASE         = grad_EB_V2
+#EBASE         = grad_EB
 #EBASE		= jpdf
 #EBASE         = combinePlts
 #EBASE         = isosurface

@@ -1,26 +1,26 @@
 #include <string>
 #include <iostream>
 
+// General AMReX Utils
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
 #include <AMReX_DataServices.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
-// #include <AMReX_BLFort.H>
-// #include <AMReX_MLMG.H>
-#include <AMReX_MLPoisson.H>
-// #include <AMReX_MLABecLaplacian.H>
-
-// //EB
-#include <AMReX.H>
-#include <AMReX_ParmParse.H>
-#include <AMReX_EBMultiFabUtil.H>
-#include <AMReX_EB2.H>
-#include <AMReX_EB2_IF.H>
-#include <AMReX_MLEBABecLap.H>
-#include <AMReX_PlotFileUtil.H>
-#include <AMReX_MultiFabUtil.H>
 #include <AMReX_MLMG.H>
+
+// Non-EB Solver
+#ifndef AMREX_USE_EB
+#include <AMReX_MLPoisson.H>
+#endif
+
+// For EB
+#ifdef AMREX_USE_EB
+#include <AMReX_EBMultiFabUtil.H> 
+#include <AMReX_MLEBABecLap.H>
+#include <pelelmex_prob_parm.H>
+#include <PeleLMeX_EBUserDefined.H>
+#endif
 
 using namespace amrex;
 
@@ -50,7 +50,7 @@ main (int   argc,
     if (argc < 2) {
       print_usage(argc,argv);
     }
-
+    const Real pf_strt_time_io = ParallelDescriptor::second();
     // ---------------------------------------------------------------------
     // Set defaults input values
     // ---------------------------------------------------------------------
@@ -58,6 +58,8 @@ main (int   argc,
     std::string infile        = "";  
     int finestLevel           = 1000;
     int nAuxVar               = 0;
+    int verbose               = 1;
+    int n_files               = 4; 
 
     // ---------------------------------------------------------------------
     // ParmParse
@@ -202,73 +204,38 @@ main (int   argc,
 //------------------------------------------------------------------------------------------
 #ifdef AMREX_USE_EB
 
-Print() << "Start building EB!" << std::endl;
+if (verbose > 0) Print() << "Start building EB!" << std::endl;
 BL_PROFILE("PeleLMeX::makeEBGeometry()");
-// Building EB (Needs to be changed to individual EB)
-
-  //ParmParse pp("prob");
-  Real prechamber_side_x, prechamber_side_y,cylinderRadius, cylinderLength;
-
-  // Parse Information to EB
-  pp.get("cylinder_radius",cylinderRadius);
-  pp.get("cylinder_length",cylinderLength);
-  pp.get("prechamber_side_x",prechamber_side_x);
-  pp.get("prechamber_side_y",prechamber_side_y);
-
-  //pp.get("required_coarsening_level",required_coarsening_level)
-  //pp.get("max_coarsening_level",max_coarsening_level)
 
   int max_coarsening_level = 100;
-  int required_coarsening_level = (geoms.size()) - 1;
-  int eb_ref_level = finestLevel; 
+  int req_coarsening_level = static_cast<int>(geoms.size()) - 1;
 
-  int ngrow = 4;
-  bool build_coarse_level_by_coarsening = true;
-  bool extend_domain_face = EB2::ExtendDomainFace();
-  int num_coarsen_opt;
-  pp.get("eb2.num_coarsen_opt",num_coarsen_opt);
+  // Read the geometry type and act accordingly
+  ParmParse ppeb2("eb2");
+  std::string geom_type;
+  ppeb2.get("geom_type", geom_type);
 
-  Print() << "geoms-size():"<< geoms.size() << std::endl;
+  // At what level should the EB be generated ?
+  // Default : max_level
+  int max_lvl_eb = finestLevel;
+  ppeb2.query("max_level_generation", max_lvl_eb);
 
+  // Generate the EB data at max_lvl_eb
+  if (geom_type == "UserDefined") {
+    EBUserDefined(
+      geoms[max_lvl_eb], req_coarsening_level, max_coarsening_level);
+  } else {
+    // If geom_type is not an AMReX recognized type, it'll crash.
+    EB2::Build(
+      geoms[max_lvl_eb], req_coarsening_level, max_coarsening_level);
+  }
 
-  RealArray prechamberLo,prechamberHi,cylinderCentre,chamberLo,chamberHi;
-
-  // Calculate Positions of shapes
-  AMREX_D_TERM(prechamberLo[0] = geoms[eb_ref_level].ProbLo(0);,prechamberLo[1] = -prechamber_side_y/2.0;,prechamberLo[2] = -prechamber_side_y/2.0;); 
-  Print() << prechamberLo << std::endl; // Just debugging or function?
-  AMREX_D_TERM(prechamberHi[0] = geoms[eb_ref_level].ProbLo(0)+prechamber_side_x;,prechamberHi[1] = prechamber_side_y/2.0;,prechamberHi[2] = prechamber_side_y/2.0;);
-  Print() << prechamberHi << std::endl;
-  AMREX_D_TERM(cylinderCentre[0] = prechamberHi[0]+cylinderLength/2.0;,cylinderCentre[1] = 0.0;,cylinderCentre[2] = 0.0;);
-  Print() << cylinderCentre << std::endl;
-  AMREX_D_TERM(chamberLo[0] = geoms[eb_ref_level].ProbLo(0) + prechamber_side_x + cylinderLength;,chamberLo[1] = geoms[eb_ref_level].ProbLo(1);,chamberLo[2] = geoms[eb_ref_level].ProbLo(2););
-  AMREX_D_TERM(chamberHi[0] = geoms[eb_ref_level].ProbHi(0);,chamberHi[1] = geoms[eb_ref_level].ProbHi(1);,chamberHi[2] = geoms[eb_ref_level].ProbHi(2););
-
-
-  // Initialisation of the different shapes see https://amrex-codes.github.io/amrex/doxygen/index.html
-  EB2::BoxIF prechamber(prechamberLo, prechamberHi,false);
-  EB2::CylinderIF cylinder(cylinderRadius,cylinderLength,0,cylinderCentre,false);
-  EB2::BoxIF chamber(chamberLo,chamberHi,false);
-
-  auto domaininv = EB2::makeUnion(prechamber,cylinder,chamber); // Combines the shapes to one domain (automatic detects typ of variable)
-  auto domain = EB2::makeComplement(domaininv); // Complement of an object. E.g. a sphere with fluid on outside becomes a sphere with fluid inside.
-  
-  // Build your geometry shop using EB2::makeShop
-  auto gshop = EB2::makeShop(domain); 
-
-  // Build geom using EB2::Build
-  EB2::Build(gshop, geoms[eb_ref_level], required_coarsening_level, max_coarsening_level);
-  Print() << "Building process finished!" << std::endl;
-
-
-
-//-------------------------------------------------------------------------------------------------
-
-  Print() << "Setting up EBFactory!" << std::endl;
+  // Setting up an eb_factory for the solver to use
+  if (verbose > 0) Print() << "Setting up EBFactory!" << std::endl;
   Vector<std::unique_ptr<EBFArrayBoxFactory>> eb_factory(Nlev);
   for (int lev = 0; lev < Nlev; ++lev) {
       const EB2::IndexSpace& eb_is = EB2::IndexSpace::top();
       const EB2::Level& eb_level = eb_is.getLevel(geoms[lev]);
-      //eb_factory[lev] = makeEBFabFactory(geoms[lev], grids[lev], dmap[lev], {nGrow}, EBSupport::full);
       eb_factory[lev] = std::make_unique<EBFArrayBoxFactory>
           (eb_level, geoms[lev], grids[lev], dmap[lev], Vector<int>{2,2,2}, EBSupport::full);
   }
@@ -449,6 +416,10 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
     Real time = amrData.Time();
     amrex::WriteMultiLevelPlotfile(outfile, Nlev, GetVecOfConstPtrs(state), nnames,
                                    geoms, time, isteps, refRatios);
+
+    const Real pf_end_time_io = ParallelDescriptor::second();
+    Real pf_io_time = pf_end_time_io - pf_strt_time_io;
+    Print() << "Duration: " << pf_io_time << " ms" << std::endl;                                  
                  
   }
 
