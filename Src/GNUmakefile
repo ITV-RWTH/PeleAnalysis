@@ -29,7 +29,6 @@ USE_EB        = TRUE
 
 # Executable
 # Uncomment the desired exec
-<<<<<<< HEAD
 #EBASE   = template
 #EBASE   = amrToFE
 #EBASE   = arithmetics
