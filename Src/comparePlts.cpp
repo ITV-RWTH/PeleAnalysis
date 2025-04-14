@@ -104,7 +104,7 @@ int main (int argc, char* argv[])
       geoms[lev] = Geometry(amrData0.ProbDomain()[lev],&rb,coord,&(is_per[0]));
       fileData0[lev] = new MultiFab(amrData0.boxArray(lev),dm,nvars,0);
       fileData1[lev] = new MultiFab(amrData1.boxArray(lev),dm,nvars,0);
-      allOnes[lev] = new MultiFab(amrData1.boxArray(lev),dm,nvars,0);
+      allOnes[lev] = new MultiFab(amrData0.boxArray(lev),dm,nvars,0);
   }
 
   // data structure to create identical var tables
@@ -130,7 +130,7 @@ int main (int argc, char* argv[])
     }
 
     // loop through second infile to finde var number i
-    for (int k = 0; k < plot1_VarNames.size(), k++){
+    for (int k = 0; k < plot1_VarNames.size(); k++){
       // if var was found, save the position in idx
       if (plot1_VarNames[k] == var){
         idx1 = k;
@@ -158,30 +158,30 @@ int main (int argc, char* argv[])
  
   // fill in the Multifabs with the infile Data
  for (int lev = 0; lev < Nlev; lev++){
-  for (int i = 0; i < idcomp0.size(), i++){
-    fileData0[lev]->ParallelCopy(amrData0.GetGrids(lev,idcomp0[0]),0,i,1);
-    fileData1[lev]->ParallelCopy(amrData1.GetGrids(lev,idcomp1[0]),0,i,1);
-    allOnes[lev]->setVal(1.0);
+  for (int i = 0; i < idcomp0.size(); i++){
+    fileData0[lev]->ParallelCopy(amrData0.GetGrids(lev,idcomp0[i]),0,i,1);
+    fileData1[lev]->ParallelCopy(amrData1.GetGrids(lev,idcomp1[i]),0,i,1);
   }
+    allOnes[lev]->setVal(1.0);
  }
 
 // creating an array containing the var names
- for (int i = 0; i < idcomp0.size(), i++){
+ for (int i = 0; i < idcomp0.size(); i++){
   names.push_back(plot0_VarNames[idcomp0[i]] + "_rel_diff");
  }
   
   // calculate the difference: hopefully
  for (int lev = 0; lev < Nlev; ++lev) {
    for (int i = 0; i < nvars; i++){
-     fileData0[lev]->Devide(fileData0[lev], fileData1[lev], i, i, 1);
-     allOnes[lev]->minus(fileData0[lev], i, 1);
+     fileData0[lev]->Divide(*fileData0[lev], *fileData1[lev], i, i, 1, 0);
+     fileData0[lev]->Subtract(*fileData0[lev], *allOnes[lev], i, i, 1, 0);
    }
  }
   
   // write pltfile
   Vector<int> isteps(Nlev, 0);
   Vector<IntVect> refRatios(Nlev-1,{AMREX_D_DECL(2, 2, 2)});
-  amrex::WriteMultiLevelPlotfile(outfile, Nlev, GetVecOfConstPtrs(allOnes), names, geoms, 0.0, isteps, refRatios);
+  amrex::WriteMultiLevelPlotfile(outfile, Nlev, GetVecOfConstPtrs(fileData0), names, geoms, 0.0, isteps, refRatios);
   
   amrex::Finalize();
   return 0;
