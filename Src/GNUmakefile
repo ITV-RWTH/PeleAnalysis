@@ -30,7 +30,7 @@ USE_EB        = TRUE
 # Uncomment the desired exec
 #EBASE		= template
 #EBASE         = grad
-EBASE         = grad_EB_V2
+#EBASE         = grad_EB_V2
 #EBASE         = grad_EB
 #EBASE		= jpdf
 #EBASE         = combinePlts
@@ -42,7 +42,7 @@ EBASE         = grad_EB_V2
 #EBASE         = surfDATtoMEF
 #EBASE          = amrToFE
 #EBASE         = conditionalMean
-#EBASE		= isosurface
+EBASE		= isosurface
 #EBASE		= decimateMEF
 #EBASE         = subPlt
 #EBASE         = partStream
