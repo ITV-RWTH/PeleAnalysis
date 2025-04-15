@@ -1558,7 +1558,7 @@ main (int   argc,
           Array4<Real> maskArray = mask.array();
 
           AMREX_PARALLEL_FOR_3D(gbox, i, j, k, {
-              if(volFracBox(i,j,k) > 1) Print() << "Bigger than 1! volFrac = " << volFracBox(i,j,k) << std::endl; 
+              //if(volFracBox(i,j,k) > 1) Print() << "Bigger than 1! volFrac = " << volFracBox(i,j,k) << std::endl; 
               if (volFracBox(i, j, k) == 0) {
                   maskArray(i, j, k) = -1.0;
               }
