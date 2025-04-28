@@ -10,10 +10,6 @@ PELE_ANALYSIS_HOME = ..
 # PELE_PHYSICS_HOME = ../../PeleLMeX/Submodules/PelePhysics
 # AMREX_HOME = ../../PeleLMeX/Submodules/PelePhysics/Submodules/amrex
 
-# Own Paths
-PELE_PHYSICS_HOME=/home/ng746933/itv/Tools/PeleLMeX/Submodules/PelePhysics
-AMREX_HOME = /home/ng746933/itv/Tools/PeleLMeX/Submodules/PelePhysics/Submodules/amrex
-
 # AMReX
 DEBUG	      = FALSE
 DIM	      = 3
@@ -21,17 +17,15 @@ PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = TRUE
+USE_MPI       = FALSE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
-USE_EB        = TRUE
 
 # Executable
 # Uncomment the desired exec
-#EBASE		= template
+EBASE		= template
+#EBASE		= convert2hdf5
 #EBASE         = grad
-#EBASE         = grad_EB_V2
-#EBASE         = grad_EB
 #EBASE		= jpdf
 #EBASE         = combinePlts
 #EBASE         = isosurface
@@ -42,11 +36,10 @@ USE_EB        = TRUE
 #EBASE         = surfDATtoMEF
 #EBASE          = amrToFE
 #EBASE         = conditionalMean
-EBASE		= isosurface
+#EBASE		= isosurface
 #EBASE		= decimateMEF
 #EBASE         = subPlt
 #EBASE         = partStream
-#EBASE		= SpeedTest
 
 # tools that need review/combining/fixing/work
 #EBASE         = partStream
@@ -69,15 +62,23 @@ ifeq ($(EBASE),$(filter $(EBASE), isosurface buildDistance))
    NEED_DISTANCE = TRUE
 endif
 
+ifeq ($(EBASE),convert2hdf5)
+   USE_HDF5 = TRUE
+   USE_HDF5_ZFP = TRUE
+   HDF5_HOME = /path/to/hdf5
+   ZFP_HOME = /path/to/zfp
+   H5Z_HOME = /path/to/h5z-zfp
+endif
+
 ifeq ($(EBASE),decimateMEF) #make qslim first!
    NEED_QSLIM = TRUE
 endif
-
-Blocs := .
-
-include $(PELE_ANALYSIS_HOME)/Tools/GNUmake/Make.Analysis
 
 ifeq ($(USE_EB), TRUE)
    EB_DIR := $(PELE_ANALYSIS_HOME)/Src/EBUserDefined
    CXXFLAGS += -I$(EB_DIR)
 endif
+
+Blocs := .
+
+include $(PELE_ANALYSIS_HOME)/Tools/GNUmake/Make.Analysis
