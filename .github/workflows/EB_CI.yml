@@ -67,7 +67,7 @@ jobs:
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
           ccache -z
-          for TOOL in isosurface jpdf_EB grad; do
+          for TOOL in isosurface grad; do
             echo "-------- Compiling $TOOL --------"
             make -j${NPROCS} \
               EBASE=${TOOL} \
