@@ -4,7 +4,6 @@
 // General AMReX Utils
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
-//#include <AMReX_DataServices.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_MLMG.H>
@@ -253,15 +252,15 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
 #endif
 
 //------------------------------------------------------------------------------------------
-// Solver Section
+// EB Solver Section
 //------------------------------------------------------------------------------------------
+
 #ifdef AMREX_USE_EB
     if (verbose > 0) Print() << "Setting up solver!" << std::endl;
     LPInfo info_apply;
     info_apply.setMaxCoarseningLevel(0);
     MLEBABecLap poisson_eb(geoms, grids, dmap, info_apply, amrex::GetVecOfConstPtrs(eb_factory));
     poisson_eb.setVerbose(4);
-
     poisson_eb.setMaxOrder(4);
 
     //Poisson like solver able to handle EB'S
@@ -318,8 +317,6 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
     // Get face-centered gradients from MLMG 
     if (verbose > 0) Print() << "Setting up solver!" << std::endl;
     LPInfo info;
-    // info.setAgglomeration(1);
-    // info.setConsolidation(1);
     info.setAgglomeration(true);
     info.setConsolidation(true);
     info.setMaxCoarseningLevel(0);
@@ -384,6 +381,7 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
           average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));
           gradAlias.mult(-1.0);
         #endif
+
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
