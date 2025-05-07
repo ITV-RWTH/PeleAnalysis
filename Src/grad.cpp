@@ -4,7 +4,6 @@
 // General AMReX Utils
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
-//#include <AMReX_DataServices.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_MLMG.H>
@@ -86,7 +85,7 @@ main (int   argc,
     pp.query("amr.n_files",n_files);  // Changes how many files the written pltfile contains
     
     std::string outfile(getFileRoot(infile) + "_gt"); 
-    pp.query("outfile",outfile);  // Ability to change pltfile path and name
+    pp.query("outfile",outfile);  
 
     PlotFileData pf(infile);
 
@@ -132,9 +131,6 @@ main (int   argc,
     {
         inVarNames.resize(nCompIn+nAuxVar);
         for (int ivar=0; ivar<nAuxVar; ++ivar) {
-            // if ( amrData.StateNumber(AuxVar[ivar]) < 0 ) { // StateNumber function isn't available in PlotFileData
-            //    amrex::Abort("Unknown auxiliary variable name: "+AuxVar[ivar]); 
-            // }
             auto it = std::find(plotVarNames.begin(), plotVarNames.end(), AuxVar[ivar]);
             if (it == plotVarNames.end()) {
                 amrex::Abort("Unknown auxiliary variable name: " + AuxVar[ivar]);
@@ -150,7 +146,7 @@ main (int   argc,
     }
 
     const int idGr = nCompIn;
-    const int nCompOut = idGr + AMREX_SPACEDIM +1 ; // 1 component stores the ||gradT||
+    const int nCompOut = idGr + AMREX_SPACEDIM +1 ; 
 
     // Check symmetry/periodicity in given coordinate direction
     Vector<int> sym_dir(AMREX_SPACEDIM,0);
@@ -184,7 +180,6 @@ main (int   argc,
     // Read data on all the levels
     if (verbose > 0) Print() << "Reading data on all levels!" << std::endl;
     for (int lev=0; lev<Nlev; ++lev) {
-      // Load data into Vector<Vector<MultiFab>> 
       const BoxArray ba = pf.boxArray(lev);
       grids[lev] = ba;
       dmap[lev] = pf.DistributionMap(lev);
@@ -244,15 +239,15 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
 #endif
 
 //------------------------------------------------------------------------------------------
-// Solver Section
+// EB Solver Section
 //------------------------------------------------------------------------------------------
+
 #ifdef AMREX_USE_EB
     if (verbose > 0) Print() << "Setting up solver!" << std::endl;
     LPInfo info_apply;
     info_apply.setMaxCoarseningLevel(0);  
     MLEBABecLap poisson_eb(geoms, grids, dmap, info_apply, amrex::GetVecOfConstPtrs(eb_factory)); 
     poisson_eb.setVerbose(4);  
-
     poisson_eb.setMaxOrder(4);
     
     //Poisson like solver able to handle EB'S
@@ -309,8 +304,6 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
     // Get face-centered gradients from MLMG 
     if (verbose > 0) Print() << "Setting up solver!" << std::endl;
     LPInfo info;
-    // info.setAgglomeration(1);
-    // info.setConsolidation(1);
     info.setAgglomeration(true);
     info.setConsolidation(true);
     info.setMaxCoarseningLevel(0);
@@ -365,8 +358,6 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
     for (int lev = 0; lev < Nlev; ++lev) {
         // Convert to cell avg gradient
         MultiFab gradAlias(state[lev], amrex::make_alias, idGr, AMREX_SPACEDIM);
-        //EB_average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));  // if grad[lev] isn't build with ebfactory the function is equal to average_face_to_cellcenter(...);
-        //average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));
         #ifdef AMREX_USE_EB
           EB_average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));
           // *(-1) Not needed when using MLEBABecLap
@@ -374,6 +365,7 @@ BL_PROFILE("PeleLMeX::makeEBGeometry()");
           average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));
           gradAlias.mult(-1.0);
         #endif
+
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
