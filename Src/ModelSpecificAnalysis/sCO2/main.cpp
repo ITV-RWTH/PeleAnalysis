@@ -66,8 +66,8 @@ int main(int argc, char* argv[])
     if (int nx=pp.countval("box"))
     {
         pp.getarr("box",inBox,0,nx);
-        int d=BL_SPACEDIM;
-        BL_ASSERT(inBox.size()==2*d);
+        int d=AMREX_SPACEDIM;
+        AMREX_ASSERT(inBox.size()==2*d);
         subbox=Box(IntVect(D_DECL(inBox[0],inBox[1],inBox[2])),
                    IntVect(D_DECL(inBox[d],inBox[d+1],inBox[d+2])),
                    IndexType::TheCellType());
