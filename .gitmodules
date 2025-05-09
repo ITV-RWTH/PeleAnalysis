@@ -6,6 +6,3 @@
 	path = Submodules/qslim
 	url = https://github.com/AMReX-Combustion/qslim.git
         shallow = true
-[submodule "Submodules/pytorch"]
-	path = Submodules/pytorch
-	url = https://github.com/pytorch/pytorch.git
