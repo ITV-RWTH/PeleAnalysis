@@ -32,6 +32,8 @@ EBASE		= template
 #EBASE         = flattenAMRFile
 #EBASE         = filterPlt
 #EBASE         = curvature
+#EBASE          = optimalEstimatorInfer
+#EBASE          = optimalEstimatorTraining
 #EBASE         = surfMEFtoDAT
 #EBASE         = surfDATtoMEF
 #EBASE          = amrToFE
@@ -56,6 +58,12 @@ ifeq ($(EBASE),partStream)
   USE_PARTICLES = TRUE
   CEXE_headers += StreamData.H    StreamPC.H
   CEXE_sources += StreamData.cpp  StreamPC.cpp
+endif
+
+ifeq ($(EBASE), $(filter $(EBASE),optimalEstimatorTraining optimalEstimatorInfer)) #make pytorch first!
+  NEED_PYTORCH = TRUE
+  CEXE_headers += optimalEstimatorANN.H
+  CEXE_sources += optimalEstimatorANN.cpp
 endif
 
 ifeq ($(EBASE),$(filter $(EBASE), isosurface buildDistance))
