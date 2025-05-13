@@ -418,7 +418,7 @@ main (int   argc,
     for (int lev=0; lev<Nlev; ++lev){
     MultiFab StateVar(*state[lev], amrex::make_alias, idCst, 1);
     MultiFab ProgressVar(*state[lev], amrex::make_alias, idProg, 1);
-    for (MFIter mfi(*state[lev]); mfi.isValid(); ++mfi)
+    for (MFIter mfi(*state[lev],TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.validbox();
         const auto& StateVarFab = StateVar.array(mfi); 
@@ -663,7 +663,7 @@ if ( do_smooth ) {
         MultiFab cellnorm_gradient(ba, dmap[lev], 1, 1);
         cellnorm_gradient.setVal(0.0);
 
-        for (MFIter mfi(cellnorm_gradient); mfi.isValid(); ++mfi)
+        for (MFIter mfi(cellnorm_gradient,TilingIfNotGPU()); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.validbox();
             AMREX_D_TERM(auto const& Cx = cellavg_gradient.array(mfi,0);,
@@ -805,7 +805,7 @@ if ( do_smooth ) {
 #endif
 
         // Clip curvature & flame normal for c < threshold or c > 1.0-threshold
-        for (MFIter mfi(Curv); mfi.isValid(); ++mfi)
+        for (MFIter mfi(Curv,TilingIfNotGPU()); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.validbox();
             const auto& CurvFab  = Curv.array(mfi); 
@@ -909,7 +909,7 @@ if ( do_smooth ) {
            // Get the adjugate of the Hessian
            MultiFab AdjHessian(ba, dmap[lev], 9, 0);     
 
-           for (MFIter mfi(Hessian); mfi.isValid(); ++mfi)
+           for (MFIter mfi(Hessian,TilingIfNotGPU()); mfi.isValid(); ++mfi)
            {
                const Box& bx = mfi.validbox();
                const auto& HxiFab  = Hessian.array(mfi,0);           // Cxx, Cxy, Cxz
@@ -935,7 +935,7 @@ if ( do_smooth ) {
 
            // Now get the gausian curvature
            MultiFab gCurv(ba, dmap[lev], 1, 0);     
-           for (MFIter mfi(gCurv); mfi.isValid(); ++mfi)
+           for (MFIter mfi(gCurv,TilingIfNotGPU()); mfi.isValid(); ++mfi)
            {
                const Box& bx = mfi.validbox();
                const auto& progvar    = ProgVar.array(mfi);
@@ -1059,7 +1059,7 @@ if ( do_smooth ) {
             MultiFab strainrate(ba, dmap[lev], 1, 0);
             strainrate.setVal(0.0);
 
-           for (MFIter mfi(strainrate); mfi.isValid(); ++mfi)
+           for (MFIter mfi(strainrate,TilingIfNotGPU()); mfi.isValid(); ++mfi)
            {
                const Box& bx = mfi.validbox();
                const auto& progvar    = ProgVar.array(mfi);
@@ -1103,7 +1103,7 @@ if ( do_smooth ) {
            // Velocity normal to the flame front
            MultiFab velNormal(ba, dmap[lev], 1, 0);
 
-           for (MFIter mfi(velNormal); mfi.isValid(); ++mfi)
+           for (MFIter mfi(velNormal,TilingIfNotGPU()); mfi.isValid(); ++mfi)
            {
                const Box& bx = mfi.validbox();
                const auto& progvar    = ProgVar.array(mfi);

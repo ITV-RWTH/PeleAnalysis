@@ -1527,7 +1527,7 @@ main(int argc, char* argv[])
               << "..." << std::endl;
 
       // Populate the list of elements of the isosurface
-      for (MFIter mfi(states[lev]); mfi.isValid(); ++mfi) {
+      for (MFIter mfi(states[lev],TilingIfNotGPU()); mfi.isValid(); ++mfi) {
 
         const auto& sfab = states[lev][mfi];
 

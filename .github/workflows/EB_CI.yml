@@ -8,34 +8,67 @@ on:
      branches: [development]  
 
 jobs:
-  build:
-    runs-on: ubuntu-22.04
+  # Formatting:
+  #     runs-on: ubuntu-latest
+  #     steps:
+  #     - name: Clone
+  #       uses: actions/checkout@v4
+  #     - name: Check formatting
+  #       uses: DoozyX/clang-format-lint-action@v0.18.2
+  #       with:
+  #         source: './Src'
+  #         exclude: '.'
+  #         extensions: 'H,h,cpp'
+  #         clangFormatVersion: 18   
 
+  CPU-GNUmake:
+    #needs: Formatting
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        cuda: [TRUE, FALSE]
+        comp: [gnu, llvm, gnu-debug]
+        dim: [2, 3]
         eb: [TRUE, FALSE]
         include:
-          - build_args: "COMP=gnu USE_MPI=FALSE"
-    name: Build with CUDA=${{ matrix.cuda }} EB=${{ matrix.eb }}
+          - comp: gnu
+            amrex_build_args: 'COMP=gnu'
+            dependency_cmds:
+          - comp: gnu-debug
+            amrex_build_args: 'COMP=gnu DEBUG=TRUE'
+            dependency_cmds:
+          - comp: llvm
+            amrex_build_args: 'COMP=llvm'
+            dependency_cmds:          
+        exclude:
+        - comp: gnu-debug
+          dim: 2
+          eb: TRUE
+        - comp: gnu-debug
+          dim: 2
+          eb: FALSE
+        - comp: gnu-debug
+          dim: 3
+          eb: FALSE    
+
+    name: Compiled with Comp=${{ matrix.comp }}, DIM=${{ matrix.dim }}, EB=${{ matrix.eb }}
 
     steps:
-      - name: Checkout Repository inkl. Submodules
+      - name: Clone
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          path: PeleAnalysis-CI-${{ matrix.cuda }}-${{ matrix.eb }}
+          path: PeleAnalysis-${{matrix.comp}}
 
-      - name: Install System Dependencies + CUDA Toolkit
+      - name: Set Environment Variables
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential wget gnupg lsb-release make g++ clang
-          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
-          sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-          sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub
-          sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/ /"
-          sudo apt-get update
-          sudo apt-get install -y cuda-toolkit-12-3
+          echo "PELE_ANALYSIS_HOME=${{github.workspace}}/PeleAnalysis-${{matrix.comp}}" >> $GITHUB_ENV
+          echo "BASE_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis-${{matrix.comp}}/Src" >> $GITHUB_ENV
+          echo "MODELSPECIFIC_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis-${{matrix.comp}}/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
+          echo "NPROCS=$(nproc)" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESSLEVEL=5" >> $GITHUB_ENV
+          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV   
 
       - name: Install Ccache
         run: |
@@ -47,41 +80,290 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
-          key: ccache-${{github.workflow}}-${{github.job}}-${{matrix.cuda}}-${{matrix.eb}}-${{github.sha}}
+          key: ccache-${{github.workflow}}-${{github.job}}-${{matrix.comp}}-git-${{github.sha}}
           restore-keys: |
-            ccache-${{github.workflow}}-${{github.job}}-${{matrix.cuda}}-${{matrix.eb}}-
+               ccache-${{github.workflow}}-${{github.job}}-${{matrix.comp}}-git-
 
-      - name: Set Environment Variables
+      - name: Compile Src Tools
+        working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
-          echo "PELE_ANALYSIS_HOME=${{ github.workspace }}/PeleAnalysis-CI-${{ matrix.cuda }}-${{ matrix.eb }}" >> $GITHUB_ENV
-          echo "PELE_PHYSICS_HOME=${{ github.workspace }}/PeleAnalysis-CI-${{ matrix.cuda }}-${{ matrix.eb }}/Submodules/PelePhysics" >> $GITHUB_ENV
-          echo "AMREX_HOME=${{ github.workspace }}/PeleAnalysis-CI-${{ matrix.cuda }}-${{ matrix.eb }}/Submodules/PelePhysics/Submodules/amrex" >> $GITHUB_ENV
-          echo "BASE_WORKING_DIRECTORY=${{ github.workspace }}/PeleAnalysis-CI-${{ matrix.cuda }}-${{ matrix.eb }}/Src" >> $GITHUB_ENV
+          ccache -z
+          for TOOL in isosurface grad curvature integral; do
+            echo "-------- Compiling $TOOL --------"
+            make -j ${NPROCS} \
+              DIM=${{matrix.dim}} \
+              EBASE=${TOOL} \
+              USE_EB=${{ matrix.eb }} \
+              USE_CCACHE=TRUE \
+              ${{ matrix.build_args }}; \
+            make realclean; \
+            if [ $? -ne 0 ]; then exit 1; fi; \
+          done
+          
+      - name: Src ccache report
+        working-directory: ${{env.BASE_WORKING_DIRECTORY}}
+        run: |
+          ccache -s
+          du -hs ${HOME}/.cache/ccache    
+
+
+
+  GPU-Nvidia:
+    #needs: [Formatting, CPU-GNUmake]
+    needs:  CPU-GNUmake
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        cuda_ver: [11.4]
+        dim: [2, 3]
+        eb: [TRUE, FALSE]
+        include:
+          - cuda_ver: "11.4"
+            cuda_pkg: 11-4
+    name: GPU-CUDA - Compiled with DIM=${{ matrix.dim }}, EB=${{ matrix.eb }}
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup
+        run: |
           echo "NPROCS=$(nproc)" >> $GITHUB_ENV
           echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESSLEVEL=5" >> $GITHUB_ENV
-          echo "CCACHE_LOGFILE=${{ github.workspace }}/ccache.log.txt" >> $GITHUB_ENV
-          echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESSLEVEL=1" >> $GITHUB_ENV
+          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=300M" >> $GITHUB_ENV
+
+      - name: Dependencies
+        run: |
+          ${{github.workspace}}/Submodules/PelePhysics/Submodules/amrex/.github/workflows/dependencies/ubuntu_free_disk_space.sh
+          curl -O https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
+          sudo dpkg -i cuda-keyring_1.0-1_all.deb
+          sudo apt-get update
+          sudo apt-get install -y \
+              cuda-command-line-tools-${{matrix.cuda_pkg}} \
+              cuda-compiler-${{matrix.cuda_pkg}} cuda-minimal-build-${{matrix.cuda_pkg}} \
+              cuda-nvml-dev-${{matrix.cuda_pkg}} cuda-nvtx-${{matrix.cuda_pkg}} \
+              libcurand-dev-${{matrix.cuda_pkg}} cuda-cupti-dev-${{matrix.cuda_pkg}} \
+              libcusolver-dev-${{matrix.cuda_pkg}} libcusparse-dev-${{matrix.cuda_pkg}} \
+              libcublas-dev-${{matrix.cuda_pkg}}
+
+      - name: Install Ccache
+        run: |
+          wget https://github.com/ccache/ccache/releases/download/v4.8/ccache-4.8-linux-x86_64.tar.xz
+          tar xvf ccache-4.8-linux-x86_64.tar.xz
+          sudo cp -f ccache-4.8-linux-x86_64/ccache /usr/local/bin/
+
+      - name: Set Up Ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{github.workflow}}-${{github.job}}-git-${{github.sha}}
+          restore-keys: |
+               ccache-${{github.workflow}}-${{github.job}}-git-
+
+      - name: Configure
+        run: |
+          export PATH=/usr/local/nvidia/bin:/usr/local/cuda-${{matrix.cuda_ver}}/bin:${PATH}
+          export LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda-${{matrix.cuda_ver}}/lib:${LD_LIBRARY_PATH}
+          cmake -Bbuild-${{matrix.cuda_pkg}} \
+            -DCMAKE_BUILD_TYPE:STRING=Release \
+            -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+            -DPELE_ENABLE_MPI:BOOL=OFF \
+            -DPELE_ENABLE_CUDA:BOOL=ON \
+            -DAMReX_CUDA_ERROR_CAPTURE_THIS:BOOL=ON \
+            -DCMAKE_CUDA_ARCHITECTURES:STRING=70 \
+            -DCMAKE_CUDA_COMPILER_LAUNCHER:STRING=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER:STRING=ccache \
+            ${{github.workspace}}
 
       - name: Compile EB Tools
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
           ccache -z
-          for TOOL in isosurface grad; do
+          for TOOL in isosurface grad curvature integral; do
             echo "-------- Compiling $TOOL --------"
             make -j${NPROCS} \
+              DIM=${{matrix.dim}} \
               EBASE=${TOOL} \
-              USE_CUDA=${{ matrix.cuda }} \
+              USE_CUDA="TRUE" \
               USE_EB=${{ matrix.eb }} \
               USE_CCACHE=TRUE \
-              NO_MPI_CHECKING=TRUE \
-              PELE_ANALYSIS_HOME=${{ env.PELE_ANALYSIS_HOME }} \
-              PELE_PHYSICS_HOME=${{ env.PELE_PHYSICS_HOME }} \
-              AMREX_HOME=${{ env.AMREX_HOME }} \
-              ${{ matrix.build_args }} || { echo "Error for compilation of $TOOL"; exit 1; }
-            make realclean \
-              PELE_ANALYSIS_HOME=${{ env.PELE_ANALYSIS_HOME }} \
-              PELE_PHYSICS_HOME=${{ env.PELE_PHYSICS_HOME }} \
-              AMREX_HOME=${{ env.AMREX_HOME }} 
+              ${{ matrix.build_args }}; \
+            make realclean; \
+            if [ $? -ne 0 ]; then exit 1; fi; \
           done
+
+      - name: Ccache Report
+        run: |
           ccache -s
+          du -hs ~/.cache/ccache
+
+  GPU-AMD:
+    needs:  CPU-GNUmake
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        dim: [2, 3]
+        eb: [TRUE, FALSE]
+    name: GPU-HIP - Compiled with DIM=${{ matrix.dim }}, EB=${{ matrix.eb }}
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup
+        run: |
+          echo "NPROCS=$(nproc)" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESSLEVEL=1" >> $GITHUB_ENV
+          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=80M" >> $GITHUB_ENV
+      - name: Dependencies
+        run: |
+          ${{github.workspace}}/Submodules/PelePhysics/Submodules/amrex/.github/workflows/dependencies/ubuntu_free_disk_space.sh
+          curl -O https://repo.radeon.com/rocm/rocm.gpg.key
+          sudo apt-key add rocm.gpg.key
+          echo 'deb [arch=amd64] https://repo.radeon.com/rocm/apt/5.6.1 ubuntu main' \
+              | sudo tee /etc/apt/sources.list.d/rocm.list
+          echo 'export PATH=/opt/rocm/llvm/bin:/opt/rocm/bin:/opt/rocm/profiler/bin:/opt/rocm/opencl/bin:$PATH' \
+              | sudo tee -a /etc/profile.d/rocm.sh
+          sudo apt-get update
+          sudo apt-get install -y rocm-dev rocrand-dev rocprim-dev
+      - name: Install Ccache
+        run: |
+          wget https://github.com/ccache/ccache/releases/download/v4.8/ccache-4.8-linux-x86_64.tar.xz
+          tar xvf ccache-4.8-linux-x86_64.tar.xz
+          sudo cp -f ccache-4.8-linux-x86_64/ccache /usr/local/bin/
+      - name: Set Up Ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{github.workflow}}-${{github.job}}-git-${{github.sha}}
+          restore-keys: |
+               ccache-${{github.workflow}}-${{github.job}}-git-
+      - name: Configure
+        run: |
+          source /etc/profile.d/rocm.sh
+          which clang
+          which clang++
+          which hipcc
+          cmake -B${{runner.workspace}}/build-hip \
+          -DCMAKE_BUILD_TYPE:STRING=Release \
+          -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+          -DCMAKE_CXX_COMPILER:STRING=$(which clang++) \
+          -DCMAKE_C_COMPILER:STRING=$(which clang) \
+          -DPELE_ENABLE_MPI:BOOL=OFF \
+          -DPELE_ENABLE_HIP:BOOL=ON \
+          -DAMReX_AMD_ARCH:STRING=gfx90a \
+          -DCMAKE_HIP_ARCHITECTURES:STRING=gfx90a \
+          -DAMDGPU_TARGETS:STRING=gfx90a \
+          -DGPU_TARGETS:STRING=gfx90a \
+          -DAMReX_GPU_RDC:BOOL=OFF \
+          -DPELE_ENABLE_FCOMPARE_FOR_TESTS:BOOL=OFF \
+          -DCMAKE_CXX_COMPILER_LAUNCHER:STRING=ccache \
+          ${{github.workspace}}
+
+      - name: Compile EB Tools
+        working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
+        run: |
+          ccache -z
+          for TOOL in isosurface grad curvature integral; do
+            echo "-------- Compiling $TOOL --------"
+            make -j${NPROCS} \
+              DIM=${{matrix.dim}} \
+              EBASE=${TOOL} \
+              USE_HIP="TRUE" \
+              USE_EB=${{ matrix.eb }} \
+              USE_CCACHE=TRUE \
+              ${{ matrix.build_args }}; \
+            make realclean; \
+            if [ $? -ne 0 ]; then exit 1; fi; \
+          done
+
+      - name: Ccache Report
+        run: |
+          ccache -s
+          du -hs ~/.cache/ccache
+
+  GPU-Intel:
+    needs:  CPU-GNUmake
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dim: [2, 3]
+        eb: [TRUE, FALSE]
+    name: GPU-SYCL - Compiled with DIM=${{ matrix.dim }}, EB=${{ matrix.eb }}
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup
+        run: |
+          echo "NPROCS=$(nproc)" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESSLEVEL=1" >> $GITHUB_ENV
+          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=80M" >> $GITHUB_ENV
+          echo "CCACHE_DEPEND=1" >> $GITHUB_ENV
+      - name: Dependencies
+        run: |
+          ${{github.workspace}}/Submodules/PelePhysics/Submodules/amrex/.github/workflows/dependencies/ubuntu_free_disk_space.sh
+          sudo wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+          sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+          echo "deb https://apt.repos.intel.com/oneapi all main" \
+              | sudo tee /etc/apt/sources.list.d/oneAPI.list
+          sudo apt-get update
+          sudo apt-get install -y intel-oneapi-compiler-dpcpp-cpp intel-oneapi-mkl-devel
+      - name: Install Ccache
+        run: |
+          wget https://github.com/ccache/ccache/releases/download/v4.8/ccache-4.8-linux-x86_64.tar.xz
+          tar xvf ccache-4.8-linux-x86_64.tar.xz
+          sudo cp -f ccache-4.8-linux-x86_64/ccache /usr/local/bin/
+      - name: Set Up Ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{github.workflow}}-${{github.job}}-git-${{github.sha}}
+          restore-keys: |
+               ccache-${{github.workflow}}-${{github.job}}-git-
+      - name: Configure
+        run: |
+          set +e
+          source /opt/intel/oneapi/setvars.sh
+          set -e
+          cmake -B${{runner.workspace}}/build-sycl \
+            -DCMAKE_BUILD_TYPE:STRING=Release \
+            -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+            -DCMAKE_CXX_COMPILER:STRING=$(which icpx) \
+            -DCMAKE_C_COMPILER:STRING=$(which icx) \
+            -DCMAKE_CXX_FLAGS:STRING=-fsycl \
+            -DPELE_ENABLE_MPI:BOOL=OFF \
+            -DPELE_ENABLE_FCOMPARE_FOR_TESTS:BOOL=OFF \
+            -DPELE_ENABLE_SYCL:BOOL=ON \
+            -DCMAKE_CXX_COMPILER_LAUNCHER:STRING=ccache \
+            ${{github.workspace}}
+
+      - name: Compile EB Tools
+        working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
+        run: |
+          ccache -z
+          for TOOL in isosurface grad curvature integral; do
+            echo "-------- Compiling $TOOL --------"
+            make -j${NPROCS} \
+              DIM=${{matrix.dim}} \
+              EBASE=${TOOL} \
+              USE_SYCL="TRUE" \
+              USE_EB=${{ matrix.eb }} \
+              USE_CCACHE=TRUE \
+              ${{ matrix.build_args }}; \
+            make realclean; \
+            if [ $? -ne 0 ]; then exit 1; fi; \
+          done
+
+      - name: Ccache Report
+        run: |
+          ccache -s
+          du -hs ~/.cache/ccache           
