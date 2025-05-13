@@ -111,7 +111,7 @@ jobs:
   GPU-Nvidia:
     #needs: [Formatting, CPU-GNUmake]
     needs:  CPU-GNUmake
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         cuda_ver: [11.4]
@@ -134,6 +134,15 @@ jobs:
           echo "CCACHE_COMPRESSLEVEL=1" >> $GITHUB_ENV
           echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
           echo "CCACHE_MAXSIZE=300M" >> $GITHUB_ENV
+
+          echo "PELE_ANALYSIS_HOME=${{github.workspace}}/PeleAnalysis" >> $GITHUB_ENV
+          echo "BASE_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis/Src" >> $GITHUB_ENV
+          echo "MODELSPECIFIC_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
+          echo "NPROCS=$(nproc)" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESSLEVEL=5" >> $GITHUB_ENV
+          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV   
 
       - name: Dependencies
         run: |
@@ -163,21 +172,6 @@ jobs:
           restore-keys: |
                ccache-${{github.workflow}}-${{github.job}}-git-
 
-      - name: Configure
-        run: |
-          export PATH=/usr/local/nvidia/bin:/usr/local/cuda-${{matrix.cuda_ver}}/bin:${PATH}
-          export LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda-${{matrix.cuda_ver}}/lib:${LD_LIBRARY_PATH}
-          cmake -Bbuild-${{matrix.cuda_pkg}} \
-            -DCMAKE_BUILD_TYPE:STRING=Release \
-            -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
-            -DPELE_ENABLE_MPI:BOOL=OFF \
-            -DPELE_ENABLE_CUDA:BOOL=ON \
-            -DAMReX_CUDA_ERROR_CAPTURE_THIS:BOOL=ON \
-            -DCMAKE_CUDA_ARCHITECTURES:STRING=70 \
-            -DCMAKE_CUDA_COMPILER_LAUNCHER:STRING=ccache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER:STRING=ccache \
-            ${{github.workspace}}
-
       - name: Compile EB Tools
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
@@ -202,7 +196,7 @@ jobs:
 
   GPU-AMD:
     needs:  CPU-GNUmake
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         dim: [2, 3]
@@ -220,6 +214,15 @@ jobs:
           echo "CCACHE_COMPRESSLEVEL=1" >> $GITHUB_ENV
           echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
           echo "CCACHE_MAXSIZE=80M" >> $GITHUB_ENV
+
+          echo "PELE_ANALYSIS_HOME=${{github.workspace}}/PeleAnalysis" >> $GITHUB_ENV
+          echo "BASE_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis/Src" >> $GITHUB_ENV
+          echo "MODELSPECIFIC_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
+          echo "NPROCS=$(nproc)" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESSLEVEL=5" >> $GITHUB_ENV
+          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV   
       - name: Dependencies
         run: |
           ${{github.workspace}}/Submodules/PelePhysics/Submodules/amrex/.github/workflows/dependencies/ubuntu_free_disk_space.sh
@@ -243,27 +246,6 @@ jobs:
           key: ccache-${{github.workflow}}-${{github.job}}-git-${{github.sha}}
           restore-keys: |
                ccache-${{github.workflow}}-${{github.job}}-git-
-      - name: Configure
-        run: |
-          source /etc/profile.d/rocm.sh
-          which clang
-          which clang++
-          which hipcc
-          cmake -B${{runner.workspace}}/build-hip \
-          -DCMAKE_BUILD_TYPE:STRING=Release \
-          -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
-          -DCMAKE_CXX_COMPILER:STRING=$(which clang++) \
-          -DCMAKE_C_COMPILER:STRING=$(which clang) \
-          -DPELE_ENABLE_MPI:BOOL=OFF \
-          -DPELE_ENABLE_HIP:BOOL=ON \
-          -DAMReX_AMD_ARCH:STRING=gfx90a \
-          -DCMAKE_HIP_ARCHITECTURES:STRING=gfx90a \
-          -DAMDGPU_TARGETS:STRING=gfx90a \
-          -DGPU_TARGETS:STRING=gfx90a \
-          -DAMReX_GPU_RDC:BOOL=OFF \
-          -DPELE_ENABLE_FCOMPARE_FOR_TESTS:BOOL=OFF \
-          -DCMAKE_CXX_COMPILER_LAUNCHER:STRING=ccache \
-          ${{github.workspace}}
 
       - name: Compile EB Tools
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
@@ -308,6 +290,16 @@ jobs:
           echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
           echo "CCACHE_MAXSIZE=80M" >> $GITHUB_ENV
           echo "CCACHE_DEPEND=1" >> $GITHUB_ENV
+
+          echo "PELE_ANALYSIS_HOME=${{github.workspace}}/PeleAnalysis" >> $GITHUB_ENV
+          echo "BASE_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis/Src" >> $GITHUB_ENV
+          echo "MODELSPECIFIC_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
+          echo "NPROCS=$(nproc)" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESSLEVEL=5" >> $GITHUB_ENV
+          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV    
+
       - name: Dependencies
         run: |
           ${{github.workspace}}/Submodules/PelePhysics/Submodules/amrex/.github/workflows/dependencies/ubuntu_free_disk_space.sh
@@ -329,22 +321,6 @@ jobs:
           key: ccache-${{github.workflow}}-${{github.job}}-git-${{github.sha}}
           restore-keys: |
                ccache-${{github.workflow}}-${{github.job}}-git-
-      - name: Configure
-        run: |
-          set +e
-          source /opt/intel/oneapi/setvars.sh
-          set -e
-          cmake -B${{runner.workspace}}/build-sycl \
-            -DCMAKE_BUILD_TYPE:STRING=Release \
-            -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
-            -DCMAKE_CXX_COMPILER:STRING=$(which icpx) \
-            -DCMAKE_C_COMPILER:STRING=$(which icx) \
-            -DCMAKE_CXX_FLAGS:STRING=-fsycl \
-            -DPELE_ENABLE_MPI:BOOL=OFF \
-            -DPELE_ENABLE_FCOMPARE_FOR_TESTS:BOOL=OFF \
-            -DPELE_ENABLE_SYCL:BOOL=ON \
-            -DCMAKE_CXX_COMPILER_LAUNCHER:STRING=ccache \
-            ${{github.workspace}}
 
       - name: Compile EB Tools
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
