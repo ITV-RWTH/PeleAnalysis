@@ -40,6 +40,7 @@ EBASE		= template
 #EBASE		= decimateMEF
 #EBASE         = subPlt
 #EBASE         = partStream
+EBASE		= partScatter
 
 # tools that need review/combining/fixing/work
 #EBASE         = partStream
@@ -52,10 +53,16 @@ EBASE		= template
 
 CEXE_sources += $(EBASE).cpp
 
-ifeq ($(EBASE),partStream)
+ifeq ($(EBASE),$(filter $(EBASE), partStream partScatter))
   USE_PARTICLES = TRUE
-  CEXE_headers += StreamData.H    StreamPC.H
-  CEXE_sources += StreamData.cpp  StreamPC.cpp
+  ifeq ($(EBASE), partStream)
+     CEXE_headers += StreamPC.H	
+     CEXE_sources += StreamPC.cpp
+  endif
+  ifeq ($(EBASE), partScatter)
+     CEXE_headers += ScatterPC.H	
+     CEXE_sources += ScatterPC.cpp
+  endif	
 endif
 
 ifeq ($(EBASE),$(filter $(EBASE), isosurface buildDistance))
