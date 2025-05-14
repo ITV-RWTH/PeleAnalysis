@@ -18,7 +18,7 @@ PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = FALSE
+USE_MPI       = TRUE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
 
@@ -29,6 +29,7 @@ USE_CUDA      = FALSE
 #EBASE   = avgPlotfiles
 #EBASE   = checkIso
 #EBASE   = combinePlts
+#EBASE   = comparePlts
 #EBASE   = conditionalMean
 #EBASE   = curvature
 #EBASE   = filterPlt
@@ -63,7 +64,6 @@ USE_CUDA      = FALSE
 ##EBASE   = sliceMEF
 ##EBASE   = smoothMEF
 ##EBASE   = turbfile
-
 
 
 CEXE_sources += $(EBASE).cpp
