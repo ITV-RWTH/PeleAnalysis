@@ -76,7 +76,6 @@ USE_CUDA      = FALSE
 ##EBASE   = smoothMEF
 
 
-
 CEXE_sources += $(EBASE).cpp
 
 ifeq ($(EBASE),$(filter $(EBASE), template favreAvgPlotfiles)) # add targets that need utils as space-separated list
