@@ -15,7 +15,8 @@ void
 print_usage (int,
              char* argv[])
 {
-  std::cerr << "Utility to average pltfiles on same domain but with non-matching AMR";
+  std::cerr << "Utility to filter plotfiles in each direction sequentially (to overcome memory issues with 3D grow)\n";
+  std::cerr << "Note: only box filter currently implemented\n";
   std::cerr << "usage:\n";
   std::cerr << argv[0] << " infile=<s> [options] \n\tOptions:\n";
   std::cerr << "\t     infile=<s> where s is a pltfile \n";
@@ -36,8 +37,8 @@ getFileRoot(const std::string& infile)
   return tokens[tokens.size()-1];
 }
 
-
-void write_plotfile (const std::string &plotfilename,
+void
+write_plotfile (const std::string &plotfilename,
                               int nlevels,
                               const amrex::Vector<const amrex::MultiFab*> &mf,
                               const amrex::Vector<std::string> &varnames,
@@ -54,16 +55,17 @@ void write_plotfile (const std::string &plotfilename,
 int
 main(int argc, char** argv)
 {
-
     amrex::Initialize(argc,argv);
     // ---------------------------------------------------------------------
     // ParmParse
     // ---------------------------------------------------------------------
     amrex::ParmParse pp;
+    static_assert(AMREX_SPACEDIM == 3,"Only available in 3D");
 
+  
     if (argc < 2 || pp.contains("help")) {
        print_usage(argc,argv);
-     }
+    }
 
     std::string infile        = "";
     int finestLevel           = 1000;
@@ -78,10 +80,9 @@ main(int argc, char** argv)
     pp.query("interp_type",interp_type);
     
     // use PltFileManager to load data
-    amrex::Vector<pele::physics::pltfilemanager::PltFileManager*> plt_file_data(1);
-    plt_file_data[0] = new pele::physics::pltfilemanager::PltFileManager(infile);
+    auto plt_file_data = std::make_unique<pele::physics::pltfilemanager::PltFileManager>(infile);
     // Plotfile global infos
-    int Nlev = std::min(finestLevel + 1, plt_file_data[0]->getNlev());
+    int Nlev = std::min(finestLevel + 1, plt_file_data->getNlev());
     
     // Variable names
     int ncomp_filter;
@@ -94,7 +95,7 @@ main(int argc, char** argv)
     if (!all_vars) {
       ncomp_filter = nvar;
       pp.getarr("variables",variableNames);
-      const amrex::Vector<std::string>& plotVarNames = plt_file_data[0]->getVariableList();
+      const amrex::Vector<std::string>& plotVarNames = plt_file_data->getVariableList();
       for (int var = 0; var < nvar; ++var) {
         int pvar;
         for (pvar = 0; pvar < plotVarNames.size(); ++pvar) {
@@ -108,7 +109,7 @@ main(int argc, char** argv)
         }
       }
     } else {
-      variableNames = plt_file_data[0]->getVariableList();
+      variableNames = plt_file_data->getVariableList();
       ncomp_filter = variableNames.size();
     }
 
@@ -127,7 +128,7 @@ main(int argc, char** argv)
 
       // Initialize filter stuff
       if ((!same_fgr_all_levels) && (lev > 0)) {
-        les_filter_fgr_lev *= plt_file_data[0]->getRefRatio(lev - 1);
+        les_filter_fgr_lev *= plt_file_data->getRefRatio(lev - 1);
       }
       int nGrow = les_filter_fgr_lev/2;
       weights[lev].resize(les_filter_fgr_lev + 1);
@@ -140,7 +141,7 @@ main(int argc, char** argv)
       amrex::IntVect nGrow1 = {AMREX_D_DECL(nGrow,0,0)};
       amrex::IntVect nGrow2 = {AMREX_D_DECL(0,nGrow,0)};
       
-      amrex::BoxArray ba(plt_file_data[0]->getGrid(lev));
+      amrex::BoxArray ba(plt_file_data->getGrid(lev));
       if (max_grid_size > 0) {
 	ba.maxSize(max_grid_size);
       }
@@ -148,15 +149,15 @@ main(int argc, char** argv)
       const amrex::DistributionMapping dm = amrex::DistributionMapping(ba);
       
       amrex::Print() << "Number of boxes on level " << lev << " " << ba.size() << std::endl;
-      level_geometries.push_back(plt_file_data[0]->getGeom(lev));
+      level_geometries.push_back(plt_file_data->getGeom(lev));
       mf1[lev].define(ba,dm,ncomp_filter,nGrow1);
       mf2[lev].define(ba,dm,ncomp_filter,nGrow2);
 
       if (all_vars) {
-        plt_file_data[0]->fillPatchFromPlt(lev, level_geometries[lev], 0, 0, ncomp_filter, mf1[lev], interp_type);
+        plt_file_data->fillPatchFromPlt(lev, level_geometries[lev], 0, 0, ncomp_filter, mf1[lev], interp_type);
       } else {
         for (int var = 0; var < ncomp_filter; ++var) {
-          plt_file_data[0]->fillPatchFromPlt(lev, level_geometries[lev], var_idxs[var], var, 1, mf1[lev], interp_type);
+          plt_file_data->fillPatchFromPlt(lev, level_geometries[lev], var_idxs[var], var, 1, mf1[lev], interp_type);
         }
       }
     }
@@ -206,7 +207,7 @@ main(int argc, char** argv)
                            {0.0},
                            0, 0, ncomp_filter,
                            level_geometries[lev - 1], level_geometries[lev],
-                           crse_bndry_func, 0, fine_bndry_func, 0, amrex::IntVect(plt_file_data[0]->getRefRatio(lev - 1)), mapper,
+                           crse_bndry_func, 0, fine_bndry_func, 0, amrex::IntVect(plt_file_data->getRefRatio(lev - 1)), mapper,
                            {dummyBCRec}, 0);
       }
     }
@@ -277,7 +278,7 @@ main(int argc, char** argv)
                            {0.0},
                            0, 0, ncomp_filter,
                            level_geometries[lev - 1], level_geometries[lev],
-                           crse_bndry_func, 0, fine_bndry_func, 0, amrex::IntVect(plt_file_data[0]->getRefRatio(lev - 1)), mapper,
+                           crse_bndry_func, 0, fine_bndry_func, 0, amrex::IntVect(plt_file_data->getRefRatio(lev - 1)), mapper,
                            {dummyBCRec}, 0);
       }
     }
@@ -343,7 +344,7 @@ main(int argc, char** argv)
                            {0.0},
                            0, 0, ncomp_filter,
                            level_geometries[lev - 1], level_geometries[lev],
-                           crse_bndry_func, 0, fine_bndry_func, 0, amrex::IntVect(plt_file_data[0]->getRefRatio(lev - 1)), mapper,
+                           crse_bndry_func, 0, fine_bndry_func, 0, amrex::IntVect(plt_file_data->getRefRatio(lev - 1)), mapper,
                            {dummyBCRec}, 0);
       }
     }
@@ -379,7 +380,7 @@ main(int argc, char** argv)
     amrex::Print() << "Saving filtered data..." << std::endl;
     std::string outfile(getFileRoot(infile) + "_filtered");
     pp.query("outfile",outfile);
-    write_plotfile(outfile,Nlev,amrex::GetVecOfConstPtrs(mf2),variableNames,level_geometries,plt_file_data[0]->getTime(),amrex::Vector<int>(Nlev, 0));
+    write_plotfile(outfile,Nlev,amrex::GetVecOfConstPtrs(mf2),variableNames,level_geometries,plt_file_data->getTime(),amrex::Vector<int>(Nlev, 0));
     amrex::Print() << "Done!" << std::endl;
 
     amrex::Finalize();
