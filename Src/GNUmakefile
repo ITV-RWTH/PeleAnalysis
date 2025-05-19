@@ -40,6 +40,7 @@ EBASE		= template
 #EBASE		= decimateMEF
 #EBASE         = subPlt
 #EBASE         = partStream
+#EBASE		= sequentialFilterPlt
 
 # tools that need review/combining/fixing/work
 #EBASE         = avgToPlane
