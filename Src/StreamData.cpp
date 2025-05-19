@@ -27,8 +27,8 @@ bool
 StreamData::DefineFab(int level, int componentIndex, int fabIndex)
 {   
     if( ! dataGridsDefined[level][componentIndex][fabIndex]) {
-        BL_ASSERT(componentIndex < compIndexToVisMFMap.size());
-        BL_ASSERT(componentIndex < compIndexToVisMFComponentMap.size());
+        AMREX_ASSERT(componentIndex < compIndexToVisMFMap.size());
+        AMREX_ASSERT(componentIndex < compIndexToVisMFComponentMap.size());
         int whichVisMF(compIndexToVisMFMap[componentIndex]);
         int whichVisMFComponent(compIndexToVisMFComponentMap[componentIndex]);
         dataGrids[level][componentIndex]->setFab(
@@ -73,8 +73,8 @@ StreamData::boxArray(int level) const
 const Vector<int>&
 StreamData::InsideNodes(int level, int box_id) const
 {
-    BL_ASSERT(level<=finestLevel);
-    BL_ASSERT(box_id<inside_nodes[level].size());
+    AMREX_ASSERT(level<=finestLevel);
+    AMREX_ASSERT(box_id<inside_nodes[level].size());
     return inside_nodes[level][box_id];
 }
 
@@ -154,8 +154,8 @@ StreamData::ReadInfo()
         isPltIn >> ElementFileName; 
         isPltIn >>  ElementFileFormat; 
 
-        for (int i=0; i<BL_SPACEDIM; ++i)  isPltIn >> probLo[i];
-        for (int i=0; i<BL_SPACEDIM; ++i)  isPltIn >> probHi[i];
+        for (int i=0; i<AMREX_SPACEDIM; ++i)  isPltIn >> probLo[i];
+        for (int i=0; i<AMREX_SPACEDIM; ++i)  isPltIn >> probHi[i];
         for (int lev=0; lev<Nlev; ++lev) {
             isPltIn >> probDomain[lev];
             // dont read ba
@@ -308,7 +308,7 @@ StreamData::WriteFile(std::string&               outfile,
                       const Vector<std::string>& names,
                       const std::string&         FileFormatName) const
 {
-    BL_ASSERT(names.size() == _nComp);
+    AMREX_ASSERT(names.size() == _nComp);
 
     const std::string LevelDirName("Level");
     const std::string StreamDataFileName("Str");
@@ -333,9 +333,9 @@ StreamData::WriteFile(std::string&               outfile,
             ofh << ElementFileName << '\n'; 
             ofh << ElementFileFormat << '\n'; 
             
-            for (int i=0; i<BL_SPACEDIM; ++i)  ofh << probLo[i] << " ";
+            for (int i=0; i<AMREX_SPACEDIM; ++i)  ofh << probLo[i] << " ";
             ofh << '\n';
-            for (int i=0; i<BL_SPACEDIM; ++i)  ofh << probHi[i] << " ";
+            for (int i=0; i<AMREX_SPACEDIM; ++i)  ofh << probHi[i] << " ";
             ofh << '\n';
             for (int lev=0; lev<data.size(); ++lev) {
                 ofh << ProbDomain()[lev] << '\n';
@@ -421,7 +421,7 @@ const DistributionMapping&
 StreamData::DistributionMap (int level) const
 {
     // All components will have the same distribution map, by assumption
-    BL_ASSERT(level<=finestLevel);
+    AMREX_ASSERT(level<=finestLevel);
     return dataGrids[level][0]->DistributionMap();
 }
 
@@ -484,19 +484,19 @@ StreamData::BuildGlobalNodeMap() const
     
             for (int j=0; j<mynodes_per_element; ++j) {
                 int global_node_id = global_element_node_ids[offset + j];
-                BL_ASSERT(global_node_map.size() > global_node_id);
+                AMREX_ASSERT(global_node_map.size() > global_node_id);
                 n[j] = &(global_node_map[global_node_id]);
             }
     
-            BL_ASSERT(n[0]->amr_lev <= myfinestLevel);
-            BL_ASSERT(dm.size()>n[0]->amr_lev && dm[n[0]->amr_lev].size()>n[0]->box_idx);
+            AMREX_ASSERT(n[0]->amr_lev <= myfinestLevel);
+            AMREX_ASSERT(dm.size()>n[0]->amr_lev && dm[n[0]->amr_lev].size()>n[0]->box_idx);
             int element_owner = dm[n[0]->amr_lev][n[0]->box_idx];
 
             bool is_shared = false;
             for (int j=1; j<mynodes_per_element; ++j) {
       
-                BL_ASSERT(n[j]->amr_lev <= myfinestLevel);
-                BL_ASSERT(dm.size()>n[j]->amr_lev && dm[n[j]->amr_lev].size()>n[j]->box_idx);
+                AMREX_ASSERT(n[j]->amr_lev <= myfinestLevel);
+                AMREX_ASSERT(dm.size()>n[j]->amr_lev && dm[n[j]->amr_lev].size()>n[j]->box_idx);
                 int node_owner = dm[n[j]->amr_lev][n[j]->box_idx];
 
                 if (element_owner != node_owner) {
@@ -577,13 +577,13 @@ StreamData::BuildGlobalNodeMap() const
                 else
                 {
                     // Otherwise, the node is in the usual data structure
-                    BL_ASSERT(global_node_map.size() > global_node_id);
+                    AMREX_ASSERT(global_node_map.size() > global_node_id);
                     const MLloc& node = global_node_map[global_node_id];
                     amr_lev = node.amr_lev;
                     box_idx = node.box_idx;
                     pt_idx = node.pt_idx;
                     
-                    BL_ASSERT(DistributionMap(amr_lev)[box_idx] == my_proc);
+                    AMREX_ASSERT(DistributionMap(amr_lev)[box_idx] == my_proc);
                 }
                 
                 *ptr++ = global_node_id;
@@ -700,7 +700,7 @@ static void DoIt(const Vector<int>& comps,
     }
   }
 
-#if BL_USE_MPI
+#if AMREX_USE_MPI
   BL_MPI_REQUIRE( MPI_Alltoallv(tot_num_to_send == 0 ? 0 : senddata.dataPtr(),
                                 sendcnts.dataPtr(),
                                 sdispls.dataPtr(),

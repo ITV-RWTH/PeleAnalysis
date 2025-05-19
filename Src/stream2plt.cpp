@@ -2,12 +2,11 @@
 #include <iostream>
 #include <set>
 #include <map>
+#include <list>
 
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
 #include <AMReX_DataServices.H>
-
-#include <AMReX_BLFort.H>
 
 #include <StreamData.H>
 
@@ -115,7 +114,7 @@ downsampleStreamData(const StreamData&                stream,
                 for (SelectionMapList::const_iterator it=idx_map.begin(); it!=idx_map.end(); ++it)
                 {
                     cout << " ( " << it->first << " from " << it->second << " ) ";
-                    BL_ASSERT(it->second < nAvail);
+                    AMREX_ASSERT(it->second < nAvail);
                 }
                 cout << " src data has " << nAvail << " particles" << endl;
             }
@@ -125,7 +124,7 @@ downsampleStreamData(const StreamData&                stream,
     ParallelDescriptor::Barrier(); // Make sure they all get here so nLines is uniform across procs
 }
 
-#ifdef BL_WRITE_BINARY
+#ifdef AMREX_WRITE_BINARY
 
 #include "TECIO.h"
 #define SIZET INTEGER4
@@ -140,9 +139,9 @@ write_tec_binary(const FArrayBox&     strm,
     osf.open(outfile.c_str(),std::ios::out);
 
     int Ncomp = names.size();
-    BL_ASSERT(Ncomp==strm.nComp());
+    AMREX_ASSERT(Ncomp==strm.nComp());
 
-    BL_ASSERT(write_lines.size()==strm.box().length(0));
+    AMREX_ASSERT(write_lines.size()==strm.box().length(0));
 
     std::string vars = names[0];
     for (int j=1; j<Ncomp; ++j)
@@ -168,7 +167,7 @@ write_tec_binary(const FArrayBox&     strm,
     INTEGER4 FaceNeighborMode   = 0;
     INTEGER4 ShareConnectivityFromZone = 0; /* UNUSED (for FE ZONES ONLY) */
 
-    Vector<Real> loc(BL_SPACEDIM);
+    Vector<Real> loc(AMREX_SPACEDIM);
     const Box& box = strm.box();
     const IntVect ivst = box.smallEnd();
     const IntVect ivmid(AMREX_D_DECL(ivst[0],0,ivst[2]));
@@ -276,7 +275,7 @@ write_tec_ascii(const FArrayBox&     strm,
     osf.open(outfile.c_str(),std::ios::out);
 
     int nComp = names.size();
-    BL_ASSERT(nComp==strm.nComp());
+    AMREX_ASSERT(nComp==strm.nComp());
 
     osf << "VARIABLES = ";
     for (int i=0; i<nComp; ++i)
@@ -284,7 +283,7 @@ write_tec_ascii(const FArrayBox&     strm,
     osf << '\n';
 
 
-    BL_ASSERT(write_lines.size()==strm.box().length(0));
+    AMREX_ASSERT(write_lines.size()==strm.box().length(0));
 
     std::string vars = names[0];
     for (int j=1; j<nComp; ++j)
@@ -357,7 +356,7 @@ main (int   argc,
     {
         int sComp = 0; pp.query("sComp",sComp);
         int nComp = names.size(); pp.query("nComp",nComp);
-        BL_ASSERT(sComp+nComp <= names.size());
+        AMREX_ASSERT(sComp+nComp <= names.size());
         comps.resize(nComp);
         for (int i=0; i<nComp; ++i)
             comps[i] = sComp + i;
@@ -372,7 +371,7 @@ main (int   argc,
     Real distVal; 
     if (distComp>=0) {
         pp.get("distVal",distVal);
-        BL_ASSERT(distComp<comps.size());
+        AMREX_ASSERT(distComp<comps.size());
         char buf[64]; sprintf(buf,"%g",distVal);
         string distName = "distance_from_" + names[comps[distComp]] + "_eq_" + string(buf);
         selectedNames.resize(selectedNames.size()+1);
@@ -530,12 +529,12 @@ main (int   argc,
                                    IntVect(AMREX_D_DECL(old_local_idx,shi,0)));
                         
                         int new_global_idx = it->first;
-                        BL_ASSERT(new_global_idx < nLines);
+                        AMREX_ASSERT(new_global_idx < nLines);
                         Box dstBox(IntVect(AMREX_D_DECL(new_global_idx,slo,0)),
                                    IntVect(AMREX_D_DECL(new_global_idx,shi,0)));
                         
-                        BL_ASSERT(srcFab.box().contains(srcBox));
-                        BL_ASSERT(dstFab.box().contains(dstBox));
+                        AMREX_ASSERT(srcFab.box().contains(srcBox));
+                        AMREX_ASSERT(dstFab.box().contains(dstBox));
                         
                         dstFab.copy(srcFab,srcBox,0,dstBox,n,1);
                     }
@@ -600,7 +599,7 @@ main (int   argc,
             }
 
             // Check criteria on radius of seed point
-            BL_ASSERT(comps.size()>2);
+            AMREX_ASSERT(comps.size()>2);
             if (RXY>0)
             {
                 for (int i=0; i<nLines; ++i)
@@ -639,7 +638,7 @@ main (int   argc,
                         if ( ( (loc_val_lo > loc_val)  && (loc_val_hi < loc_val) ) ||
                              ( (loc_val_lo < loc_val)  && (loc_val_hi > loc_val) ) ) {
                             Real alpha = (loc_val - loc_val_lo)/(loc_val_hi-loc_val_lo);
-                            BL_ASSERT(alpha>=0 && alpha<=1);
+                            AMREX_ASSERT(alpha>=0 && alpha<=1);
                             Real val_lo = fab(ivl,test_comp);
                             Real val_hi = fab(ivh,test_comp);
                             Real val_test = val_lo + alpha*(val_hi-val_lo);
@@ -660,7 +659,7 @@ main (int   argc,
                 Real loc_offset = 0;
 
                 IntVect ivl, ivh;
-                BL_ASSERT(comps.size()>BL_SPACEDIM);
+                AMREX_ASSERT(comps.size()>AMREX_SPACEDIM);
                 for (int i=0; i<nLines; ++i)
                 {
                     ivl = se + i*BASISV(0);
@@ -669,7 +668,7 @@ main (int   argc,
                         ivl = se + i*BASISV(0) + (j-1)*BASISV(1);
                         ivh = se + i*BASISV(0) +   j  *BASISV(1);
                         Real ds = 0;
-                        for (int n=0; n<BL_SPACEDIM; ++n) {
+                        for (int n=0; n<AMREX_SPACEDIM; ++n) {
                             Real dx = fab(ivh,n) - fab(ivl,n);
                             ds += dx*dx;
                         }
@@ -686,7 +685,7 @@ main (int   argc,
                         if ( ( (loc_val_lo > loc_val)  && (loc_val_hi < loc_val) ) ||
                              ( (loc_val_lo < loc_val)  && (loc_val_hi > loc_val) ) ) {
                             Real alpha = (loc_val - loc_val_lo)/(loc_val_hi-loc_val_lo);
-                            BL_ASSERT(alpha>=0 && alpha<=1);
+                            AMREX_ASSERT(alpha>=0 && alpha<=1);
                             Real val_lo = fab(ivl,nDist);
                             Real val_hi = fab(ivh,nDist);
                             loc_offset = val_lo + alpha*(val_hi-val_lo);
@@ -719,7 +718,7 @@ main (int   argc,
             + string(buf1) + " of " + string(buf2) + ")";
         if (condStr != "")
             file_label += " and further conditioned such that: " + condStr;
-#ifdef BL_WRITE_BINARY
+#ifdef AMREX_WRITE_BINARY
         write_tec_binary(fab,outfile,file_label,selectedNames,write_lines);
 #else
         write_tec_ascii(fab,outfile,file_label,selectedNames,write_lines);
