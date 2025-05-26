@@ -60,6 +60,9 @@ Blocs += $(foreach dir, $(PPSrcdirs), $(PELE_PHYSICS_HOME)/Source/$(dir))
 # AMReX Source
 #-----------------------------
 Adirs := Base Boundary AmrCore Extern/amrdata LinearSolvers/MLMG
+ifeq ($(USE_EB),TRUE)
+  Adirs +=  EB
+endif
 Bpack += $(foreach dir, $(Adirs), $(AMREX_HOME)/Src/$(dir)/Make.package)
 Blocs += $(foreach dir, $(Adirs), $(AMREX_HOME)/Src/$(dir))
 

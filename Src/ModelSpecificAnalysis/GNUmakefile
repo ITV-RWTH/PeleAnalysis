@@ -6,6 +6,7 @@ PRECISION  = DOUBLE
 PROFILE    = FALSE
 VERBOSE    = TRUE
 DEBUG      = FALSE
+USE_EB 	   = FALSE
 
 # Compiler
 COMP	   = gnu
