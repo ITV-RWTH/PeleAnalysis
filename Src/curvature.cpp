@@ -72,6 +72,7 @@ main (int   argc,
     bool do_smooth            = false;
     Real smooth_time          = 1.0e-7;
     int nAuxVar               = 0;
+    int n_files               = 4; 
 
     
     // ---------------------------------------------------------------------
@@ -81,6 +82,7 @@ main (int   argc,
 
     // IO
     pp.query("verbose",verbose);
+    pp.query("amr.n_files",n_files);  // Changes how many files the written pltfile contains
     std::string plotFileName;
     pp.get("infile",plotFileName);
     std::string outfile(getFileRoot(plotFileName) + "_K");
@@ -1182,7 +1184,7 @@ if ( do_smooth ) {
     Print() << "Writing new data to " << outfile << " , for TS: "<< time <<"\n";
     Vector<int> isteps(Nlev, 0);
     Vector<IntVect> refRatios(Nlev-1,{AMREX_D_DECL(2, 2, 2)});
-    VisMF::SetNOutFiles(4);
+    VisMF::SetNOutFiles(n_files);
     amrex::WriteMultiLevelPlotfile(outfile, Nlev, GetVecOfConstPtrs(ostate), nnames,
                                    geomsOP, time, isteps, refRatios);
 
