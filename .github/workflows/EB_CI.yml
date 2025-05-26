@@ -38,7 +38,8 @@ jobs:
             dependency_cmds:
           - comp: llvm
             amrex_build_args: 'COMP=llvm'
-            dependency_cmds:          
+            dependency_cmds:        
+          - build_args: "USE_MPI=FALSE"    
         exclude:
         - comp: gnu-debug
           dim: 2
@@ -111,15 +112,11 @@ jobs:
   GPU-Nvidia:
     #needs: [Formatting, CPU-GNUmake]
     needs:  CPU-GNUmake
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
-        cuda_ver: [11.4]
         dim: [2, 3]
         eb: [TRUE, FALSE]
-        include:
-          - cuda_ver: "11.4"
-            cuda_pkg: 11-4
     name: GPU-CUDA - Compiled with DIM=${{ matrix.dim }}, EB=${{ matrix.eb }}
     steps:
       - name: Clone
@@ -131,31 +128,22 @@ jobs:
         run: |
           echo "NPROCS=$(nproc)" >> $GITHUB_ENV
           echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESSLEVEL=1" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESSLEVEL=10" >> $GITHUB_ENV
           echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
           echo "CCACHE_MAXSIZE=300M" >> $GITHUB_ENV
-
-          echo "BASE_WORKING_DIRECTORY=${{ github.workspace }}/Src" >> $GITHUB_ENV
-          echo "MODELSPECIFIC_WORKING_DIRECTORY=${{ github.workspace }}/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
-          echo "NPROCS=$(nproc)" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESSLEVEL=5" >> $GITHUB_ENV
-          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
-          echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV   
 
       - name: Dependencies
         run: |
           ${{github.workspace}}/Submodules/PelePhysics/Submodules/amrex/.github/workflows/dependencies/ubuntu_free_disk_space.sh
-          curl -O https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
-          sudo dpkg -i cuda-keyring_1.0-1_all.deb
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
           sudo apt-get update
-          sudo apt-get install -y \
-              cuda-command-line-tools-${{matrix.cuda_pkg}} \
-              cuda-compiler-${{matrix.cuda_pkg}} cuda-minimal-build-${{matrix.cuda_pkg}} \
-              cuda-nvml-dev-${{matrix.cuda_pkg}} cuda-nvtx-${{matrix.cuda_pkg}} \
-              libcurand-dev-${{matrix.cuda_pkg}} cuda-cupti-dev-${{matrix.cuda_pkg}} \
-              libcusolver-dev-${{matrix.cuda_pkg}} libcusparse-dev-${{matrix.cuda_pkg}} \
-              libcublas-dev-${{matrix.cuda_pkg}}
+          sudo apt-get install -y cuda-command-line-tools-12-6 \
+              cuda-compiler-12-6 cuda-minimal-build-12-6 \
+              cuda-nvml-dev-12-6 cuda-nvtx-12-6 \
+              libcurand-dev-12-6 cuda-cupti-dev-12-6 \
+              libcusolver-dev-12-6 libcusparse-dev-12-6 \
+              libcublas-dev-12-6 libcurand-dev-12-6 libnvjitlink-12-6
 
       - name: Install Ccache
         run: |
@@ -208,30 +196,21 @@ jobs:
           submodules: recursive
       - name: Setup
         run: |
-          echo "NPROCS=$(nproc)" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESSLEVEL=1" >> $GITHUB_ENV
-          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
-          echo "CCACHE_MAXSIZE=80M" >> $GITHUB_ENV
-
-          echo "BASE_WORKING_DIRECTORY=${{ github.workspace }}/Src" >> $GITHUB_ENV
-          echo "MODELSPECIFIC_WORKING_DIRECTORY=${{ github.workspace }}/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
-          echo "NPROCS=$(nproc)" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESSLEVEL=5" >> $GITHUB_ENV
-          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
-          echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV     
+           echo "NPROCS=$(nproc)" >> $GITHUB_ENV
+           echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+           echo "CCACHE_COMPRESSLEVEL=10" >> $GITHUB_ENV
+           echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
+           echo "CCACHE_MAXSIZE=200M" >> $GITHUB_ENV
       - name: Dependencies
         run: |
           ${{github.workspace}}/Submodules/PelePhysics/Submodules/amrex/.github/workflows/dependencies/ubuntu_free_disk_space.sh
-          curl -O https://repo.radeon.com/rocm/rocm.gpg.key
-          sudo apt-key add rocm.gpg.key
-          echo 'deb [arch=amd64] https://repo.radeon.com/rocm/apt/5.6.1 ubuntu main' \
-              | sudo tee /etc/apt/sources.list.d/rocm.list
-          echo 'export PATH=/opt/rocm/llvm/bin:/opt/rocm/bin:/opt/rocm/profiler/bin:/opt/rocm/opencl/bin:$PATH' \
-              | sudo tee -a /etc/profile.d/rocm.sh
+          sudo mkdir --parents --mode=0755 /etc/apt/keyrings
+          wget https://repo.radeon.com/rocm/rocm.gpg.key -O - | gpg --dearmor | sudo tee /etc/apt/keyrings/rocm.gpg > /dev/null
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/6.3.3 noble main" | sudo tee --append /etc/apt/sources.list.d/rocm.list
+          echo -e 'Package: *\nPin: release o=repo.radeon.com\nPin-Priority: 600' | sudo tee /etc/apt/preferences.d/rocm-pin-600
+          echo 'export PATH=/opt/rocm/llvm/bin:/opt/rocm/bin:/opt/rocm/profiler/bin:/opt/rocm/opencl/bin:$PATH' | sudo tee -a /etc/profile.d/rocm.sh
           sudo apt-get update
-          sudo apt-get install -y rocm-dev rocrand-dev rocprim-dev
+          sudo apt-get install -y rocm-dev rocrand-dev rocprim-dev hiprand-dev rocsparse-dev
       - name: Install Ccache
         run: |
           wget https://github.com/ccache/ccache/releases/download/v4.8/ccache-4.8-linux-x86_64.tar.xz
@@ -269,7 +248,7 @@ jobs:
 
   GPU-Intel:
     needs:  CPU-GNUmake
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         dim: [2, 3]
@@ -284,28 +263,19 @@ jobs:
         run: |
           echo "NPROCS=$(nproc)" >> $GITHUB_ENV
           echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESSLEVEL=1" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESSLEVEL=10" >> $GITHUB_ENV
           echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
-          echo "CCACHE_MAXSIZE=80M" >> $GITHUB_ENV
-          echo "CCACHE_DEPEND=1" >> $GITHUB_ENV
-
-          echo "BASE_WORKING_DIRECTORY=${{ github.workspace }}/Src" >> $GITHUB_ENV
-          echo "MODELSPECIFIC_WORKING_DIRECTORY=${{ github.workspace }}/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
-          echo "NPROCS=$(nproc)" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESSLEVEL=5" >> $GITHUB_ENV
-          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
-          echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV       
+          echo "CCACHE_MAXSIZE=200M" >> $GITHUB_ENV
+          echo "CCACHE_DEPEND=1" >> $GITHUB_ENV      
 
       - name: Dependencies
         run: |
           ${{github.workspace}}/Submodules/PelePhysics/Submodules/amrex/.github/workflows/dependencies/ubuntu_free_disk_space.sh
           sudo wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
           sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
-          echo "deb https://apt.repos.intel.com/oneapi all main" \
-              | sudo tee /etc/apt/sources.list.d/oneAPI.list
+          echo "deb https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
           sudo apt-get update
-          sudo apt-get install -y intel-oneapi-compiler-dpcpp-cpp intel-oneapi-mkl-devel
+          sudo apt-get install -y intel-oneapi-compiler-dpcpp-cpp=2024.2.1-1079 intel-oneapi-mkl-devel=2024.2.2-15
       - name: Install Ccache
         run: |
           wget https://github.com/ccache/ccache/releases/download/v4.8/ccache-4.8-linux-x86_64.tar.xz
