@@ -390,7 +390,7 @@ main (int   argc,
             
             for (int n=0; n< NUM_SPECIES; n++) {
               imw[n] *= 1.0e3; //cgs->mks
-              Dcoeff[n] *= 1.0e-1; //cgs->mks   // Why 1e-1? Which unit is Dcoeff? kg/(m*s)?
+              Dcoeff[n] *= 1.0e-1; //cgs->mks   
               chi[n] *= Dcoeff[n]; //chi->theta
             }
 
@@ -398,37 +398,25 @@ main (int   argc,
             // species concentration
             CKYTCR(rho_a(i,j,k), T_a(i,j,k), Yloc, ci);
             for (int n=0; n< NUM_SPECIES; n++) {
-              //ci[n] *= 1e3; // correction for units
               ci[n] *= 1e3*1e-6; // correction + mks -> cgs
             }
-
-            // production rate
-            //productionRate(wdot, ci, T_a(i,j,k))
-            //CKWC(T_a(i,j,k),ci*1e6,wdot); // ci in mks -> ci*1e6 for cgs
-            //productionRate(wdot, ci, T_a(i,j,k)); // is in mks
-            //Real wdot_local = wdot[fuelID]; //1.0e-6;  // cgs -> mks
 
             CKWC(T_a(i,j,k),ci,wdot); // returns molar production rate
             Real wdot_local = wdot[fuelID]*(1/imw[fuelID])*1e6;  // convert to mks and to mass production rate as kg/(m^3*s)
 
-
-            //I_R(i,j,k) = wdot_local;  // overwrite the reaction rate
-            
-            //Enthalpy flux due to diff diff cofficient
-                  //for (int n = 0; n < NUM_SPECIES; ++n) {
 
             spec_coeff_a(i,j,k) = Dcoeff[fuelID] * mmw * imw[fuelID];
             soret_coeff_a(i,j,k) = 0.664*chi[fuelID]/T_a(i,j,k); //divide by T here for convenience
             molar_coeff_a(i,j,k) = (do_wbar == 1) ? Dcoeff[fuelID] * Yloc[fuelID] * imw[fuelID] : 0.0;
             //}
 
-          } else {
-            // Setting values outside of Domain to 0
-            w_a(i,j,k) = 0; 
-            spec_coeff_a(i,j,k) = 0;
-            soret_coeff_a(i,j,k) = 0;
-            molar_coeff_a(i,j,k) = 0;
-          }
+          } //else {
+          //   // Setting values outside of Domain to 0
+          //   w_a(i,j,k) = 0; 
+          //   spec_coeff_a(i,j,k) = 0;
+          //   soret_coeff_a(i,j,k) = 0;
+          //   molar_coeff_a(i,j,k) = 0;
+          // }
 
 	});
       }
@@ -555,7 +543,6 @@ main (int   argc,
         gradAlias.mult(-1.0);
       #endif
     }
-    //}
 
 
     if(verbose) Print() << "Calculating grad"+inNames[idTlocal] << std::endl;
@@ -583,7 +570,6 @@ main (int   argc,
     }
       
     if(verbose) Print() << "Calculating W gradient..." << std::endl;
-    //for (int n = 0; n < 2; n++) {
     for (int lev = 0; lev < Nlev; ++lev) {
       phi.push_back(std::make_unique<MultiFab>(deriveMF[lev],amrex::make_alias,0,1));
       poisson.setLevelBC(lev, phi[lev].get());
@@ -657,22 +643,14 @@ main (int   argc,
 	    flux_a(i,j,k,d+2*AMREX_SPACEDIM) = molar_coeff_a(i,j,k)*gradW(i,j,k,d);
 
 	  }
-
-          // } else {
-          //   // Setting values to 0 outside of valid domain -> Better way would be to initialise flux_a with 0 when loading data
-          //   for (int d = 0; d < AMREX_SPACEDIM; d++) {
-          //     flux_a(i,j,k,d) = 0;
-          //     flux_a(i,j,k,d+AMREX_SPACEDIM) = 0;
-          //     flux_a(i,j,k,d+2*AMREX_SPACEDIM) = 0;
-          //   }
           }
 
 	});
 
 			   
     
-      }
-    }
+      } // MFIter
+    } // lev-loop
 
 //------------------------------------------------------------------------------------------------------------------------
 // Divergence of Fluxes
@@ -684,7 +662,7 @@ main (int   argc,
 
       if(verbose) Print() << "Calculating gradFspecies"+std::to_string(n) << std::endl;
       for (int lev = 0; lev < Nlev; ++lev) {
-	phi.push_back(std::make_unique<MultiFab>(deriveMF[lev],amrex::make_alias,n+1,1)); //plus 1 because 1 is W
+	phi.push_back(std::make_unique<MultiFab>(deriveMF[lev],amrex::make_alias,n+1,1)); 
 	poisson.setLevelBC(lev, phi[lev].get());
 	laps.emplace_back(grids[lev], dmap[lev], 1, 1);
       }
@@ -697,7 +675,7 @@ main (int   argc,
     #endif
       phi.clear();
       for (int lev = 0; lev < Nlev; ++lev) {
-	MultiFab gradAlias(grad2MF[lev], amrex::make_alias, n*AMREX_SPACEDIM, AMREX_SPACEDIM); //put the gradient in here
+	MultiFab gradAlias(grad2MF[lev], amrex::make_alias, n*AMREX_SPACEDIM, AMREX_SPACEDIM); 
 	    #ifdef AMREX_USE_EB
         EB_average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));
         // Multiplication with (-1) not needed
@@ -820,7 +798,6 @@ main (int   argc,
 
     }
 
-    // was maggrad >1e-2
 	  if (maggrad > 1e-2 && volFrac > 0) {
 	    sd_a(i,j,k,0) = -lapdiff_spec/(rho_a(i,j,k)*maggrad);
 	    sd_a(i,j,k,1) = -lapdiff_soret/(rho_a(i,j,k)*maggrad); 
@@ -829,32 +806,7 @@ main (int   argc,
 	    sd_a(i,j,k,4) = sd_a(i,j,k,0) + sd_a(i,j,k,1) + sd_a(i,j,k,2) + sd_a(i,j,k,3);
 	    sd_a(i,j,k,5) = sd_a(i,j,k,4)*rhoh_a(i,j,k);
       
-	  } //else {
-	  //   sd_a(i,j,k,0) = 0.0;
-	  //   sd_a(i,j,k,1) = 0.0;
-	  //   sd_a(i,j,k,2) = 0.0;
-	  //   sd_a(i,j,k,3) = 0.0;
-	  //   sd_a(i,j,k,4) = 0.0;
-	  //   sd_a(i,j,k,5) = 0.0;
-	  // }
-
-      // sd_a(i,j,k,0) = 0.0;
-	    // sd_a(i,j,k,1) = 0.0;
-	    // sd_a(i,j,k,2) = 0.0;
-	    // sd_a(i,j,k,3) = 0.0;
-	    // sd_a(i,j,k,4) = 0.0;
-	    // sd_a(i,j,k,5) = 0.0;
-
-    // for(int ii=0; ii<6;ii++) {
-    //     if( std::isnan(sd_a(i,j,k,ii))) {
-    //       Print() << "sd_a is |inf| for level = " << lev << "and ii:" << ii << " , and volFrac= " << volFrac
-    //     << " and x,y,z = " << xlo << "," << ylo << "," << zlo << " , and density = " 
-    //     << rho_a(i,j,k) << " , and maggrad = " << maggrad <<std::endl; 
-    //     Print() << "lapdiff_spec = " << lapdiff_spec << ", lapdiff_soret = " << lapdiff_soret 
-    //     << ", and lapdiff_molar = " << lapdiff_molar << std::endl; 
-    //     Print() << "gradY_a = " << gradY_a(i,j,k,0) << std::endl;
-    //     }  
-    // }
+	  } 
 
 	}); // ParallelFor
 
