@@ -3,7 +3,7 @@ name: EB-Tools
 on:
   workflow_dispatch:
   push:
-    branches: [ dev_Marwin ]
+    branches: [ dev_Marwin] #, development
   pull_request:
      branches: [development]  
 
@@ -84,16 +84,30 @@ jobs:
           restore-keys: |
                ccache-${{github.workflow}}-${{github.job}}-${{matrix.comp}}-git-
 
-      - name: Compile Src Tools
+      - name: Dependency (qslim)
+        working-directory: ${{env.BASE_WORKING_DIRECTORY}}
+        run: |
+          cmake --version
+          sudo apt-get update && sudo apt-get install libgl1-mesa-dev libglu1-mesa-dev
+          make qslim EBASE=decimateMEF ${{matrix.amrex_build_args}};
+
+      - name: Dependency (sundials)
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          cmake --version
+          make TPL ${{matrix.amrex_build_args}};         
+
+      - name: Test Src Tools
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
           ccache -z
-          for TOOL in isosurface grad curvature integral; do
+          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF partStream; do
             echo "-------- Compiling $TOOL --------"
             make -j ${NPROCS} \
               DIM=${{matrix.dim}} \
               EBASE=${TOOL} \
               USE_EB=${{ matrix.eb }} \
+              ${{matrix.amrex_build_args}} \
               USE_CCACHE=TRUE; \
             make realclean; \
             if [ $? -ne 0 ]; then exit 1; fi; \
@@ -101,6 +115,27 @@ jobs:
           
       - name: Src ccache report
         working-directory: ${{env.BASE_WORKING_DIRECTORY}}
+        run: |
+          ccache -s
+          du -hs ${HOME}/.cache/ccache    
+
+      - name: Test (ModelSpecificAnalysis)
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          ccache -z
+          for TOOL in plotDisplacementSpeed plotTransportCoeff plotTYtoLe; do \
+            echo "-------- Compiling $TOOL --------"
+            make -j ${NPROCS} \
+              DIM=${{matrix.dim}} \
+              EBASE=${TOOL} \
+              USE_EB=${{ matrix.eb }} \
+              ${{matrix.amrex_build_args}} \
+              USE_CCACHE=TRUE; \
+            make realclean; \
+            if [ $? -ne 0 ]; then exit 1; fi; \
+          done
+      - name: ModelSpecificAnalysis ccache report
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
         run: |
           ccache -s
           du -hs ${HOME}/.cache/ccache    
@@ -125,6 +160,7 @@ jobs:
       - name: Setup
         run: |
           echo "BASE_WORKING_DIRECTORY=${{github.workspace}}/Src" >> $GITHUB_ENV
+          echo "MODELSPECIFIC_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis-${{matrix.comp}}/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
           echo "NPROCS=$(nproc)" >> $GITHUB_ENV
           echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
           echo "CCACHE_COMPRESSLEVEL=10" >> $GITHUB_ENV
@@ -133,14 +169,21 @@ jobs:
 
       - name: Dependencies
         run: |
+          # sudo apt-get update
+          # sudo apt-get install -y build-essential wget gnupg lsb-release make g++ clang
+          # wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
+          # sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+          # sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub
+          # sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/ /"
+          # sudo apt-get update
+          # sudo apt-get install -y cuda-toolkit-12-3
+
           sudo apt-get update
-          sudo apt-get install -y build-essential wget gnupg lsb-release make g++ clang
-          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
-          sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-          sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub
-          sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/ /"
-          sudo apt-get update
-          sudo apt-get install -y cuda-toolkit-12-3
+          sudo apt-get install -y \
+          cuda-compiler-12-3 \
+          cuda-cudart-12-3 \
+          cuda-minimal-build-12-3 \
+          cuda-nvcc-12-3
 
       - name: Install Ccache
         run: |
@@ -156,11 +199,24 @@ jobs:
           restore-keys: |
                ccache-${{github.workflow}}-${{github.job}}-git-
 
-      - name: Compile EB Tools
+      - name: Dependency (qslim)
+        working-directory: ${{env.BASE_WORKING_DIRECTORY}}
+        run: |
+          cmake --version
+          sudo apt-get update && sudo apt-get install libgl1-mesa-dev libglu1-mesa-dev
+          make qslim EBASE=decimateMEF ${{matrix.amrex_build_args}};
+
+      - name: Dependency (sundials)
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          cmake --version
+          make TPL ${{matrix.amrex_build_args}};                  
+
+      - name: Compile Src Tools
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
           ccache -z
-          for TOOL in isosurface grad curvature integral; do
+          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF partStream; do
             echo "-------- Compiling $TOOL --------"
             make -j${NPROCS} \
               DIM=${{matrix.dim}} \
@@ -176,6 +232,28 @@ jobs:
         run: |
           ccache -s
           du -hs ~/.cache/ccache
+
+      - name: Test (ModelSpecificAnalysis)
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          ccache -z
+          for TOOL in plotDisplacementSpeed plotTransportCoeff plotTYtoLe; do \
+            echo "-------- Compiling $TOOL --------"
+            make -j${NPROCS} \
+              DIM=${{matrix.dim}} \
+              EBASE=${TOOL} \
+              USE_CUDA="TRUE" \
+              USE_EB=${{ matrix.eb }} \
+              USE_CCACHE=TRUE; \
+            make realclean; \
+            if [ $? -ne 0 ]; then exit 1; fi; \
+          done
+      - name: ModelSpecificAnalysis ccache report
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          ccache -s
+          du -hs ${HOME}/.cache/ccache    
+    
 
   GPU-AMD:
     needs:  CPU-GNUmake
@@ -193,6 +271,7 @@ jobs:
       - name: Setup
         run: |
            echo "BASE_WORKING_DIRECTORY=${{github.workspace}}/Src" >> $GITHUB_ENV
+           echo "MODELSPECIFIC_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis-${{matrix.comp}}/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
            echo "NPROCS=$(nproc)" >> $GITHUB_ENV
            echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
            echo "CCACHE_COMPRESSLEVEL=10" >> $GITHUB_ENV
@@ -221,11 +300,24 @@ jobs:
           restore-keys: |
                ccache-${{github.workflow}}-${{github.job}}-git-
 
-      - name: Compile EB Tools
+      - name: Dependency (qslim)
+        working-directory: ${{env.BASE_WORKING_DIRECTORY}}
+        run: |
+          cmake --version
+          sudo apt-get update && sudo apt-get install libgl1-mesa-dev libglu1-mesa-dev
+          make qslim EBASE=decimateMEF ${{matrix.amrex_build_args}};
+
+      - name: Dependency (sundials)
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          cmake --version
+          make TPL ${{matrix.amrex_build_args}};                  
+
+      - name: Compile Src Tools
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
           ccache -z
-          for TOOL in isosurface grad curvature integral; do
+          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF partStream; do
             echo "-------- Compiling $TOOL --------"
             make -j${NPROCS} \
               DIM=${{matrix.dim}} \
@@ -241,6 +333,27 @@ jobs:
         run: |
           ccache -s
           du -hs ~/.cache/ccache
+
+      - name: Test (ModelSpecificAnalysis)
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          ccache -z
+          for TOOL in plotDisplacementSpeed plotTransportCoeff plotTYtoLe; do \
+            echo "-------- Compiling $TOOL --------"
+            make -j${NPROCS} \
+              DIM=${{matrix.dim}} \
+              EBASE=${TOOL} \
+              USE_HIP="TRUE" \
+              USE_EB=${{ matrix.eb }} \
+              USE_CCACHE=TRUE; \
+            make realclean; \
+            if [ $? -ne 0 ]; then exit 1; fi; \
+          done
+      - name: ModelSpecificAnalysis ccache report
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          ccache -s
+          du -hs ${HOME}/.cache/ccache     
 
   GPU-Intel:
     needs:  CPU-GNUmake
@@ -258,6 +371,7 @@ jobs:
       - name: Setup
         run: |
           echo "BASE_WORKING_DIRECTORY=${{github.workspace}}/Src" >> $GITHUB_ENV
+          echo "MODELSPECIFIC_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis-${{matrix.comp}}/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
           echo "NPROCS=$(nproc)" >> $GITHUB_ENV
           echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
           echo "CCACHE_COMPRESSLEVEL=10" >> $GITHUB_ENV
@@ -286,17 +400,31 @@ jobs:
           restore-keys: |
                ccache-${{github.workflow}}-${{github.job}}-git-
 
+      - name: Dependency (qslim)
+        working-directory: ${{env.BASE_WORKING_DIRECTORY}}
+        run: |
+          cmake --version
+          sudo apt-get update && sudo apt-get install libgl1-mesa-dev libglu1-mesa-dev
+          make qslim EBASE=decimateMEF ${{matrix.amrex_build_args}};
+
+      - name: Dependency (sundials)
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          cmake --version
+          make TPL ${{matrix.amrex_build_args}};                  
+
       - name: Compile EB Tools
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
           ccache -z
           source /opt/intel/oneapi/setvars.sh
-          for TOOL in isosurface grad curvature integral; do
+          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF partStream; do
             echo "-------- Compiling $TOOL --------"
             make -j${NPROCS} \
               DIM=${{matrix.dim}} \
               EBASE=${TOOL} \
               USE_SYCL="TRUE" \
+              FC=echo \
               USE_EB=${{ matrix.eb }} \
               USE_CCACHE=TRUE; \
             make realclean; \
@@ -306,4 +434,27 @@ jobs:
       - name: Ccache Report
         run: |
           ccache -s
-          du -hs ~/.cache/ccache           
+          du -hs ~/.cache/ccache        
+
+      - name: Test (ModelSpecificAnalysis)
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          ccache -z
+          for TOOL in plotDisplacementSpeed plotTransportCoeff plotTYtoLe; do \
+            echo "-------- Compiling $TOOL --------"
+            make -j${NPROCS} \
+              DIM=${{matrix.dim}} \
+              EBASE=${TOOL} \
+              USE_SYCL="TRUE" \
+              FC=echo \
+              USE_EB=${{ matrix.eb }} \
+              USE_CCACHE=TRUE; \
+            make realclean; \
+            if [ $? -ne 0 ]; then exit 1; fi; \
+          done
+          
+      - name: ModelSpecificAnalysis ccache report
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          ccache -s
+          du -hs ${HOME}/.cache/ccache            
