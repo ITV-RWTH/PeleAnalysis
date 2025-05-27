@@ -444,6 +444,7 @@ jobs:
         working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
         run: |
           ccache -z
+          source /opt/intel/oneapi/setvars.sh
           for TOOL in plotDisplacementSpeed plotTransportCoeff plotTYtoLe; do \
             echo "-------- Compiling $TOOL --------"
             make -j${NPROCS} \
