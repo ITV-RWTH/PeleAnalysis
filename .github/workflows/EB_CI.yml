@@ -101,7 +101,7 @@ jobs:
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
           ccache -z
-          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF partStream; do
+          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF; do
             echo "-------- Compiling $TOOL --------"
             make -j ${NPROCS} \
               DIM=${{matrix.dim}} \
@@ -178,6 +178,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cuda-toolkit-12-3
 
+          echo "/usr/local/cuda/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
       - name: Install Ccache
         run: |
           wget https://github.com/ccache/ccache/releases/download/v4.8/ccache-4.8-linux-x86_64.tar.xz
@@ -209,7 +212,7 @@ jobs:
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
           ccache -z
-          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF partStream; do
+          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF; do
             echo "-------- Compiling $TOOL --------"
             make -j${NPROCS} \
               DIM=${{matrix.dim}} \
@@ -310,7 +313,7 @@ jobs:
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
           ccache -z
-          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF partStream; do
+          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF; do
             echo "-------- Compiling $TOOL --------"
             make -j${NPROCS} \
               DIM=${{matrix.dim}} \
@@ -411,7 +414,7 @@ jobs:
         run: |
           ccache -z
           source /opt/intel/oneapi/setvars.sh
-          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF partStream; do
+          for TOOL in isosurface grad curvature integral template avgPlotfiles decimateMEF; do
             echo "-------- Compiling $TOOL --------"
             make -j${NPROCS} \
               DIM=${{matrix.dim}} \
