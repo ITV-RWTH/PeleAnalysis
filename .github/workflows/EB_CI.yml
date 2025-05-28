@@ -308,8 +308,10 @@ jobs:
       - name: Dependency (sundials)
         working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
         run: |
+          echo "HIP_PLATFORM=amd" >> $GITHUB_ENV
+          export HIP_PLATFORM=amd
           cmake --version
-          make TPL USE_HIP=TRUE;                  
+          make TPL;                
 
       - name: Compile Src Tools
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
@@ -390,6 +392,21 @@ jobs:
           #icx
           sudo apt-get update
           sudo apt-get install -y intel-oneapi-compiler-fortran=2024.2.1-1079
+
+
+      - name: Set Intel oneAPI environment variables
+        shell: bash
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "CPATH=$CPATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$LIBRARY_PATH" >> $GITHUB_ENV   
+
+      - name: Verify icpx availability
+        run: |
+          which icpx
+          icpx --version     
       - name: Install Ccache
         run: |
           wget https://github.com/ccache/ccache/releases/download/v4.8/ccache-4.8-linux-x86_64.tar.xz
@@ -417,7 +434,7 @@ jobs:
           cmake --version
           make TPL USE_SYCL=TRUE;                  
 
-      - name: Compile EB Tools
+      - name: Compile Src Tools
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
         run: |
           ccache -z
