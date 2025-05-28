@@ -311,7 +311,7 @@ jobs:
           echo "HIP_PLATFORM=amd" >> $GITHUB_ENV
           export HIP_PLATFORM=amd
           cmake --version
-          make TPL;                
+          make TPL USE_HIP=TRUE;                
 
       - name: Compile Src Tools
         working-directory: ${{ env.BASE_WORKING_DIRECTORY }}
