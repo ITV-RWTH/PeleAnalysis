@@ -18,7 +18,7 @@ PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = FALSE
+USE_MPI       = TRUE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
 
@@ -85,7 +85,7 @@ ifeq ($(EBASE),stream2plt)
   CEXE_sources += StreamData.cpp
 endif
 
-ifeq ($(EBASE),$(filter $(EBASE), isosurface buildDistance))
+ifeq ($(EBASE),$(filter $(EBASE), isosurface isosurface_ciao buildDistance))
    NEED_DISTANCE = TRUE
 endif
 
@@ -96,6 +96,16 @@ ifeq ($(EBASE),convert2hdf5)
    ZFP_HOME = $(ZFP_DIR)  # /path/to/zfp
    H5Z_HOME = $(H5Z_DIR) # /path/to/h5z-zfp
 endif
+
+ifeq ($(EBASE),isosurface_ciao)
+  LIBRARIES += -lhdf5 -lhdf5_hl -lz -lhdf5_cpp
+  #HDF5_DIR is what it is on CLAIX, might need something different on another machine...
+  INCLUDE_LOCATIONS += $(HDF5_DIR)/include
+  LIBRARY_LOCATIONS += $(HDF5_DIR)/lib
+  CEXE_headers += hdf2amrex.H
+  CEXE_sources += hdf2amrex.cpp
+endif
+
 
 ifeq ($(EBASE),decimateMEF) #make qslim first!
    NEED_QSLIM = TRUE
