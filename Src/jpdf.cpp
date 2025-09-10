@@ -449,6 +449,7 @@ main (int   argc,
                         std::cout << "      Level " << iLevel << std::endl;
                     int v1l=0; int v1g=0; int v2l=0; int v2g=0;
                     amrex::ParallelFor(
+                      *mf[iLevel],
 
 /*                    for(MFIter ntmfi(*mf[iLevel]); ntmfi.isValid(); ++ntmfi) {
                         const FArrayBox &myFab = (*mf[iLevel])[ntmfi];

@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
         amrex::IntVect(0),
         nComp,
         [out_a, in_a] AMREX_GPU_DEVICE(int box_no, int i, int j, int k, int n) noexcept {
-          out_a[box_no](i, j, k) = in_a[box_no](i, j, k) * 0.0 + 3.141;
+          out_a[box_no](i, j, k) = in_a[box_no](i, j, k);
         }
       );
       amrex::Gpu::streamSynchronize();
