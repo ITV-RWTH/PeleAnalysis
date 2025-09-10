@@ -1,0 +1,4 @@
+infiles=plt152436_work plt152436_work_gt
+outfile=plt152436_work_all
+is_per=1 0
+vars=density temp I_R(N2) I_R(H) I_R(H2) I_R(O) I_R(OH) I_R(H2O) I_R(HO2) I_R(H2O2) I_R(O2) I_R(N) I_R(NH) I_R(NH2) I_R(NH3) I_R(NNH) I_R(N2H2) I_R(N2H3) I_R(N2H4) I_R(H2NN) I_R(NO) I_R(N2O) I_R(NO2) I_R(HNO) I_R(H2NO) I_R(HNOH) I_R(NH2OH) I_R(HONO) I_R(HNO2) I_R(HON) I_R(NO3) I_R(HNO3) HeatRelease Y(N2) Y(H) Y(H2) Y(O) Y(OH) Y(H2O) Y(HO2) Y(H2O2) Y(O2) Y(N) Y(NH) Y(NH2) Y(NH3) Y(NNH) Y(N2H2) Y(N2H3) Y(N2H4) Y(H2NN) Y(NO) Y(N2O) Y(NO2) Y(HNO) Y(H2NO) Y(HNOH) Y(NH2OH) Y(HONO) Y(HNO2) Y(HON) Y(NO3) Y(HNO3) Y(H2O)_gx Y(H2O)_gy ||gradY(H2O)||

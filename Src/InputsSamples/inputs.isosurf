@@ -1,0 +1,23 @@
+
+#  usage:
+#  inputs infile=<s> isoCompName=<s> isoVal=<v> [options] \n\tOptions:\n";
+#    infile=<s> where <s> is a pltfile\n";
+#    isoCompName=<s> where <s> is the quantity being contoured\n";
+#    isoVal=<v> where <v> is an isopleth value\n";
+#    Choosing quantities to interp to surface: \n";
+#      comps=int comp list [overrides sComp/nComp]\n";
+#      sComp=start comp[DEF->0]\n";
+#      nComp=number of comps[DEF->all]\n";
+#    finestLevel=<n> finest level to use in pltfile[DEF->all]\n";
+#    writeSurf=<1,0> output surface [DEF->1]\n";
+#    surfFormat=<MEF,XDMF> output surface format [DEF->MEF]\n";
+#    outfile_base=<s> base name of output file [DEF->gen'd]\n";
+#    build_distance_function=<t,f> create cc signed distance function [DEF->f]\n";
+#    rm_external_elements=<t,f> remove elts beyond what is needed for watertight surface [DEF->t]\n";i
+
+infile = plt152436_work
+isoCompName = Y(NH3)
+isoVal = 2.1809875e-3
+comps = 56
+is_per = 1 0
+surfFormat = XDMF

@@ -19,9 +19,9 @@ Shreyans:
     interp.cpp
     isoMEF.cpp
     isosurface.cpp
-    jpdf.cpp
 
 Patrick:
+    jpdf.cpp
     makePlotfile.cpp                        Done
     mergeMEF.cpp                            Done
     multMEF.cpp                             Done

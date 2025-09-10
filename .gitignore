@@ -45,3 +45,6 @@ TAGS
 plt*
 chk*
 
+# Visual Studio Code settings
+.vscode/
+._*

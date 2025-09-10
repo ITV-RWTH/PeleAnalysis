@@ -1,0 +1,8 @@
+infile = plt160515_combine plt97015
+output_matlab = 1
+output_plotfile = 0
+vars = Y(H2O) I_R(NO)
+condMean_vars = Y(NH3)
+#condMean_vars = MeanCurvature_Y(NH3)
+#verbose = 1
+do_average = 1
