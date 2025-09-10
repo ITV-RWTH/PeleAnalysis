@@ -272,13 +272,9 @@ main (int   argc,
            
         // Intermediates:
         MultiFab S_mf(state[lev].boxArray(), state[lev].DistributionMap(), 9, 0);
-        auto const& S_a = S_mf[mfi].array();
         MultiFab S_abs_mf(state[lev].boxArray(), state[lev].DistributionMap(), 1, 0);
-        auto const& S_abs_a = S_abs_mf[mfi].array();
         MultiFab Omega_mf(state[lev].boxArray(), state[lev].DistributionMap(), 9, 0);
-        auto const& Omega_a = Omega_mf[mfi].array();
         MultiFab Omega_abs_mf(state[lev].boxArray(), state[lev].DistributionMap(), 1, 0);
-        auto const& Omega_abs_a = Omega_abs_mf[mfi].array();
 
         for (MFIter mfi(state[lev],TilingIfNotGPU()); mfi.isValid(); ++mfi)
         {    
@@ -287,6 +283,11 @@ main (int   argc,
            auto const& grad_vel_y_a   = gradAlias_vel_y.const_array(mfi);
            auto const& grad_vel_z_a   = gradAlias_vel_z.const_array(mfi);
            
+           auto const& S_a = S_mf[mfi].array();
+           auto const& S_abs_a = S_abs_mf[mfi].array();
+           auto const& Omega_a = Omega_mf[mfi].array();
+           auto const& Omega_abs_a = Omega_abs_mf[mfi].array();
+
            auto const& Q = state[lev].array(mfi, idQ);
            auto const& Q_norm = state[lev].array(mfi, idQNorm);
 

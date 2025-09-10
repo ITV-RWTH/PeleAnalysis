@@ -12,7 +12,7 @@ PELE_ANALYSIS_HOME = ..
 
 # AMReX
 DEBUG	      = FALSE
-DIM	      = 2
+DIM	      	  = 3
 PRECISION     = DOUBLE
 
 # Compilation
@@ -40,10 +40,10 @@ USE_CUDA      = FALSE
 #EBASE		= decimateMEF
 #EBASE      = subPlt
 #EBASE      = partStream
-#EBASE		= qCriterion
+EBASE		= qCriterion
 #EBASE		= stream2plt
 #EBASE		= makePlotfile
-EBASE		= dumpFABslice
+#EBASE		= dumpFABslice
 #EBASE		= turbfile
 
 # tools that need review/combining/fixing/work
