@@ -40,6 +40,6 @@ Patrick:
     subPlt.cpp                              Done
     surfDATtoMEF.cpp                        Done
     surfMEFtoDAT.cpp                        Done
-    template.cpp                            ???
+    template.cpp                            Done
     trimMEFgen.cpp                          Done 
     turbfile.cpp                            Done
