@@ -23,11 +23,10 @@ Shreyans:
 
 Patrick:
     makePlotfile.cpp                        Done
-    mergeMEF.cpp
-    multMEF.cpp
-    partStream.cpp
-    PythonScripts
-    qCriterion.cpp
+    mergeMEF.cpp                            Done
+    multMEF.cpp                             Done
+    partStream.cpp                          Done
+    qCriterion.cpp                          Done
     regridPlt.cpp
     rmsVel.cpp
     scaleMEF.cpp
