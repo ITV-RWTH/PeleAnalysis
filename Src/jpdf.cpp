@@ -413,46 +413,9 @@ main (int   argc,
 
                 std::vector< std::pair<int,Box> > isects = baf.intersections(mf[iLevel]->boxArray()[idx]);
 
-                for (int ii = 0; ii < isects.size(); ii++)
-/*<<<<<<< HEAD
-                    myFab.setVal(0,isects[ii].second,isVar,1);
-            }
-        }
- 
-        // Populate the stoichiometry variable
-        if (do_stoichiometry) {
-   
-            for (int iLevel=0; iLevel<nLevels; iLevel++) {
-                if (verbose)
-                    std::cout << "      Level " << iLevel << std::endl;
-
-                for(MFIter ntmfi(*mf[iLevel]); ntmfi.isValid(); ++ntmfi) {
-                    FArrayBox &myFab = (*mf[iLevel])[ntmfi];
-                    Real *sPtr = myFab.dataPtr(sVar);
-		    const Box&  bx    = ntmfi.validbox();
-                    const int  *lo    = bx.loVect();
-                    const int  *hi    = bx.hiVect(); 
-                    const int   ix    = hi[0]-lo[0]+1;
-                    const int   jx    = hi[1]-lo[1]+1;
-#if (AMREX_SPACEDIM==3)
-                    const int   kx    = hi[2]-lo[2]+1;
-                    const int  nCells = ix*jx*kx;
-#else
-                    const int  nCells = ix*jx;
-#endif
-                    for (int cell=0; cell<nCells; cell++) {
-                        Real sumH(0.0), sumO(0.0);
-                        for (int v=0; v<lVars; v++) {
-                            Real X = myFab.dataPtr(v)[cell];
-                            sumH += X*(Real)(hList[v]);
-                            sumO += X*(Real)(oList[v]);
-                        }
-                        sPtr[cell] = 0.5*sumH/sumO; // The 0.5 is 2.0/4.0, 2.0 for H2O and 4.0 for stoichiometric scaling
-                    }
-                }
-=======*/
+                for (int ii = 0; ii < isects.size(); ii++) {
                     myFab.setVal(0,isects[ii].second,ix_isVar,1);
-//>>>>>>> tl_condMeanTwoVars
+                }
             }
         }
 
