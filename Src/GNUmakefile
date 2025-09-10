@@ -12,18 +12,18 @@ PELE_ANALYSIS_HOME = ..
 
 # AMReX
 DEBUG	      = FALSE
-DIM	      = 3
+DIM	      = 2
 PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = FALSE
+USE_MPI       = TRUE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
 
 # Executable
 # Uncomment the desired exec
-EBASE		= template
+#EBASE		= template
 #EBASE		= convert2hdf5
 #EBASE      = grad
 #EBASE		= jpdf
@@ -43,7 +43,7 @@ EBASE		= template
 #EBASE		= qCriterion
 #EBASE		= stream2plt
 #EBASE		= makePlotfile
-#EBASE		= dumpFABslice
+EBASE		= dumpFABslice
 #EBASE		= turbfile
 
 # tools that need review/combining/fixing/work
