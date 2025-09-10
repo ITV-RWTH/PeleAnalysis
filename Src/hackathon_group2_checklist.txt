@@ -1,0 +1,46 @@
+Shreyans:
+    amrToFE.cpp
+    avgPlotfiles.cpp
+    avgToPlane.cpp
+    binMEF.cpp
+    buildDistance.cpp
+    checkIso.cpp
+    combineMEF.cpp
+    combinePlts.cpp
+    conditionalMean.cpp
+    convert2hdf5.cpp
+    curvature.cpp
+    decimateMEF.cpp
+    dumpFABslice.cpp
+    filterPlt.cpp
+    flattenAMRFile.cpp
+    grad.cpp
+    integral.cpp
+    interp.cpp
+    isoMEF.cpp
+    isosurface.cpp
+    jpdf.cpp
+
+Patrick:
+    makePlotfile.cpp                        Done
+    mergeMEF.cpp
+    multMEF.cpp
+    partStream.cpp
+    PythonScripts
+    qCriterion.cpp
+    regridPlt.cpp
+    rmsVel.cpp
+    scaleMEF.cpp
+    sliceMEF.cpp
+    slicePlot.cpp
+    smoothMEF.cpp
+    stream2plt.cpp
+    streamBinTubeStats.cpp
+    StreamData.cpp
+    StreamPC.cpp
+    subPlt.cpp
+    surfDATtoMEF.cpp
+    surfMEFtoDAT.cpp
+    template.cpp
+    trimMEFgen.cpp
+    turbfile.cpp
