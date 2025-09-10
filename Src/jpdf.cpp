@@ -442,13 +442,15 @@ main (int   argc,
                     binAvX2 = binAvX2Array[iPair].dataPtr();
                     for (int v=0; v<nVars_condMean; v++) {
                         binAvCondMeans[v]=binAvCondMeanArray[iPair][v].dataPtr();
-                    }                     
+                    }
                 }
                 for (int iLevel=0; iLevel<nLevels; iLevel++) {
                     if (verbose)
                         std::cout << "      Level " << iLevel << std::endl;
                     int v1l=0; int v1g=0; int v2l=0; int v2g=0;
-                    for(MFIter ntmfi(*mf[iLevel]); ntmfi.isValid(); ++ntmfi) {
+                    amrex::ParallelFor(
+
+/*                    for(MFIter ntmfi(*mf[iLevel]); ntmfi.isValid(); ++ntmfi) {
                         const FArrayBox &myFab = (*mf[iLevel])[ntmfi];
                         const Real *dx = amrData.DxLevel()[iLevel].dataPtr();
                         const Real *cPtr  = myFab.dataPtr(cVar); // Conditioning
@@ -470,6 +472,9 @@ main (int   argc,
 #if (AMREX_SPACEDIM==3)
                         const int   kx    = hi[2]-lo[2]+1;
                         ;           Vol  *= dx[2];
+
+                        
+
                         for (int k=0; k<kx; k++) {
                             Real z=probLo[2] + dx[2]*(0.5+(Real)(k+lo[2]));
 #endif
@@ -525,7 +530,7 @@ main (int   argc,
                                 } // i
                             } // j
 #if (AMREX_SPACEDIM==3)
-                        } // k
+                        } // k */
 #endif
                     } // MFI
                     ParallelDescriptor::ReduceIntSum(v1l);

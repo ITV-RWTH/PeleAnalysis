@@ -21,25 +21,25 @@ Shreyans:
     isosurface.cpp
 
 Patrick:
-    jpdf.cpp
+    jpdf.cpp                                ???
     makePlotfile.cpp                        Done
     mergeMEF.cpp                            Done
     multMEF.cpp                             Done
     partStream.cpp                          Done
     qCriterion.cpp                          Done
-    regridPlt.cpp
+    regridPlt.cpp                           Done
     rmsVel.cpp
-    scaleMEF.cpp
-    sliceMEF.cpp
-    slicePlot.cpp
-    smoothMEF.cpp
+    scaleMEF.cpp                            Done
+    sliceMEF.cpp                            Done
+    slicePlot.cpp                           Done
+    smoothMEF.cpp                           Done
     stream2plt.cpp
-    streamBinTubeStats.cpp
-    StreamData.cpp
-    StreamPC.cpp
-    subPlt.cpp
-    surfDATtoMEF.cpp
-    surfMEFtoDAT.cpp
-    template.cpp
-    trimMEFgen.cpp
-    turbfile.cpp
+    streamBinTubeStats.cpp                  Done
+    StreamData.cpp                          Done
+    StreamPC.cpp                            Done
+    subPlt.cpp                              Done
+    surfDATtoMEF.cpp                        Done
+    surfMEFtoDAT.cpp                        Done
+    template.cpp                            ???
+    trimMEFgen.cpp                          Done 
+    turbfile.cpp                            Done
