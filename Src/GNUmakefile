@@ -17,16 +17,16 @@ PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = TRUE
+USE_MPI       = FALSE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
 
 # Executable
 # Uncomment the desired exec
-#EBASE		= template
+EBASE		= template
 #EBASE		= convert2hdf5
 #EBASE      = grad
-EBASE		= jpdf
+#EBASE		= jpdf
 #EBASE      = combinePlts
 #EBASE      = isosurface
 #EBASE      = flattenAMRFile
