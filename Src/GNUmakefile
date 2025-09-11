@@ -21,6 +21,7 @@ COMP          = gnu
 USE_MPI       = FALSE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
+USE_UTILS     = FALSE
 
 # Executable
 # Uncomment the desired exec
@@ -100,3 +101,4 @@ endif
 Blocs := .
 
 include $(PELE_ANALYSIS_HOME)/Tools/GNUmake/Make.Analysis
+
