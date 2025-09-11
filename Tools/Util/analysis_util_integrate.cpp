@@ -2,12 +2,10 @@
 
 namespace analysis_util {
 
-  int nlev;
-  amrex::Vector<amrex::BoxArray> grids;
-  amrex::Vector<amrex::DistributionMapping> dmap;
-  amrex::Vector<int> ref_ratio;
-  
   amrex::Vector<std::unique_ptr<amrex::iMultiFab>> get_covered_mf() {
+    // Make sure init has been called
+    AMREX_ALWAYS_ASSERT(initialized);
+    
     amrex::Vector<std::unique_ptr<amrex::iMultiFab>> mask_mf(nlev);
     for (int lev = 0; lev < nlev; ++lev) {
       mask_mf[lev] = std::make_unique<amrex::iMultiFab>(grids[lev],dmap[lev],1,0);
@@ -40,21 +38,15 @@ namespace analysis_util {
   
   // Get the integral of the MF, not including the fine-covered and
   // EB-covered cells
-  std::unique_ptr<amrex::Gpu::ManagedVector<amrex::Real>> integrate(const amrex::Vector<amrex::MultiFab>& a_mf, const amrex::Vector<amrex::Geometry>& geoms, const int scomp, const int ncomp, const amrex::Vector<int>& axes_to_integrate
+  std::unique_ptr<amrex::Gpu::ManagedVector<amrex::Real>> integrate(const amrex::Vector<amrex::MultiFab>& a_mf, const int scomp, const int ncomp, const amrex::Vector<int>& axes_to_integrate
 #ifdef AMREX_USE_EB
 								    , const amrex::Vector<amrex::MultiFab>& vfrac_mf
 #endif
 								    ) {
-    // initialise
-    nlev = a_mf.size();
-    grids.reserve(nlev);
-    dmap.reserve(nlev);
-    ref_ratio.reserve(nlev);
-    for (int lev = 0; lev < nlev; ++lev) {
-      grids.emplace_back(a_mf[lev].boxArray());
-      dmap.emplace_back(a_mf[lev].DistributionMap());
-      ref_ratio.emplace_back(2);
-    }
+
+    // Make sure init has been called
+    AMREX_ALWAYS_ASSERT(initialized);
+    
     const int integral_dimension = axes_to_integrate.size();
     amrex::Vector<std::unique_ptr<amrex::iMultiFab>> mask_mf = get_covered_mf();
     const int finest_level = nlev - 1;
