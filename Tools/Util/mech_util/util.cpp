@@ -107,8 +107,8 @@ namespace mech_util {
   specCoeffsInReactions(int ireac)
   {
     amrex::Vector<std::pair<std::string,int> > coeffs;
-    int nspecies = analysis_util::NumSpecies();
-    Vector<std::string> spec_names = analysis_util::GetSpecNames();
+    int nspecies = mech_util::NumSpecies();
+    Vector<std::string> spec_names = mech_util::GetSpecNames();
 
     // First call to get max_num_spec (maximum number of species
     // involved in a reaction)
@@ -158,7 +158,7 @@ namespace mech_util {
   amrex::Vector<int>
   GetReactionMap()
   {
-    int nreactions = analysis_util::NumReactions();    
+    int nreactions = mech_util::NumReactions();    
     Vector<int> rmap(nreactions);
     GET_RMAP(rmap.data());
     return rmap;
@@ -168,8 +168,8 @@ namespace mech_util {
   NumElemXinSpecY(const std::string& elem,
                   const std::string& spec)
   {
-    int nelements = analysis_util::NumElements();
-    int nspecies = analysis_util::NumSpecies();
+    int nelements = mech_util::NumElements();
+    int nspecies = mech_util::NumSpecies();
     Vector<std::string> speciesNames = GetSpecNames();
     Vector<std::string> elemNames = GetElemNames();
     int elem_idx = -1;
@@ -200,8 +200,8 @@ namespace mech_util {
   NumElemXinSpecY(int elem,
                   int spec)
   {
-    int nelements = analysis_util::NumElements();
-    int nspecies = analysis_util::NumSpecies();
+    int nelements = mech_util::NumElements();
+    int nspecies = mech_util::NumSpecies();
 
     int ecomp[nelements * nspecies];
     CKNCF(ecomp);
