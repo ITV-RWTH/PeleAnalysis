@@ -23,10 +23,10 @@ USE_CUDA      = FALSE
 
 # Executable
 # Uncomment the desired exec
-EBASE		= template
+#EBASE		= template
 #EBASE		= convert2hdf5
 #EBASE      = grad
-#EBASE		= jpdf
+EBASE		= jpdf
 #EBASE      = combinePlts
 #EBASE      = isosurface
 #EBASE      = flattenAMRFile

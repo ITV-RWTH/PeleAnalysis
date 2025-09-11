@@ -101,8 +101,8 @@ int main(int argc, char *argv[]) {
           out_a[box_no](i, j, k) = in_a[box_no](i, j, k);
         }
       );
-      amrex::Gpu::streamSynchronize();
     }
+    amrex::Gpu::streamSynchronize();
 
     std::string outfile(getFileRoot(plotFileName) + "_temp");
     Print() << "Writing new data to " << outfile << std::endl;
