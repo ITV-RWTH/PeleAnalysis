@@ -71,18 +71,22 @@ main (int   argc,
 
     int nGrow = 0;
     int nCompIn = amrData.NComp();
-    int nCompOut = nCompIn + 1;
+    int nCompOut = nCompIn + 2;
     
     Vector<std::string> inNames = amrData.PlotVarNames();
     Vector<std::string> outNames = amrData.PlotVarNames();
     
-    int ID_H2, ID_O2, ID_Z = -1;
+    int ID_H2, ID_O2 = -1;
     for (int i=0; i<inNames.size(); ++i) {
         if (inNames[i] == "Y(H2)") ID_H2 = i;
         else if (inNames[i] == "Y(O2)") ID_O2 = i;
     }
-    ID_Z = nCompIn;
+    int ID_Z = nCompIn;
     outNames.push_back("Z");
+    int ID_LOG_Z = ID_Z + 1;
+    outNames.push_back("logZ");
+
+    const Real eps = 1e-300;
 
     Vector<int> destFillComps(nCompIn);
     for (int i=0; i<nCompIn; ++i) destFillComps[i] = i;
@@ -113,14 +117,16 @@ main (int   argc,
 	    auto const& yO2 = indata.const_array(mfi, ID_O2);
         auto const& out_a = outdata[lev].array(mfi);
 	    auto const& Z = outdata[lev].array(mfi, ID_Z);
+        auto const& logZ = outdata[lev].array(mfi, ID_LOG_Z);
         amrex::ParallelFor(
           bx,
           [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
               for (int n = 0; n < nCompIn; n++) {
                   out_a(i,j,k,n) = in_a(i,j,k,n);
               }
-              out_a(i,j,k,ID_Z) = (8.0 * in_a(i,j,k,ID_H2) - in_a(i,j,k,ID_O2) + 0.233) / (8.0 * 1.0 + 0.233);
+              //out_a(i,j,k,ID_Z) = (8.0 * in_a(i,j,k,ID_H2) - in_a(i,j,k,ID_O2) + 0.233) / (8.0 * 1.0 + 0.233);
               Z(i,j,k) = (8.0 * yH2(i,j,k) - yO2(i,j,k) + 0.233) / (8.0 * 1.0 + 0.233);
+              logZ(i,j,k) = std::log10(Z(i,j,k) + eps);
 	      }
         );
         amrex::Gpu::streamSynchronize();
