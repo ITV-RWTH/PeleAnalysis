@@ -121,7 +121,7 @@ main (int   argc,
      // Find density index:
      Vector<std::string> variableNamesPlt = plt_file_data[0]->getVariableList();
      int idRho = -1;
-     for (int var = 0; var < nvar; ++var) {
+     for (int var = 0; var < variableNamesPlt.size(); ++var) {
        if (variableNamesPlt[var] == "density") idRho = var;
      }
      if (idRho == -1) amrex::Abort("Density not found in file with index 0: " + plotFileNames[0]);
@@ -183,7 +183,7 @@ main (int   argc,
        tmp_data2[lev].define(combined_boxes[lev], dmap, nvar, 0);
        tmp_rho[lev].define(combined_boxes[lev], dmap, 1, 0);
        variance[lev].define(combined_boxes[lev], dmap, nvar, 0);
-       combined_data[lev].define(combined_boxes[lev], dmap, nvar*2, 0);
+       combined_data[lev].define(combined_boxes[lev], dmap, 1+nvar*2, 0);
        running_data[lev].setVal(0.0);
        running_data2[lev].setVal(0.0);
        running_rho[lev].setVal(0.0);
@@ -226,8 +226,8 @@ main (int   argc,
        running_data2[lev].mult(factor);
        running_rho[lev].mult(factor);
        for (int var = 0; var < nvar; ++var) {
-         MultiFab::Divide(running_data[lev], running_rho[lev], 0, var, 1, 0);
-         MultiFab::Divide(running_data2[lev], running_rho[lev], 0, var, 1, 0);
+         //MultiFab::Divide(running_data[lev], running_rho[lev], 0, var, 1, 0); //comment out to compute rho*phi
+         //MultiFab::Divide(running_data2[lev], running_rho[lev], 0, var, 1, 0); //comment out to compute rho*phi
        }
        // Compute variance using variance decomposition formula (i.e., var(p) = favre(p^2) - favre(p)^2)
        MultiFab::Copy(variance[lev], running_data[lev], 0, 0, nvar, 0);
@@ -236,13 +236,20 @@ main (int   argc,
        MultiFab::Add(variance[lev], running_data2[lev], 0, 0, nvar, 0);
      }
 
-     for (int var = 0; var < nvar; var++) variableNames.push_back(variableNames[var] + "_var");
+     variableNames.insert(variableNames.begin(), "rho_mean");
+     std::string variableName;
+     for (int var = 0; var < nvar; var++) {
+         variableName = variableNames[var+1];
+         variableNames[1+var] = "rho_"+variableName+"_mean";
+         variableNames.push_back("rho_"+variableName+"_2_mean");
+     }
 
      // Combine MultiFabs running_data and variance
      for (int lev = 0; lev < nlevels; ++lev) {
        DistributionMapping dmap = DistributionMapping(combined_boxes[lev]);
-       MultiFab::Copy(combined_data[lev], running_data[lev], 0, 0, nvar, 0);
-       MultiFab::Copy(combined_data[lev], variance[lev], 0, nvar, nvar, 0);
+       MultiFab::Copy(combined_data[lev], running_rho[lev], 0, 0, 1, 0);
+       MultiFab::Copy(combined_data[lev], running_data[lev], 0, 1, nvar, 0);
+       MultiFab::Copy(combined_data[lev], variance[lev], 0, nvar+1, nvar, 0);
      }
 
      // Save the final plt file
