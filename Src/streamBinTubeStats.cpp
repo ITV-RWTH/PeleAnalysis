@@ -10,6 +10,32 @@ using namespace amrex;
 
 #include <streamBinTubeStats.H>
 
+
+static
+void
+print_usage (int,
+             char* argv[])
+{
+  std::cerr << "usage:\n";
+  std::cerr << argv[0] << " inputs infile=<s> isoCompName=<s> isoVal=<v> [options] \n\tOptions:\n";
+  std::cerr << "\t     infile=<s> where <s> is a stream.bin file\n";
+  std::cerr << "\t     writeStreamsToMatlab\n";
+  std::cerr << "\t     writeTecplotSurfaceFromStream\n";
+  std::cerr << "\t     writeBasic\n";
+  std::cerr << "\t     avgComps: list of variables to average\n";
+  std::cerr << "\t     intComps: list of variables to integrate\n";
+  std::cerr << "\t     derComps: derived values. Can be:\n";
+  std::cerr << "\t     --> flameThickness\n";
+  std::cerr << "\t            reacTemp\n";
+  std::cerr << "\t            prodTemp\n";
+  std::cerr << "\t            tempGradVar\n";
+  std::cerr << "\t     --> principalCurvatureZone\n";
+  std::cerr << "\t            pkzLength\n";
+  std::cerr << "\t            pkzMkVar\n";
+  std::cerr << "\t            pkzGkVar\n";
+exit(1);
+}
+
 int
 main (int   argc,
       char* argv[])
@@ -19,8 +45,16 @@ main (int   argc,
   if (ParallelDescriptor::NProcs()>1)
     Abort("Code is not yet parallel safe");
   
+  if (argc < 2) {
+    print_usage(argc,argv);
+  }
+
   ParmParse pp;
 
+  if (pp.contains("help")) {
+    print_usage(argc,argv);
+  }
+  
   // read infile name from inputs
   std::string infile;
   pp.get("infile",infile);
