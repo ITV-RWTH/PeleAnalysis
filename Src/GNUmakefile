@@ -21,49 +21,50 @@ USE_CUDA      = FALSE
 
 # Executable
 # Uncomment the desired exec
-#EBASE			   = template
-#EBASE         = amrToFE
-#EBASE 			 	 = avgPlotfiles.cpp
-#EBASE         = avgToPlane
-#EBASE			 	 = convert2hdf5
-#EBASE	 		 	 = checkIso.cpp
-#EBASE 			 	 = combineMEF
-#EBASE         = combinePlts
-#EBASE         = conditionalMean
-#EBASE         = curvature
-#EBASE			 	 = decimateMEF
-#EBASE			 	 = dumpFABslice
-#EBASE         = filterPlt
-#EBASE         = flattenAMRFile
-#EBASE         = grad
-#EBASE 			 	 = integral
-#EBASE 			 	 = interp
-#EBASE 			 	 = isoMEF
-#EBASE         = isosurface
-#EBASE			 	 = jpdf
-#EBASE			 	 = isosurface
-#EBASE			 	 = makePlotfile
-#EBASE 			 	 = mergeMEF
-#EBASE 			 	 = multMEF
-#EBASE         = partStream
-#EBASE		     = qCriterion
-#EBASE 			 	 = regridPlt
-#EBASE 			 	 = rmsVel
-#EBASE 			 	 = scaleMEF
-#EBASE 			 	 = sliceMEF
-#EBASE 			 	 = smoothMEF
-#EBASE			 	 = stream2plt
-#EBASE 			 	 = streamBinTubeStats
-#EBASE 			 	 = StreamData
-#EBASE 			 	 = StreamPC
-#EBASE         = subPlt
-#EBASE         = surfMEFtoDAT
-#EBASE         = surfDATtoMEF
-#EBASE 			 	 = trimMEFgen
-#EBASE			 	 = turbfile
-
+#EBASE   = template
+#EBASE   = amrToFE
+#EBASE   = avgPlotfiles.cpp
+#EBASE   = avgToPlane
+#EBASE   = convert2hdf5
+#EBASE   = checkIso.cpp
+#EBASE   = combineMEF
+#EBASE   = combinePlts
+#EBASE   = conditionalMean
+#EBASE   = curvature
+#EBASE   = decimateMEF
+#EBASE   = dumpFABslice
+#EBASE   = filterPlt
+#EBASE   = flattenAMRFile
+#EBASE   = grad
+#EBASE   = integral
+#EBASE   = interp
+#EBASE   = isoMEF
+#EBASE   = isosurface
+#EBASE   = jpdf
+#EBASE   = isosurface
+#EBASE   = makePlotfile
+#EBASE   = mergeMEF
+#EBASE   = multMEF
+#EBASE   = partStream
+#EBASE   = qCriterion
+#EBASE   = regridPlt
+#EBASE   = rmsVel
+#EBASE   = scaleMEF
+#EBASE   = sliceMEF
+#EBASE   = smoothMEF
+#EBASE   = stream2plt
+#EBASE   = streamBinTubeStats
+#EBASE   = StreamData
+#EBASE   = StreamPC
+#EBASE   = subPlt
+#EBASE   = surfMEFtoDAT
+#EBASE   = surfDATtoMEF
+#EBASE   = trimMEFgen
+#EBASE   = turbfile
 
 # tools that need review/combining/fixing/work
+#EBASE   = avgToPlane
+
 
 
 CEXE_sources += $(EBASE).cpp
