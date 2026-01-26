@@ -46,6 +46,7 @@ USE_CUDA      = FALSE
 #EBASE 			 	 = mergeMEF
 #EBASE 			 	 = multMEF
 #EBASE         = partStream
+#EBASE		     = qCriterion
 #EBASE 			 	 = regridPlt
 #EBASE 			 	 = rmsVel
 #EBASE 			 	 = scaleMEF
@@ -60,6 +61,7 @@ USE_CUDA      = FALSE
 #EBASE         = surfDATtoMEF
 #EBASE 			 	 = trimMEFgen
 #EBASE			 	 = turbfile
+
 
 # tools that need review/combining/fixing/work
 
