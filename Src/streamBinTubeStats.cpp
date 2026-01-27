@@ -1262,7 +1262,7 @@ Real wedge_volume_int(const Array<dim3,AMREX_SPACEDIM>& elt1,
   Real int_4 = (vB+vC+vD) * area_BCD / 3.0;
   
   // Average contributions for higher-order accuracy
-  return quarter * (int_1 + int_2 + int_3 + int_4);
+  return half * (int_1 + int_2 + int_3 + int_4);
 #else
   // 3D wedge: A,B,C bottom; D,E,F top
   const dim3& A = elt1[0]; const Real vA = val1[0];
