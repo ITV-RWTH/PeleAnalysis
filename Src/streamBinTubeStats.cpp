@@ -273,7 +273,7 @@ main (int   argc,
     Array<dim3,AMREX_SPACEDIM> elt1,elt2;
     for (int d1=0; d1<AMREX_SPACEDIM; d1++) { // three components of location
       for (int d2=0; d2<AMREX_SPACEDIM; d2++) {
-	elt1[d1][d2] = streamData[sIdx[iElt][d1]][nPtsOnStream*d2+surfPt];
+        elt1[d1][d2] = streamData[sIdx[iElt][d1]][nPtsOnStream*d2+surfPt];
       }
     }
     // find area
@@ -903,8 +903,11 @@ void readStreamBin(std::string infile,
   std::getline(ifs,dummy);
   faceData.resize(fds);
   ifs.read((char*)faceData.dataPtr(),sizeof(int)*faceData.size());
-
+#if AMREX_SPACEDIM == 2
+  nElts = fds/2;
+#else
   nElts = fds/3;
+#endif
   Print() << "nElts = " << nElts << std::endl;
 
   // close header
@@ -1013,7 +1016,11 @@ writeSurfaceFromStreamTecplot(std::string infile,
   }
 
   for (int iElt=0; iElt<nElts; iElt++) {
+#if AMREX_SPACEDIM == 2
+    int offset=iElt*2;
+#else
     int offset=iElt*3;
+#endif
     os << faceData[offset] << " "
        << faceData[offset+1] << " "
        << faceData[offset+2] << std::endl;
@@ -1082,6 +1089,11 @@ writeSurfaceTecplot(std::string infile,
   }
 
   // write connectivity
+#if AMREX_SPACEDIM == 2
+  int fds = nElts * 2;
+#else
+  int fds = nElts * 3;
+#endif
   for (int iElt=1; iElt<3*nElts;)
     os << iElt++ << " " << iElt++ << " " << iElt++ << std::endl;
 
