@@ -1910,7 +1910,7 @@ main (int   argc,
             }
           }
           // Get back some memory
-          eltSet.clear();
+          //eltSet.clear();
 
           int nNodeSize = sortedNodes[0]->m_size;
 
@@ -2233,9 +2233,10 @@ main (int   argc,
       std::cout << "Surface output time: " << sout_time << '\n';
 
       // Compute area of isosurface
+
       bool computeArea = false;
       pp.query("computeArea",computeArea);
-      if (computeArea && (AMREX_SPACEDIM==3))  {
+      if (computeArea)  {
         Real Area = 0;
 #if AMREX_SPACEDIM==3
         for (std::set<Element>::const_iterator it = eltSet.begin(); it != eltSet.end(); ++it) {
@@ -2261,24 +2262,35 @@ main (int   argc,
           }
         }
 #elif AMREX_SPACEDIM==2
+        Real tempArea = 0.0;
         for (std::set<Element>::const_iterator it = eltSet.begin(); it != eltSet.end(); ++it) {
           const Element& elt = *it;
+          Print() << elt.size() << "\n";
           if (elt.size()==2) {
             if (elt[0]>=sortedNodes.size() || elt[1]>=sortedNodes.size()) {
               std::cerr << "Accessing node past end: " << elt[0] << ", " << elt[1] << std::endl;
             }
-
             const Real* p0 = sortedNodes[elt[0]]->m_vec;
             const Real* p1 = sortedNodes[elt[1]]->m_vec;
 
-            Area += 0.5*sqrt(
+            Print() << "p1 = " << p1[0] << '\n';
+            Print() << "p0 = " << p0[0] << '\n';
+            Print() << "p1_1 = " << p1[1] << '\n';
+            Print() << "p0_1 = " << p0[1] << '\n';
+        
+            tempArea = sqrt(
               pow(( p1[0] - p0[0]), 2)
-
               + pow(( p1[1] - p0[1]), 2) );
+            Area += tempArea;
           }
+          
         }
 #endif
         Print() << "Total area = " << Area << '\n';
+        std::string outarea_string = infile + "_" + "area";
+        std::ofstream areastream(outarea_string);
+        areastream << Area;
+        areastream.close();
       }
     } // IOProc
   }
