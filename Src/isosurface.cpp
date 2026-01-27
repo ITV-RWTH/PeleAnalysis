@@ -2262,10 +2262,8 @@ main (int   argc,
           }
         }
 #elif AMREX_SPACEDIM==2
-        Real tempArea = 0.0;
         for (std::set<Element>::const_iterator it = eltSet.begin(); it != eltSet.end(); ++it) {
           const Element& elt = *it;
-          Print() << elt.size() << "\n";
           if (elt.size()==2) {
             if (elt[0]>=sortedNodes.size() || elt[1]>=sortedNodes.size()) {
               std::cerr << "Accessing node past end: " << elt[0] << ", " << elt[1] << std::endl;
@@ -2273,15 +2271,9 @@ main (int   argc,
             const Real* p0 = sortedNodes[elt[0]]->m_vec;
             const Real* p1 = sortedNodes[elt[1]]->m_vec;
 
-            Print() << "p1 = " << p1[0] << '\n';
-            Print() << "p0 = " << p0[0] << '\n';
-            Print() << "p1_1 = " << p1[1] << '\n';
-            Print() << "p0_1 = " << p0[1] << '\n';
-        
-            tempArea = sqrt(
+            Area += sqrt(
               pow(( p1[0] - p0[0]), 2)
               + pow(( p1[1] - p0[1]), 2) );
-            Area += tempArea;
           }
           
         }
