@@ -68,7 +68,24 @@ main (int   argc,
   pp.query("writeBasic",writeBasic);
   int writeSurface= 1;
   pp.query("writeSurface", writeSurface);
-  
+    
+  IntVect pp_is_per;
+  pp.getarr("is_per",pp_is_per);
+  Array<int,AMREX_SPACEDIM> is_per = {AMREX_D_DECL(pp_is_per[0],pp_is_per[1],pp_is_per[2])};
+  Print() << "Periodicity assumed for this case: ";
+  for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+    Print() << is_per[idim] << " ";
+  }
+  Print() << std::endl;
+
+  // Peroiodicity not properly implemented yet, so stop here
+  // Workaround: run isosurface, partStream, and streamBinTubeStats with is_per = 0 0 0  
+  AMREX_ALWAYS_ASSERT(AMREX_D_TERM(
+      (is_per[0] == 0), 
+      && (is_per[1] == 0), 
+      && (is_per[2] == 0)));
+
+
   std::string fuelName="H2";
   pp.query("fuelName",fuelName);
   // declare size and data holders
