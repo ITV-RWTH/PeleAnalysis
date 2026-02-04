@@ -768,17 +768,13 @@ Real calcIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACED
 
 Real calcCappedIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACEDIM>& streamData, Real eltArea, Real maxVolFac)
 {
-  Real integral = 0.;
 
-  // integrate
-  //dim3 A,B,C,D,E,F;
   Array<dim3,AMREX_SPACEDIM> elt1, elt2;
-  dim3 val1,val2;
   // get reference volume at the surface
   // the surface is the mid point of the stream
   int surfPt = (nPtsOnStream-1)/2; // stream data location counts from zero
   // Now let's get the average volume of the two elements either side of the surface
-  Real refVol(0.);
+  Real refVol = 0.;
   for (int iPt=0; iPt<2; iPt++) {
     for (int d1=0; d1<AMREX_SPACEDIM; d1++) { // three components of location
       for (int d2=0; d2<AMREX_SPACEDIM; d2++) {
@@ -791,12 +787,17 @@ Real calcCappedIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_
   // set the maxVol to the factor passed in times this reference volume
   Real maxVol = maxVolFac*refVol;
 
+  Real integral = 0.;
+  
+  // integrate
+  //dim3 A,B,C,D,E,F;
+  dim3 val1,val2;
   // now do the integral, capping by volFac
   for (int iPt=1; iPt<nPtsOnStream; iPt++) {
     for (int d1=0; d1<AMREX_SPACEDIM; d1++) { // three components of location
       for (int d2=0; d2<AMREX_SPACEDIM; d2++) {
-	elt1[d1][d2] = streamData[d1][nPtsOnStream*d2+surfPt+iPt-1];
-	elt2[d1][d2] = streamData[d1][nPtsOnStream*d2+surfPt+iPt];
+	elt1[d1][d2] = streamData[d1][nPtsOnStream*d2+iPt-1];
+	elt2[d1][d2] = streamData[d1][nPtsOnStream*d2+iPt];
       }
       val1[d1] = streamData[d1][nPtsOnStream*compIdx+iPt-1];
       val2[d1] = streamData[d1][nPtsOnStream*compIdx+iPt];           
