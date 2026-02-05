@@ -42,7 +42,21 @@ print_usage (int,
   std::cerr << "\t     outfile_base=<s> base name of output file [DEF->gen'd]\n";
   std::cerr << "\t     build_distance_function=<t,f> create cc signed distance function [DEF->f]\n";
   std::cerr << "\t     rm_external_elements=<t,f> remove elts beyond what is needed for watertight surface [DEF->t]\n";
-exit(1);
+/* Undocumented inputs:
+TODO: Add to usage string.
+- verbose
+- collate
+- dmax
+- nGrow
+- is_per
+- outfile
+- surface_is_large
+- chunk_size
+- tmpFile
+- computeArea
+*/
+
+  exit(1);
 }
 
 // A struct defining an edge as two IntVects (left & right)
