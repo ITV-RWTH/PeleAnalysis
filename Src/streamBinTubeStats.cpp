@@ -94,7 +94,7 @@ main (int   argc,
 
   // Get domain size for periodicy treatment
   Vector<Real> domain_size(AMREX_SPACEDIM,-1.0);
-  pp.queryarr("domain_size",domain_size,-1.0,AMREX_SPACEDIM);
+  pp.queryarr("domain_size",domain_size);
   Print() << "Domain size assumed for this case: ";
   for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
     Print() << domain_size[idim] << " ";
