@@ -1921,15 +1921,43 @@ main (int   argc,
             const Real* p1 = sortedNodes[elt[1]]->m_vec;
             const Real* p2 = sortedNodes[elt[2]]->m_vec;
 
+            // Construction two vectores vecp0p1 (from p0 to p1) and vecp0p2 (from p0 to p2)
+            // Area of triangle is 0.5 ||vecp0p1 x vecp0p2||
+
+            Vector<Real> vecp0p1(AMREX_SPACEDIM);
+            Vector<Real> vecp0p2(AMREX_SPACEDIM);
+
+            for (int i=0; i<AMREX_SPACEDIM; ++i) {
+              vecp0p1[i] = p1[i] - p0[i];
+              vecp0p2[i] = p2[i] - p0[i];
+            }
+
+            
+            if (geoms[0].isAnyPeriodic()) {  // Only enter the loop if periodic
+              for (int i=0; i<AMREX_SPACEDIM; ++i) {
+                if ((is_per[i]==1) && (vecp0p1[i]>(0.5*pf.probSize()[i]))){
+                  vecp0p1[i] -= pf.probSize()[i];
+                } else if ((is_per[i]==1) && (vecp0p1[i]<(-0.5*pf.probSize()[i]))){
+                  vecp0p1[i] += pf.probSize()[i];
+                }
+                if ((is_per[i]==1) && (vecp0p2[i]>(0.5*pf.probSize()[i]))){
+                  vecp0p2[i] -= pf.probSize()[i];
+                } else if ((is_per[i]==1) && (vecp0p2[i]<(-0.5*pf.probSize()[i]))){
+                  vecp0p2[i] += pf.probSize()[i];
+                }
+              }
+            }
+            
+
             Area += 0.5*sqrt(
-              pow(( p1[1] - p0[1])*(p2[2]-p0[2])
-                  -(p1[2] - p0[2])*(p2[1]-p0[1]), 2)
+              pow( vecp0p1[1]*vecp0p2[2]
+                  -vecp0p1[2]*vecp0p2[1], 2)
 
-              + pow(( p1[2] - p0[2])*(p2[0]-p0[0])
-                    -(p1[0] - p0[0])*(p2[2]-p0[2]), 2)
+              + pow( vecp0p1[2]*vecp0p2[0]
+                    -vecp0p1[0]*vecp0p2[2], 2)
 
-              + pow(( p1[0] - p0[0])*(p2[1]-p0[1])
-                    -(p1[1] - p0[1])*(p2[0]-p0[0]), 2) );
+              + pow( vecp0p1[0]*vecp0p2[1]
+                    -vecp0p1[1]*vecp0p2[0], 2) );
           }
         }
 #elif AMREX_SPACEDIM==2
@@ -1942,9 +1970,25 @@ main (int   argc,
             const Real* p0 = sortedNodes[elt[0]]->m_vec;
             const Real* p1 = sortedNodes[elt[1]]->m_vec;
 
+            Vector<Real> vecp0p1(AMREX_SPACEDIM);
+
+            for (int i=0; i<AMREX_SPACEDIM; ++i) {
+              vecp0p1[i] = p1[i] - p0[i];
+            }
+
+            if (geoms[0].isAnyPeriodic()) {  // Only enter the loop if periodic
+              for (int i=0; i<AMREX_SPACEDIM; ++i) {
+                if ((is_per[i]==1) && (vecp0p1[i]>(0.5*pf.probSize()[i]))){
+                  vecp0p1[i] -= pf.probSize()[i];
+                } else if ((is_per[i]==1) && (vecp0p1[i]<(-0.5*pf.probSize()[i]))){
+                  vecp0p1[i] += pf.probSize()[i];
+                }
+              }
+            }
+
             Area += sqrt(
-              pow(( p1[0] - p0[0]), 2)
-              + pow(( p1[1] - p0[1]), 2) );
+              pow( vecp0p1[0], 2)
+              + pow( vecp0p1[1], 2) );
           }
           
         }
