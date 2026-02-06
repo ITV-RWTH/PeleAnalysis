@@ -1908,6 +1908,19 @@ main (int   argc,
       bool computeArea = false;
       pp.query("computeArea",computeArea);
       if (computeArea)  {
+        // Create a vector of periodic dims for reduced loop size
+        int is_per_sum = 0;
+        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+            is_per_sum += is_per[idim];
+        }
+        Vector<int> is_per_dim(is_per_sum,0);
+        int is_per_dim_ix = 0;
+        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+            if (is_per[idim]==1) {
+              is_per_dim[is_per_dim_ix] = idim;
+              is_per_dim_ix++;
+            }
+        }
         Real Area = 0;
 #if AMREX_SPACEDIM==3
         for (std::set<Element>::const_iterator it = eltSet.begin(); it != eltSet.end(); ++it) {
@@ -1934,16 +1947,18 @@ main (int   argc,
 
             
             if (geoms[0].isAnyPeriodic()) {  // Only enter the loop if periodic
-              for (int i=0; i<AMREX_SPACEDIM; ++i) {
-                if ((is_per[i]==1) && (vecp0p1[i]>(0.5*pf.probSize()[i]))){
-                  vecp0p1[i] -= pf.probSize()[i];
-                } else if ((is_per[i]==1) && (vecp0p1[i]<(-0.5*pf.probSize()[i]))){
-                  vecp0p1[i] += pf.probSize()[i];
+              int per_dim = 0;
+              for (int i = 0; i < is_per_dim.size(); ++i) {
+                per_dim = is_per_dim[i];
+                if (vecp0p1[per_dim]>(0.5*pf.probSize()[per_dim])){
+                  vecp0p1[per_dim] -= pf.probSize()[per_dim];
+                } else if (vecp0p1[per_dim]<(-0.5*pf.probSize()[per_dim])){
+                  vecp0p1[per_dim] += pf.probSize()[per_dim];
                 }
-                if ((is_per[i]==1) && (vecp0p2[i]>(0.5*pf.probSize()[i]))){
-                  vecp0p2[i] -= pf.probSize()[i];
-                } else if ((is_per[i]==1) && (vecp0p2[i]<(-0.5*pf.probSize()[i]))){
-                  vecp0p2[i] += pf.probSize()[i];
+                if (vecp0p2[per_dim]>(0.5*pf.probSize()[per_dim])){
+                  vecp0p2[per_dim] -= pf.probSize()[per_dim];
+                } else if (vecp0p2[per_dim]<(-0.5*pf.probSize()[per_dim])){
+                  vecp0p2[per_dim] += pf.probSize()[per_dim];
                 }
               }
             }
@@ -1977,11 +1992,13 @@ main (int   argc,
             }
 
             if (geoms[0].isAnyPeriodic()) {  // Only enter the loop if periodic
-              for (int i=0; i<AMREX_SPACEDIM; ++i) {
-                if ((is_per[i]==1) && (vecp0p1[i]>(0.5*pf.probSize()[i]))){
-                  vecp0p1[i] -= pf.probSize()[i];
-                } else if ((is_per[i]==1) && (vecp0p1[i]<(-0.5*pf.probSize()[i]))){
-                  vecp0p1[i] += pf.probSize()[i];
+              int per_dim = 0;
+              for (int i = 0; i < is_per_dim.size(); ++i) {
+                per_dim = is_per_dim[i];
+                if (vecp0p1[per_dim]>(0.5*pf.probSize()[per_dim])){
+                  vecp0p1[per_dim] -= pf.probSize()[per_dim];
+                } else if (vecp0p1[per_dim]<(-0.5*pf.probSize()[per_dim])){
+                  vecp0p1[per_dim] += pf.probSize()[per_dim];
                 }
               }
             }
