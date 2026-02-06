@@ -45,7 +45,7 @@ print_usage (int,
   std::cerr << "\t\tnGrow = 1                                  # DEF: 1; Grow cells.\n";
   std::cerr << "\t\t\n";
   std::cerr << "\t\t#------------------- VARIABLES ------------------------------------------------------------\n";
-  std::cerr << "\t\tisoCompName = "Y_(H2)"                     # Set the variable name for isosurface computation.\n";
+  std::cerr << "\t\tisoCompName = 'Y_(H2)'                     # Set the variable name for isosurface computation.\n";
   std::cerr << "\t\tisoVal = 0.001                             # Set the iso value for isosurface computation.\n";
   std::cerr << "\t\t#comps = HeatRelease                       # Optional: Additional values to map on the surface.\n";
   std::cerr << "\t\t\n";
