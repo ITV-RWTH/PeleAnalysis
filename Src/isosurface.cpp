@@ -1325,38 +1325,30 @@ main (int   argc,
     string isoCompName = isoCompName_DEF;
     pp.query("isoCompName",isoCompName);
 
-    // Plotfile fields to read in
-    Vector<int> pltComps;
-    if (int nc = pp.countval("comps")) {
-      pltComps.resize(nc);
-      pp.getarr("comps",pltComps,0,nc);
-    } else {
-      int pltsComp = 0;
-      pp.query("sComp",pltsComp);
-      int pltnComp = 1;
-      pp.query("nComp",pltnComp);
-      AMREX_ASSERT(pltsComp+pltnComp <= pf.nComp());
-      pltComps.resize(pltnComp);
-      for (int i=0; i<pltnComp; ++i) {
-        pltComps[i] = pltsComp + i;
-      }
-    }
+    int nComp = pp.countval("comps");
+    Vector<std::string> varnames(nComp);
+    pp.queryarr("comps",varnames);
 
     int isoComp = -1;
     const Vector<std::string>& pltNames = pf.varNames();
-    Vector<string> varnames(pltComps.size()); // names of variables to get
     for (int i=0; i<varnames.size(); ++i) {
-      if (pltComps[i]>=pltNames.size()) {
-        Abort("At least one of the components requested is not in pltfile");
+      int pvar;
+      for (pvar = 0; pvar < pltNames.size(); ++pvar) {
+        if (varnames[i] == pltNames[pvar]) {
+            break;
+        }
       }
-      varnames[i] = pltNames[pltComps[i]];
+      if (pvar == pltNames.size()) {
+          amrex::Abort("Variable '" + varnames[i] + "' not found in file");
+      }
       if (varnames[i]==isoCompName) isoComp = AMREX_SPACEDIM + i;
     }
     if (isoComp<AMREX_SPACEDIM) {
-      Abort("isoCompName not in list of variables to read in");
+      varnames.push_back(isoCompName);
+      nComp++;
     }
 
-    const int nComp = pltComps.size();
+    AMREX_ASSERT(nComp==varnames.size());
 
     int finestLevel = pf.finestLevel();
     pp.query("finestLevel",finestLevel);
@@ -1785,7 +1777,7 @@ main (int   argc,
     }
 
     // Prepare floating point and integer data for MPI communication (make two arrays to pass around)
-    const int nReal = (pltComps.size()+AMREX_SPACEDIM)*nodeSet.size();
+    const int nReal = (nComp+AMREX_SPACEDIM)*nodeSet.size();
     Vector<Real> nodeRaw(nReal);
     for (long i = 0; i < sortedNodes.size(); ++i)
     {
