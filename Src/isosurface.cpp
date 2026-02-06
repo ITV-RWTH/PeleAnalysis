@@ -29,33 +29,33 @@ print_usage (int,
 {
   std::cerr << "usage:\n";
   std::cerr << argv[0] << " inputs infile=<s> isoCompName=<s> isoVal=<v> [options] \n\tOptions:\n";
-  std::cerr << "\t     infile=<s> where <s> is a pltfile\n";
-  std::cerr << "\t     isoCompName=<s> where <s> is the quantity being contoured\n";
-  std::cerr << "\t     isoVal=<v> where <v> is an isopleth value\n";
-  std::cerr << "\t     Choosing quantities to interp to surface: \n";
-  std::cerr << "\t       comps=int comp list [overrides sComp/nComp]\n";
-  std::cerr << "\t       sComp=start comp[DEF->0]\n";
-  std::cerr << "\t       nComp=number of comps[DEF->all]\n";
-  std::cerr << "\t     finestLevel=<n> finest level to use in pltfile[DEF->all]\n";
-  std::cerr << "\t     writeSurf=<1,0> output surface [DEF->1]\n";
-  std::cerr << "\t     surfFormat=<MEF,XDMF> output surface format [DEF->MEF]\n";
-  std::cerr << "\t     outfile_base=<s> base name of output file [DEF->gen'd]\n";
-  std::cerr << "\t     build_distance_function=<t,f> create cc signed distance function [DEF->f]\n";
-  std::cerr << "\t     rm_external_elements=<t,f> remove elts beyond what is needed for watertight surface [DEF->t]\n";
-/* Undocumented inputs:
-TODO: Add to usage string.
-- verbose
-- collate
-- dmax
-- nGrow
-- is_per
-- outfile
-- surface_is_large
-- chunk_size
-- tmpFile
-- computeArea
-*/
-
+  std::cerr << "\t\t#------------------- IO CONTROL -----------------------------------------------------------\n";
+  std::cerr << "\t\tinfile = plt00000                          # Plot file for surface construction\n";
+  std::cerr << "\t\toutfile_base = plt00000_surf               # DEF: infile+isoCompName+time+isoval; Base name for output files\n";
+  std::cerr << "\t\tdistance.outfile = plt00000_distance       # DEF: distance; Name of output distance file, see build_distance_function.\n";
+  std::cerr << "\t\twriteSurf = 1                              # [0, 1], DEF: 1; Flag to write surface file.\n";
+  std::cerr << "\t\tsurfFormat = MEF                           # [MEF, XDMF], DEF: MEF; MEF (Marcs Element Format) is used by other PeleAnalysis tools.\n";
+  std::cerr << "\t\tsurface_is_large = 0                       # [0, 1], DEF: 0; Option for memory-intense surfaces. If the surface is large, write data to disk/clear mem/read up into a single fab.\n";
+  std::cerr << "\t\tchunk_size = 32768                         # Int, DEF: 32768; Only relevant if surface_is_large = 1.\n";
+  std::cerr << "\t\ttmpFile = isoTEMPFILE                      # DEF: isoTEMPFILE; Only relevant if surface_is_large = 1.\n";
+  std::cerr << "\t\t\n";
+  std::cerr << "\t\t#------------------- GRID CONTROL ---------------------------------------------------------\n";
+  std::cerr << "\t\tfinestLevel = 1                            # DEF: finest level of plot file; Sets the finest level to read.\n";
+  std::cerr << "\t\tis_per = 1 1 0                             # Sets case periodicity for correct connectivity and area calculation.\n";
+  std::cerr << "\t\tnGrow = 1                                  # DEF: 1; Grow cells.\n";
+  std::cerr << "\t\t\n";
+  std::cerr << "\t\t#------------------- VARIABLES ------------------------------------------------------------\n";
+  std::cerr << "\t\tisoCompName = "Y_(H2)"                     # Set the variable name for isosurface computation.\n";
+  std::cerr << "\t\tisoVal = 0.001                             # Set the iso value for isosurface computation.\n";
+  std::cerr << "\t\t#comps = HeatRelease                       # Optional: Additional values to map on the surface.\n";
+  std::cerr << "\t\t\n";
+  std::cerr << "\t\t#------------------- Options ------------------------------------------------------------\n";
+  std::cerr << "\t\tcomputeArea = 1                            # [0, 1], DEF: 0; Compute surface area (length in 2D) of isosurface.\n";
+  std::cerr << "\t\trm_external_elements = true                # [true, false], DEF: true; Remove nodes outside of g1box before merging set with master list.\n";
+  std::cerr << "\t\tbuild_distance_function = false            # [true, false], DEF: false; create cc signed distance function.\n";
+  std::cerr << "\t\tdmax = 1e-3                                # DEF: dx of coarse level; Maximum distance from surface for build_distance_function.\n";
+  std::cerr << "\t\tverbose = 1                                # [0, 1], DEF: 0; Verbosity\n";
+  std::cerr << "\t\t#collate = 1                                # [0, 1], DEF: 1; Communicate node and element info from all procs to IOProc.\n";
   exit(1);
 }
 
@@ -1736,7 +1736,7 @@ main (int   argc,
     ParallelDescriptor::Barrier();
     if (build_distance_function) {
       std::string outfile("distance");
-      pp.query("outfile",outfile);
+      pp.query("distance.outfile",outfile);
       Vector<int> levelSteps(Nlev);
       Vector<IntVect> refRatio(Nlev-1);
       Vector<const MultiFab*> ptrs(Nlev);
@@ -2042,10 +2042,10 @@ main (int   argc,
           // If the surface is large, write data to disk/clear mem/read up into a single fab
           bool surface_is_large = false;
           pp.query("surface_is_large",surface_is_large);
-          int chunk_size = 32768;
-          pp.query("chunk_size",chunk_size);
           FABdata* tmpDataP;
           if (surface_is_large) {
+            int chunk_size = 32768;
+            pp.query("chunk_size",chunk_size);
             std::string tmpFile="isoTEMPFILE";
             pp.query("tmpFile",tmpFile);
             std::ofstream ost;
