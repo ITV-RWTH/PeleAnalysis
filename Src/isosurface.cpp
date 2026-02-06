@@ -42,7 +42,21 @@ print_usage (int,
   std::cerr << "\t     outfile_base=<s> base name of output file [DEF->gen'd]\n";
   std::cerr << "\t     build_distance_function=<t,f> create cc signed distance function [DEF->f]\n";
   std::cerr << "\t     rm_external_elements=<t,f> remove elts beyond what is needed for watertight surface [DEF->t]\n";
-exit(1);
+/* Undocumented inputs:
+TODO: Add to usage string.
+- verbose
+- collate
+- dmax
+- nGrow
+- is_per
+- outfile
+- surface_is_large
+- chunk_size
+- tmpFile
+- computeArea
+*/
+
+  exit(1);
 }
 
 // A struct defining an edge as two IntVects (left & right)
@@ -1888,6 +1902,125 @@ main (int   argc,
       const Real uniq_time = end_time_uniq - strt_time_uniq;
       Print() << "Uniquify time: " << uniq_time << '\n';
 
+      // Compute area of isosurface
+      const Real strt_time_arout = ParallelDescriptor::second();
+
+      bool computeArea = false;
+      pp.query("computeArea",computeArea);
+      if (computeArea)  {
+        // Create a vector of periodic dims for reduced loop size
+        int is_per_sum = 0;
+        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+            is_per_sum += is_per[idim];
+        }
+        Vector<int> is_per_dim(is_per_sum,0);
+        int is_per_dim_ix = 0;
+        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+            if (is_per[idim]==1) {
+              is_per_dim[is_per_dim_ix] = idim;
+              is_per_dim_ix++;
+            }
+        }
+        Real Area = 0;
+#if AMREX_SPACEDIM==3
+        for (std::set<Element>::const_iterator it = eltSet.begin(); it != eltSet.end(); ++it) {
+          const Element& elt = *it;
+          if (elt.size()==3) {
+            if (elt[0]>=sortedNodes.size() || elt[1]>=sortedNodes.size() || elt[2]>=sortedNodes.size()) {
+              std::cerr << "Accessing node past end: " << elt[0] << ", " << elt[1] << ", " << elt[2] << std::endl;
+            }
+
+            const Real* p0 = sortedNodes[elt[0]]->m_vec;
+            const Real* p1 = sortedNodes[elt[1]]->m_vec;
+            const Real* p2 = sortedNodes[elt[2]]->m_vec;
+
+            // Construction two vectores vecp0p1 (from p0 to p1) and vecp0p2 (from p0 to p2)
+            // Area of triangle is 0.5 ||vecp0p1 x vecp0p2||
+
+            Vector<Real> vecp0p1(AMREX_SPACEDIM);
+            Vector<Real> vecp0p2(AMREX_SPACEDIM);
+
+            for (int i=0; i<AMREX_SPACEDIM; ++i) {
+              vecp0p1[i] = p1[i] - p0[i];
+              vecp0p2[i] = p2[i] - p0[i];
+            }
+
+            
+            if (geoms[0].isAnyPeriodic()) {  // Only enter the loop if periodic
+              int per_dim = 0;
+              for (int i = 0; i < is_per_dim.size(); ++i) {
+                per_dim = is_per_dim[i];
+                if (vecp0p1[per_dim]>(0.5*pf.probSize()[per_dim])){
+                  vecp0p1[per_dim] -= pf.probSize()[per_dim];
+                } else if (vecp0p1[per_dim]<(-0.5*pf.probSize()[per_dim])){
+                  vecp0p1[per_dim] += pf.probSize()[per_dim];
+                }
+                if (vecp0p2[per_dim]>(0.5*pf.probSize()[per_dim])){
+                  vecp0p2[per_dim] -= pf.probSize()[per_dim];
+                } else if (vecp0p2[per_dim]<(-0.5*pf.probSize()[per_dim])){
+                  vecp0p2[per_dim] += pf.probSize()[per_dim];
+                }
+              }
+            }
+            
+
+            Area += 0.5*sqrt(
+              pow( vecp0p1[1]*vecp0p2[2]
+                  -vecp0p1[2]*vecp0p2[1], 2)
+
+              + pow( vecp0p1[2]*vecp0p2[0]
+                    -vecp0p1[0]*vecp0p2[2], 2)
+
+              + pow( vecp0p1[0]*vecp0p2[1]
+                    -vecp0p1[1]*vecp0p2[0], 2) );
+          }
+        }
+#elif AMREX_SPACEDIM==2
+        for (std::set<Element>::const_iterator it = eltSet.begin(); it != eltSet.end(); ++it) {
+          const Element& elt = *it;
+          if (elt.size()==2) {
+            if (elt[0]>=sortedNodes.size() || elt[1]>=sortedNodes.size()) {
+              std::cerr << "Accessing node past end: " << elt[0] << ", " << elt[1] << std::endl;
+            }
+            const Real* p0 = sortedNodes[elt[0]]->m_vec;
+            const Real* p1 = sortedNodes[elt[1]]->m_vec;
+
+            Vector<Real> vecp0p1(AMREX_SPACEDIM);
+
+            for (int i=0; i<AMREX_SPACEDIM; ++i) {
+              vecp0p1[i] = p1[i] - p0[i];
+            }
+
+            if (geoms[0].isAnyPeriodic()) {  // Only enter the loop if periodic
+              int per_dim = 0;
+              for (int i = 0; i < is_per_dim.size(); ++i) {
+                per_dim = is_per_dim[i];
+                if (vecp0p1[per_dim]>(0.5*pf.probSize()[per_dim])){
+                  vecp0p1[per_dim] -= pf.probSize()[per_dim];
+                } else if (vecp0p1[per_dim]<(-0.5*pf.probSize()[per_dim])){
+                  vecp0p1[per_dim] += pf.probSize()[per_dim];
+                }
+              }
+            }
+
+            Area += sqrt(
+              pow( vecp0p1[0], 2)
+              + pow( vecp0p1[1], 2) );
+          }
+          
+        }
+#endif
+        Print() << "Total area = " << Area << '\n';
+        std::string outarea_string = infile + "_" + "area";
+        std::ofstream areastream(outarea_string);
+        areastream << Area;
+        areastream.close();
+      }
+
+      const Real end_time_arout = ParallelDescriptor::second();
+      const Real arout_time = end_time_arout - strt_time_arout;
+      std::cout << "Area calculation time: " << arout_time << '\n';
+
       const Real strt_time_sout = ParallelDescriptor::second();
       bool writeSurf = true;
       pp.query("writeSurf",writeSurf);
@@ -1910,7 +2043,7 @@ main (int   argc,
             }
           }
           // Get back some memory
-          //eltSet.clear();
+          eltSet.clear();
 
           int nNodeSize = sortedNodes[0]->m_size;
 
@@ -2232,58 +2365,6 @@ main (int   argc,
       const Real sout_time = end_time_sout - strt_time_sout;
       std::cout << "Surface output time: " << sout_time << '\n';
 
-      // Compute area of isosurface
-
-      bool computeArea = false;
-      pp.query("computeArea",computeArea);
-      if (computeArea)  {
-        Real Area = 0;
-#if AMREX_SPACEDIM==3
-        for (std::set<Element>::const_iterator it = eltSet.begin(); it != eltSet.end(); ++it) {
-          const Element& elt = *it;
-          if (elt.size()==3) {
-            if (elt[0]>=sortedNodes.size() || elt[1]>=sortedNodes.size() || elt[2]>=sortedNodes.size()) {
-              std::cerr << "Accessing node past end: " << elt[0] << ", " << elt[1] << ", " << elt[2] << std::endl;
-            }
-
-            const Real* p0 = sortedNodes[elt[0]]->m_vec;
-            const Real* p1 = sortedNodes[elt[1]]->m_vec;
-            const Real* p2 = sortedNodes[elt[2]]->m_vec;
-
-            Area += 0.5*sqrt(
-              pow(( p1[1] - p0[1])*(p2[2]-p0[2])
-                  -(p1[2] - p0[2])*(p2[1]-p0[1]), 2)
-
-              + pow(( p1[2] - p0[2])*(p2[0]-p0[0])
-                    -(p1[0] - p0[0])*(p2[2]-p0[2]), 2)
-
-              + pow(( p1[0] - p0[0])*(p2[1]-p0[1])
-                    -(p1[1] - p0[1])*(p2[0]-p0[0]), 2) );
-          }
-        }
-#elif AMREX_SPACEDIM==2
-        for (std::set<Element>::const_iterator it = eltSet.begin(); it != eltSet.end(); ++it) {
-          const Element& elt = *it;
-          if (elt.size()==2) {
-            if (elt[0]>=sortedNodes.size() || elt[1]>=sortedNodes.size()) {
-              std::cerr << "Accessing node past end: " << elt[0] << ", " << elt[1] << std::endl;
-            }
-            const Real* p0 = sortedNodes[elt[0]]->m_vec;
-            const Real* p1 = sortedNodes[elt[1]]->m_vec;
-
-            Area += sqrt(
-              pow(( p1[0] - p0[0]), 2)
-              + pow(( p1[1] - p0[1]), 2) );
-          }
-          
-        }
-#endif
-        Print() << "Total area = " << Area << '\n';
-        std::string outarea_string = infile + "_" + "area";
-        std::ofstream areastream(outarea_string);
-        areastream << Area;
-        areastream.close();
-      }
     } // IOProc
   }
   amrex::Finalize();
