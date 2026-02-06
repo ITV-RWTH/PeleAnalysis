@@ -1190,31 +1190,6 @@ Real tetVol(const dim3& A, const dim3& B,
 #endif
 
 
-Real wedge_volume(const Array<dim3,AMREX_SPACEDIM>& elt1,
-                  const Array<dim3,AMREX_SPACEDIM>& elt2)
-{
-#if AMREX_SPACEDIM == 2
-  // 2D: quadrilateral / parallelogram
-  // elt1 = [A,B], el 2 = [C,D]  (N==2)
-  const dim3& A = elt1[0];
-  const dim3& B = elt1[1];
-  const dim3& C = elt2[0];
-  const dim3& D = elt2[1];	
-  return triArea(A,B,C) + triArea(A,C,D);
-#else
-  // 3D: triangular prism / wedge
-  // elt1 = [A,B,C], elt2 = [D,E,F]
-  const dim3& A = elt1[0];
-  const dim3& B = elt1[1];
-  const dim3& C = elt1[2];
-  const dim3& D = elt2[0];
-  const dim3& E = elt2[1];
-  const dim3& F = elt2[2];
-  
-  return tetVol(A,B,C,E) + tetVol(A,D,E,F) + tetVol(A,C,E,F);
-#endif
-}
-
 Real elt_area(const Array<dim3,AMREX_SPACEDIM>& elt) {
 #if AMREX_SPACEDIM == 2
   // Line segment length
@@ -1246,6 +1221,31 @@ Real elt_area(const Array<dim3,AMREX_SPACEDIM>& elt) {
 #endif
 }
 
+
+Real wedge_volume(const Array<dim3,AMREX_SPACEDIM>& elt1,
+                  const Array<dim3,AMREX_SPACEDIM>& elt2)
+{
+#if AMREX_SPACEDIM == 2
+  // 2D: quadrilateral / parallelogram
+  // elt1 = [A,B], el 2 = [C,D]  (N==2)
+  const dim3& A = elt1[0];
+  const dim3& B = elt1[1];
+  const dim3& C = elt2[0];
+  const dim3& D = elt2[1];	
+  return triArea(A,B,C) + triArea(A,C,D);
+#else
+  // 3D: triangular prism / wedge
+  // elt1 = [A,B,C], elt2 = [D,E,F]
+  const dim3& A = elt1[0];
+  const dim3& B = elt1[1];
+  const dim3& C = elt1[2];
+  const dim3& D = elt2[0];
+  const dim3& E = elt2[1];
+  const dim3& F = elt2[2];
+  
+  return tetVol(A,B,C,E) + tetVol(A,D,E,F) + tetVol(A,C,E,F);
+#endif
+}
 
 
 // -----------------------------------------------------------------------------
