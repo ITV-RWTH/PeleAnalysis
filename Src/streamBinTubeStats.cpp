@@ -78,12 +78,34 @@ main (int   argc,
   }
   Print() << std::endl;
 
-  // Peroiodicity not properly implemented yet, so stop here
-  // Workaround: run isosurface, partStream, and streamBinTubeStats with is_per = 0 0 0  
+  // Create a vector of periodic dims for reduced loop size
+  int is_per_sum = 0;
+  for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+      is_per_sum += is_per[idim];
+  }
+  Vector<int> is_per_dim(is_per_sum,0);
+  int is_per_dim_ix = 0;
+  for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+      if (is_per[idim]==1) {
+        is_per_dim[is_per_dim_ix] = idim;
+        is_per_dim_ix++;
+      }
+  }
+
+  // Get domain size for periodicy treatment
+  Vector<Real> domain_size(AMREX_SPACEDIM,-1.0);
+  pp.queryarr("domain_size",domain_size,-1.0,AMREX_SPACEDIM);
+  Print() << "Domain size assumed for this case: ";
+  for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+    Print() << domain_size[idim] << " ";
+  }
+  Print() << std::endl;
+
+  // Peroiodicity only works with domain size  
   AMREX_ALWAYS_ASSERT(AMREX_D_TERM(
-      (is_per[0] == 0), 
-      && (is_per[1] == 0), 
-      && (is_per[2] == 0)));
+         ((is_per[0] == 0) || (domain_size[0] != -1.0)), 
+      && ((is_per[1] == 0) || (domain_size[1] != -1.0)), 
+      && ((is_per[2] == 0) || (domain_size[2] != -1.0))));
 
 
   std::string fuelName="H2";
@@ -294,7 +316,7 @@ main (int   argc,
       }
     }
     // find area
-    eltArea[iElt] = elt_area(elt1); //(A,B,C)
+    eltArea[iElt] = elt_area(elt1,is_per_dim,domain_size); //(A,B,C)
     // keep a running total
     surfaceArea+=eltArea[iElt];
     
@@ -306,7 +328,7 @@ main (int   argc,
 	  elt2[d1][d2] = streamData[sIdx[iElt][d1]][nPtsOnStream*d2+iPt]; 
 	}
       }
-      Real vol = wedge_volume(elt1,elt2);
+      Real vol = wedge_volume(elt1,elt2,is_per_dim,domain_size);
       eltVol[iElt] += vol;
       totalVol += vol;
     }
@@ -385,7 +407,7 @@ main (int   argc,
       }
     }
     for (iInt=0; iInt<nInt; iInt++) {
-      surfInt[iElt][iInt] = calcIntegral(intIdx[iInt],nPtsOnStream,localStreamData,areaLoc);
+      surfInt[iElt][iInt] = calcIntegral(intIdx[iInt],nPtsOnStream,localStreamData,areaLoc,is_per_dim,domain_size);
     }
     int outComp;
     for (iDerFlag=0; iDerFlag<nDerFlag; iDerFlag++) {
@@ -401,7 +423,7 @@ main (int   argc,
      }
      if (derCompsIn[iDerFlag]=="reactionZoneThickness") {
        outComp=derIdxOut[iDerFlag][0];
-       surfDer[iElt][outComp] = calcIntegral(derIdxIn[iDerFlag][0],nPtsOnStream,localStreamData,areaLoc)/calcMax(derIdxIn[iDerFlag][0],nPtsOnStream,localStreamData);
+       surfDer[iElt][outComp] = calcIntegral(derIdxIn[iDerFlag][0],nPtsOnStream,localStreamData,areaLoc,is_per_dim,domain_size)/calcMax(derIdxIn[iDerFlag][0],nPtsOnStream,localStreamData);
        if (std::isfinite(surfDer[iElt][outComp])) {
 	 filedelta += surfDer[iElt][outComp]*areaLoc;
        } else {
@@ -412,9 +434,9 @@ main (int   argc,
        outComp = derIdxOut[iDerFlag][0];
        // cap the volume of element that can contribute to the integral
        if (maxVolFac>0.) {
-	 surfDer[iElt][outComp] = calcCappedIntegral(derIdxIn[iDerFlag][0],nPtsOnStream,localStreamData,areaLoc,maxVolFac)/rhoY;
+	 surfDer[iElt][outComp] = calcCappedIntegral(derIdxIn[iDerFlag][0],nPtsOnStream,localStreamData,areaLoc,maxVolFac,is_per_dim,domain_size)/rhoY;
        } else {
-	 surfDer[iElt][outComp] = calcIntegral(derIdxIn[iDerFlag][0],nPtsOnStream,localStreamData,areaLoc)/rhoY;
+	 surfDer[iElt][outComp] = calcIntegral(derIdxIn[iDerFlag][0],nPtsOnStream,localStreamData,areaLoc,is_per_dim,domain_size)/rhoY;
        }
 
        // sum for mean
@@ -472,7 +494,7 @@ main (int   argc,
 		    nPtsOnReducedStream -= 1;
 		  }
 		  outComp = derIdxOut[iDerFlag][0];
-		  surfDer[iElt][outComp] = calcAdjustedIntegral(derIdxIn[iDerFlag][0],nPtsOnStream,nPtsOnReducedStream,localStreamData,areaLoc)/rhoY;
+		  surfDer[iElt][outComp] = calcAdjustedIntegral(derIdxIn[iDerFlag][0],nPtsOnStream,nPtsOnReducedStream,localStreamData,areaLoc,is_per_dim,domain_size)/rhoY;
 		  outComp = derIdxOut[iDerFlag][1];
 		  surfDer[iElt][outComp] = 1;
 		} else {
@@ -757,7 +779,12 @@ Real calcMax(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACEDIM>& 
 // calculate the integral over the stream tube
 //
 
-Real calcIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACEDIM>& streamData, Real eltArea)
+Real calcIntegral(int compIdx, 
+                  int nPtsOnStream, 
+                  Array<Vector<Real>,AMREX_SPACEDIM>& streamData, 
+                  Real eltArea,
+                  const Vector<int>& is_per_dim, 
+                  const Vector<Real>& domain_size)
 {
   Real integral = 0.;
   
@@ -773,7 +800,7 @@ Real calcIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACED
       val1[d1] = streamData[d1][nPtsOnStream*compIdx+iPt-1];
       val2[d1] = streamData[d1][nPtsOnStream*compIdx+iPt];
     }
-    integral += wedge_volume_int(elt1,val1,elt2,val2);
+    integral += wedge_volume_int(elt1,val1,elt2,val2,is_per_dim,domain_size);
   } 
   integral /= eltArea;
   return integral;
@@ -783,7 +810,13 @@ Real calcIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACED
 // calculate the integral, but cap the contribution by max volume
 //
 
-Real calcCappedIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACEDIM>& streamData, Real eltArea, Real maxVolFac)
+Real calcCappedIntegral(int compIdx, 
+                        int nPtsOnStream, 
+                        Array<Vector<Real>,AMREX_SPACEDIM>& streamData, 
+                        Real eltArea, 
+                        Real maxVolFac, 
+                        const Vector<int>& is_per_dim, 
+                        const Vector<Real>& domain_size)
 {
 
   Array<dim3,AMREX_SPACEDIM> elt1, elt2;
@@ -799,7 +832,7 @@ Real calcCappedIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_
 	elt2[d1][d2] = streamData[d1][nPtsOnStream*d2+surfPt+iPt];
       }
     }
-    refVol += 0.5*wedge_volume(elt1,elt2);
+    refVol += 0.5*wedge_volume(elt1,elt2,is_per_dim,domain_size);
   }
   // set the maxVol to the factor passed in times this reference volume
   Real maxVol = maxVolFac*refVol;
@@ -823,9 +856,9 @@ Real calcCappedIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_
     // if volume of the element is bigger than the maximum reference volume,
     // then cap the contribution to the integral with volFac...
     // (should probably check that total consumption doesn't get missed)
-    Real myVol = wedge_volume(elt1,elt2);
+    Real myVol = wedge_volume(elt1,elt2,is_per_dim,domain_size);
     Real volFac = min(myVol,maxVol)/(myVol+1.e-40);
-    integral += volFac*wedge_volume_int(elt1,val1,elt2,val2);
+    integral += volFac*wedge_volume_int(elt1,val1,elt2,val2,is_per_dim,domain_size);
   } 
   integral /= eltArea;
   return integral;
@@ -836,7 +869,13 @@ Real calcCappedIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_
 //
 
 
-Real calcAdjustedIntegral(int compIdx, int nPtsOnStream, int nPtsOnReducedStream, Array<Vector<Real>,AMREX_SPACEDIM>& streamData, Real eltArea)
+Real calcAdjustedIntegral(int compIdx, 
+                          int nPtsOnStream, 
+                          int nPtsOnReducedStream, 
+                          Array<Vector<Real>,AMREX_SPACEDIM>& streamData, 
+                          Real eltArea,
+                          const Vector<int>& is_per_dim, 
+                          const Vector<Real>& domain_size)
 {
   Real integral = 0.;
   int diff = (nPtsOnStream - nPtsOnReducedStream)/2;
@@ -852,7 +891,7 @@ Real calcAdjustedIntegral(int compIdx, int nPtsOnStream, int nPtsOnReducedStream
       val1[d1] = streamData[d1][nPtsOnStream*compIdx+iPt-1];
       val2[d1] = streamData[d1][nPtsOnStream*compIdx+iPt];
     }
-    integral += wedge_volume_int(elt1,val1,elt2,val2);
+    integral += wedge_volume_int(elt1,val1,elt2,val2,is_per_dim,domain_size);
   } 
   integral /= eltArea;
   return integral;
@@ -1160,27 +1199,74 @@ writeSurfaceBasic(std::string infile,
   os.close();
 }
 
+// -----------------------------------------------------------------------------
+// Helper: correct vector for periodicity
+// -----------------------------------------------------------------------------
+
+void correct_per(Vector<dim3>& vecs, 
+                 const Vector<int>& is_per_dim, 
+                 const Vector<Real>& domain_size)
+{
+  int per_dim = 0;
+  for (int j = 0; j<vecs.size(); j++) {
+    dim3& vec = vecs[j];
+    for (int i = 0; i < is_per_dim.size(); ++i) {
+      per_dim = is_per_dim[i];
+      if (vec[per_dim]>(0.5*domain_size[per_dim])){
+        vec[per_dim] -= domain_size[per_dim];
+      } else if (vec[per_dim]<(-0.5*domain_size[per_dim])){
+        vec[per_dim] += domain_size[per_dim];
+      }
+    }
+  }
+
+  return;
+}
+
 #if AMREX_SPACEDIM == 2
 // -----------------------------------------------------------------------------
 // Helper: area of triangle (2D)
 // -----------------------------------------------------------------------------
-Real triArea(const dim3& A, const dim3& B, const dim3& C)
+Real triArea(const dim3& A, const dim3& B, const dim3& C, 
+             const Vector<int>& is_per_dim, 
+             const Vector<Real>& domain_size)
 {
-  return half * std::abs((B[0]-A[0])*(C[1]-A[1]) - (C[0]-A[0])*(B[1]-A[1]));
+  Vector<dim3> vecs (2);
+  dim3& vecAB = vecs[0];
+  dim3& vecAC = vecs[1];
+
+  for (int i=0; i<AMREX_SPACEDIM; ++i) {
+    vecAB[i] = B[i] - A[i];
+    vecAC[i] = C[i] - A[i];
+  }
+
+  correct_per(vecs, is_per_dim, domain_size);
+
+  return half * std::abs(vecAB[0]*vecAC[1] - vecAC[0]*vecAB[1]);
 }
 #else
 // -----------------------------------------------------------------------------
 // Helper: volume of tetrahedron (3D)
 // -----------------------------------------------------------------------------
 Real tetVol(const dim3& A, const dim3& B,
-	    const dim3& C, const dim3& D)
-{
-  dim3 V1, V2, V3, cross;
+	          const dim3& C, const dim3& D, 
+            const Vector<int>& is_per_dim, 
+            const Vector<Real>& domain_size)
+{ 
+  Vector<dim3> vecs (3);
+  dim3& V1 = vecs[0];
+  dim3& V2 = vecs[1];
+  dim3& V3 = vecs[2];
+
+  dim3 cross;
   for (int i=0;i<3;++i) {
     V1[i] = B[i]-A[i];
     V2[i] = C[i]-A[i];
     V3[i] = D[i]-A[i];
   }
+
+  correct_per(vecs,is_per_dim,domain_size);
+
   cross[0] = V2[1]*V3[2] - V2[2]*V3[1];
   cross[1] = V2[2]*V3[0] - V2[0]*V3[2];
   cross[2] = V2[0]*V3[1] - V2[1]*V3[0];
@@ -1190,32 +1276,47 @@ Real tetVol(const dim3& A, const dim3& B,
 #endif
 
 
-Real elt_area(const Array<dim3,AMREX_SPACEDIM>& elt) {
+Real elt_area(const Array<dim3,AMREX_SPACEDIM>& elt, 
+              const Vector<int>& is_per_dim, 
+              const Vector<Real>& domain_size) {
 #if AMREX_SPACEDIM == 2
   // Line segment length
+  Vector<dim3> vecs (1);
+  dim3& V1 = vecs[0];
+
+  for (int i = 0; i < AMREX_SPACEDIM; ++i) {
+    V1[i] = elt[1][i] - elt[0][i];
+  }
+
+  correct_per(vecs, is_per_dim, domain_size);
+
   Real sum = 0;
-  for (size_t i = 0; i < AMREX_SPACEDIM; ++i) {
-    Real d = elt[1][i] - elt[0][i];
-    sum += d*d;
+  for (int i = 0; i < AMREX_SPACEDIM; ++i) {
+    sum += V1[i]*V1[i];
   }
   return std::sqrt(sum);
 #else
   // Triangle area
-  dim3 R1, R2, R3;
+  Vector<dim3> vecs (2);
+  dim3& V1 = vecs[0];
+  dim3& V2 = vecs[1];
+  dim3 cross;
 
   for (int i=0; i<AMREX_SPACEDIM; ++i) {
-    R1[i] = elt[1][i] - elt[0][i]; // B-A
-    R2[i] = elt[2][i] - elt[0][i]; // C-A
+    V1[i] = elt[1][i] - elt[0][i]; // B-A
+    V2[i] = elt[2][i] - elt[0][i]; // C-A
   }
   
+  correct_per(vecs, is_per_dim, domain_size);
+  
   // Cross product
-  R3[0] = R1[1]*R2[2] - R2[1]*R1[2];
-  R3[1] = R1[2]*R2[0] - R2[2]*R1[0];
-  R3[2] = R1[0]*R2[1] - R2[0]*R1[1];
+  cross[0] = V1[1]*V2[2] - V2[1]*V1[2];
+  cross[1] = V1[2]*V2[0] - V2[2]*V1[0];
+  cross[2] = V1[0]*V2[1] - V2[0]*V1[1];
   
   Real result = 0;
   for (int i=0; i<3; ++i) {
-    result += R3[i]*R3[i];
+    result += cross[i]*cross[i];
   }
   return 0.5 * std::sqrt(result);
 #endif
@@ -1223,7 +1324,9 @@ Real elt_area(const Array<dim3,AMREX_SPACEDIM>& elt) {
 
 
 Real wedge_volume(const Array<dim3,AMREX_SPACEDIM>& elt1,
-                  const Array<dim3,AMREX_SPACEDIM>& elt2)
+                  const Array<dim3,AMREX_SPACEDIM>& elt2,
+                  const Vector<int>& is_per_dim, 
+                  const Vector<Real>& domain_size)
 {
 #if AMREX_SPACEDIM == 2
   // 2D: quadrilateral / parallelogram
@@ -1232,7 +1335,7 @@ Real wedge_volume(const Array<dim3,AMREX_SPACEDIM>& elt1,
   const dim3& B = elt1[1];
   const dim3& C = elt2[0];
   const dim3& D = elt2[1];	
-  return triArea(A,B,C) + triArea(A,C,D);
+  return triArea(A,B,C,is_per_dim,domain_size) + triArea(A,C,D,is_per_dim,domain_size);
 #else
   // 3D: triangular prism / wedge
   // elt1 = [A,B,C], elt2 = [D,E,F]
@@ -1243,7 +1346,7 @@ Real wedge_volume(const Array<dim3,AMREX_SPACEDIM>& elt1,
   const dim3& E = elt2[1];
   const dim3& F = elt2[2];
   
-  return tetVol(A,B,C,E) + tetVol(A,D,E,F) + tetVol(A,C,E,F);
+  return tetVol(A,B,C,E,is_per_dim,domain_size) + tetVol(A,D,E,F,is_per_dim,domain_size) + tetVol(A,C,E,F,is_per_dim,domain_size);
 #endif
 }
 
@@ -1256,7 +1359,9 @@ Real wedge_volume(const Array<dim3,AMREX_SPACEDIM>& elt1,
 Real wedge_volume_int(const Array<dim3,AMREX_SPACEDIM>& elt1,
                       const dim3& val1,
                       const Array<dim3,AMREX_SPACEDIM>& elt2,
-                      const dim3& val2)
+                      const dim3& val2,
+                      const Vector<int>& is_per_dim, 
+                      const Vector<Real>& domain_size)
 {
 #if AMREX_SPACEDIM == 2
   const dim3& A = elt1[0];
@@ -1268,10 +1373,10 @@ Real wedge_volume_int(const Array<dim3,AMREX_SPACEDIM>& elt1,
   Real vC = val2[0], vD = val2[1];
   
   // Sub-areas like sub-tetrahedra in 3D
-  Real area_ABC = triArea(A,B,C);
-  Real area_ACD = triArea(A,C,D);
-  Real area_ABD = triArea(A,B,D);
-  Real area_BCD = triArea(B,C,D);
+  Real area_ABC = triArea(A,B,C,is_per_dim,domain_size);
+  Real area_ACD = triArea(A,C,D,is_per_dim,domain_size);
+  Real area_ABD = triArea(A,B,D,is_per_dim,domain_size);
+  Real area_BCD = triArea(B,C,D,is_per_dim,domain_size);
   
   // Integrals over sub-triangles
   Real int_1 = (vA+vB+vC) * area_ABC / 3.0;
@@ -1291,18 +1396,18 @@ Real wedge_volume_int(const Array<dim3,AMREX_SPACEDIM>& elt1,
   const dim3& F = elt2[2]; const Real vF = val2[2];
   
   // replicate old trusted method
-  const Real vol_EABC = tetVol(A,B,C,E);
-  const Real vol_ADEF = tetVol(A,D,E,F);
-  const Real vol_ACEF = tetVol(C,E,F,A);
-  const Real vol_DABC = tetVol(A,B,C,D);
-  const Real vol_FABC = tetVol(A,B,C,F);
-  const Real vol_BDEF = tetVol(B,D,E,F);
-  const Real vol_CDEF = tetVol(C,D,E,F);
-  const Real vol_ACED = tetVol(C,E,D,A);
-  const Real vol_BCDF = tetVol(B,C,D,F);
-  const Real vol_BCDE = tetVol(B,C,D,E);
-  const Real vol_ABDF = tetVol(B,D,F,A);
-  const Real vol_ABEF = tetVol(B,E,F,A);
+  const Real vol_EABC = tetVol(A,B,C,E,is_per_dim,domain_size);
+  const Real vol_ADEF = tetVol(A,D,E,F,is_per_dim,domain_size);
+  const Real vol_ACEF = tetVol(C,E,F,A,is_per_dim,domain_size);
+  const Real vol_DABC = tetVol(A,B,C,D,is_per_dim,domain_size);
+  const Real vol_FABC = tetVol(A,B,C,F,is_per_dim,domain_size);
+  const Real vol_BDEF = tetVol(B,D,E,F,is_per_dim,domain_size);
+  const Real vol_CDEF = tetVol(C,D,E,F,is_per_dim,domain_size);
+  const Real vol_ACED = tetVol(C,E,D,A,is_per_dim,domain_size);
+  const Real vol_BCDF = tetVol(B,C,D,F,is_per_dim,domain_size);
+  const Real vol_BCDE = tetVol(B,C,D,E,is_per_dim,domain_size);
+  const Real vol_ABDF = tetVol(B,D,F,A,is_per_dim,domain_size);
+  const Real vol_ABEF = tetVol(B,E,F,A,is_per_dim,domain_size);
   
   const Real int_1 = ((vD+vA+vB+vC)*vol_DABC +
 		      (vB+vD+vE+vF)*vol_BDEF +
