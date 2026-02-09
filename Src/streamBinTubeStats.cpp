@@ -122,8 +122,9 @@ main (int   argc,
   }
 
   // Get domain size for periodicy treatment
-  Vector<Real> domain_size(AMREX_SPACEDIM,-1.0);
-  pp.queryarr("domain_size",domain_size);
+  Vector<Real> pp_domain_size(AMREX_SPACEDIM, -1.0);
+  pp.queryarr("domain_size",pp_domain_size);
+  Array<Real, AMREX_SPACEDIM> domain_size = {AMREX_D_DECL(pp_domain_size[0],pp_domain_size[1],pp_domain_size[2])};
   Print() << "Domain size assumed for this case: ";
   for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
     Print() << domain_size[idim] << " ";
@@ -813,7 +814,7 @@ Real calcIntegral(int compIdx,
                   Array<Vector<Real>,AMREX_SPACEDIM>& streamData, 
                   Real eltArea,
                   const Vector<int>& is_per_dim, 
-                  const Vector<Real>& domain_size)
+                  const Array<Real,AMREX_SPACEDIM>& domain_size)
 {
   Real integral = 0.;
   
@@ -845,7 +846,7 @@ Real calcCappedIntegral(int compIdx,
                         Real eltArea, 
                         Real maxVolFac, 
                         const Vector<int>& is_per_dim, 
-                        const Vector<Real>& domain_size)
+                        const Array<Real,AMREX_SPACEDIM>& domain_size)
 {
 
   Array<dim3,AMREX_SPACEDIM> elt1, elt2;
@@ -904,7 +905,7 @@ Real calcAdjustedIntegral(int compIdx,
                           Array<Vector<Real>,AMREX_SPACEDIM>& streamData, 
                           Real eltArea,
                           const Vector<int>& is_per_dim, 
-                          const Vector<Real>& domain_size)
+                          const Array<Real,AMREX_SPACEDIM>& domain_size)
 {
   Real integral = 0.;
   int diff = (nPtsOnStream - nPtsOnReducedStream)/2;
@@ -1234,7 +1235,7 @@ writeSurfaceBasic(std::string infile,
 
 void correct_per(Vector<dim3>& vecs, 
                  const Vector<int>& is_per_dim, 
-                 const Vector<Real>& domain_size)
+                 const Array<Real,AMREX_SPACEDIM>& domain_size)
 {
   int per_dim = 0;
   for (int j = 0; j<vecs.size(); j++) {
@@ -1258,7 +1259,7 @@ void correct_per(Vector<dim3>& vecs,
 // -----------------------------------------------------------------------------
 Real triArea(const dim3& A, const dim3& B, const dim3& C, 
              const Vector<int>& is_per_dim, 
-             const Vector<Real>& domain_size)
+             const Array<Real,AMREX_SPACEDIM>& domain_size)
 {
   Vector<dim3> vecs (2);
   dim3& vecAB = vecs[0];
@@ -1280,7 +1281,7 @@ Real triArea(const dim3& A, const dim3& B, const dim3& C,
 Real tetVol(const dim3& A, const dim3& B,
 	          const dim3& C, const dim3& D, 
             const Vector<int>& is_per_dim, 
-            const Vector<Real>& domain_size)
+            const Array<Real,AMREX_SPACEDIM>& domain_size)
 { 
   Vector<dim3> vecs (3);
   dim3& V1 = vecs[0];
@@ -1307,7 +1308,7 @@ Real tetVol(const dim3& A, const dim3& B,
 
 Real elt_area(const Array<dim3,AMREX_SPACEDIM>& elt, 
               const Vector<int>& is_per_dim, 
-              const Vector<Real>& domain_size) {
+              const Array<Real,AMREX_SPACEDIM>& domain_size) {
 #if AMREX_SPACEDIM == 2
   // Line segment length
   Vector<dim3> vecs (1);
@@ -1355,7 +1356,7 @@ Real elt_area(const Array<dim3,AMREX_SPACEDIM>& elt,
 Real wedge_volume(const Array<dim3,AMREX_SPACEDIM>& elt1,
                   const Array<dim3,AMREX_SPACEDIM>& elt2,
                   const Vector<int>& is_per_dim, 
-                  const Vector<Real>& domain_size)
+                  const Array<Real,AMREX_SPACEDIM>& domain_size)
 {
 #if AMREX_SPACEDIM == 2
   // 2D: quadrilateral / parallelogram
@@ -1390,7 +1391,7 @@ Real wedge_volume_int(const Array<dim3,AMREX_SPACEDIM>& elt1,
                       const Array<dim3,AMREX_SPACEDIM>& elt2,
                       const dim3& val2,
                       const Vector<int>& is_per_dim, 
-                      const Vector<Real>& domain_size)
+                      const Array<Real,AMREX_SPACEDIM>& domain_size)
 {
 #if AMREX_SPACEDIM == 2
   const dim3& A = elt1[0];

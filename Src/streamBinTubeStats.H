@@ -14,11 +14,11 @@ Real calcAvgVal(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACEDIM
 
 Real calcMax(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACEDIM>& streamData);
 
-Real calcIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACEDIM>& streamData, Real eltArea, const Vector<int>& is_per_dim, const Vector<Real>& domain_size);
+Real calcIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACEDIM>& streamData, Real eltArea, const Vector<int>& is_per_dim, const Array<Real,AMREX_SPACEDIM>& domain_size);
 
-Real calcCappedIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACEDIM>& streamData, Real eltArea, Real maxVolFac, const Vector<int>& is_per_dim, const Vector<Real>& domain_size);
+Real calcCappedIntegral(int compIdx, int nPtsOnStream, Array<Vector<Real>,AMREX_SPACEDIM>& streamData, Real eltArea, Real maxVolFac, const Vector<int>& is_per_dim, const Array<Real,AMREX_SPACEDIM>& domain_size);
 
-Real calcAdjustedIntegral(int compIdx, int nPtsOnStream, int nPtsOnReducedStream, Array<Vector<Real>,AMREX_SPACEDIM>& streamData, Real eltArea, const Vector<int>& is_per_dim, const Vector<Real>& domain_size);
+Real calcAdjustedIntegral(int compIdx, int nPtsOnStream, int nPtsOnReducedStream, Array<Vector<Real>,AMREX_SPACEDIM>& streamData, Real eltArea, const Vector<int>& is_per_dim, const Array<Real,AMREX_SPACEDIM>& domain_size);
 
 //int streamReduce(int nPtsOnStream, Vector<Vector<Real>>& streamData, Real eltArea, Real eltVol);
 
@@ -58,7 +58,7 @@ writeSurfaceBasic(std::string infile,
 		  int nDer,  Vector<std::string>& derComps, Vector<Vector<Real>>& surfDer);
 
 Real
-elt_area(const Array<dim3,AMREX_SPACEDIM>& elt, const Vector<int>& is_per_dim, const Vector<Real>& domain_size);
+elt_area(const Array<dim3,AMREX_SPACEDIM>& elt, const Vector<int>& is_per_dim, const Array<Real,AMREX_SPACEDIM>& domain_size);
 
 #if AMREX_SPACEDIM == 2
 // -----------------------------------------------------------------------------
@@ -66,21 +66,21 @@ elt_area(const Array<dim3,AMREX_SPACEDIM>& elt, const Vector<int>& is_per_dim, c
 // -----------------------------------------------------------------------------
 Real triArea(const dim3& A, const dim3& B, const dim3& C, 
 	         const Vector<int>& is_per_dim, 
-			 const Vector<Real>& domain_size);
+			 const Array<Real,AMREX_SPACEDIM>& domain_size);
 #elif AMREX_SPACEDIM == 3
 // -----------------------------------------------------------------------------
 // Helper: volume of tetrahedron (3D)
 // -----------------------------------------------------------------------------
 Real tetVol(const dim3& A, const dim3& B, const dim3& C, const dim3& D, 
 	        const Vector<int>& is_per_dim, 
-			const Vector<Real>& domain_size);
+			const Array<Real,AMREX_SPACEDIM>& domain_size);
 #endif
 
 
 Real wedge_volume(const Array<dim3,AMREX_SPACEDIM>& elt1,
                   const Array<dim3,AMREX_SPACEDIM>& elt2, 
 				  const Vector<int>& is_per_dim, 
-				  const Vector<Real>& domain_size);
+				  const Array<Real,AMREX_SPACEDIM>& domain_size);
 // -----------------------------------------------------------------------------
 // Generic wedge_volume_int for 2D quadrilateral or 3D wedge
 //   - DIM = 2 → quadrilateral (A,B in first row; C,D in second row)
@@ -91,4 +91,4 @@ Real wedge_volume_int(const Array<dim3,AMREX_SPACEDIM>& elt1,
                       const Array<dim3,AMREX_SPACEDIM>& elt2,
                       const dim3& val2, 
 					  const Vector<int>& is_per_dim, 
-					  const Vector<Real>& domain_size);
+					  const Array<Real,AMREX_SPACEDIM>& domain_size);
