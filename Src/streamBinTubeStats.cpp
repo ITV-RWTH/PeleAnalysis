@@ -56,8 +56,8 @@ print_usage (int,
   std::cerr << "\t\t\n";
   std::cerr << "\t\t#------------------- Options for principalCurvatureZone -----------------------------------\n";
   std::cerr << "\t\t#pkzLength =                               # ???\n";
-  std::cerr << "\t\t#pkzMkVar = MeanCurvature_prog_H2          # DEF: "MeanCurvature_prog_"+fuelName; Mean curvature\n";
-  std::cerr << "\t\t#pkzGkVar = GaussianCurvature_prog_H2      # DEF: "GaussianCurvature_prog_"+fuelName; Gaussian curvature\n";
+  std::cerr << "\t\t#pkzMkVar = MeanCurvature_prog_H2          # DEF: 'MeanCurvature_prog_'+fuelName; Mean curvature\n";
+  std::cerr << "\t\t#pkzGkVar = GaussianCurvature_prog_H2      # DEF: 'GaussianCurvature_prog_'+fuelName; Gaussian curvature\n";
   std::cerr << "\t\t\n";
   std::cerr << "\t\t#------------------- Options for reactionZoneThickness ------------------------------------\n";
   std::cerr << "\t\t# Calculates local reaction thickness as l_r,loc = (integral(rztVar)) / max(rztVar) on each tube\n";
