@@ -26,10 +26,10 @@ USE_CUDA      = FALSE
 # Uncomment the desired exec
 #EBASE   = template
 #EBASE   = amrToFE
-#EBASE   = avgPlotfiles.cpp
+#EBASE   = avgPlotfiles
 #EBASE   = avgToPlane
 #EBASE   = convert2hdf5
-#EBASE   = checkIso.cpp
+#EBASE   = checkIso
 #EBASE   = combineMEF
 #EBASE   = combinePlts
 #EBASE   = conditionalMean
