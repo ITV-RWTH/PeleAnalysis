@@ -29,13 +29,13 @@ tempGradVar = "||gradtemp||"              # DEF: ModGradTemp, temperature gradie
 # Calculates local flame speed as s_l,loc = (integral(FCRVar)) / (rhoY * area) on each stream. area is the tubes' element area on the surface
 rhoY = 0.011                              # Densitiy in the unburned times (Y_b - Y_u) for FCRVar from 1D
 FCRVar = "I_R(H2)"                        # Name of the fuel source term 
-maxVolFac =                               # DEF: -1.0; Factor to cap large volumes in regions with diverging streams for numerical stability. 
+maxVolFac = 5.0                           # DEF: -1.0; Factor to cap large volumes in regions with diverging streams for numerical stability. 
                                           # Limits the maximum volume during integration to maxVolFac times the volume of the element at the isosurface. maxVolFac = -1.0 means no capping. 
                                           # Value not always needed. Check convergence!i Ballpark: >5.0 but also depends on nSteps in partStreams.
-percOfMean =                              # DEF: -1.0; ???
+#percOfMean = -1.0                         # DEF: -1.0; Path shortening parameter for 'splaying' regions. Computes the mean area to volume ratios and shortenes paths that are below a certain percentage of this value.
 
 #------------------- Options for principalCurvatureZone -----------------------------------
-#pkzLength =                               # ???
+#pkzLength = 1.293e-5                      # Basically the flame thickness. It's used to define when we have flat flame (FF in regions where |k| < 1/2*pkzLength).
 #pkzMkVar = MeanCurvature_prog_H2          # DEF: "MeanCurvature_prog_"+fuelName; Mean curvature
 #pkzGkVar = GaussianCurvature_prog_H2      # DEF: "GaussianCurvature_prog_"+fuelName; Gaussian curvature
 
