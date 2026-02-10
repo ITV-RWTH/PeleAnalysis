@@ -1140,7 +1140,11 @@ writeSurfaceTecplot(std::string infile,
   os << "ZONE T=\"streamBinTubeSurface\""
      << " N=" << nElts*AMREX_SPACEDIM
      << " E=" << nElts
+#if AMREX_SPACEDIM == 2
+     << " F=FEPOINT ET=LINSEG"
+#else
      << " F=FEPOINT ET=TRIANGLE"
+#endif
      << std::endl;
 
   // write averages
@@ -1168,12 +1172,9 @@ writeSurfaceTecplot(std::string infile,
   }
 
   // write connectivity
-#if AMREX_SPACEDIM == 2
-  int fds = nElts * 2;
-#else
-  int fds = nElts * 3;
-#endif
-  for (int iElt=1; iElt<3*nElts;)
+  int fds = nElts*static_cast<int>(AMREX_SPACEDIM);
+
+  for (int iElt=1; iElt<fds;)
     os << iElt++ << " " << iElt++ << " " << iElt++ << std::endl;
 
   os.close();
