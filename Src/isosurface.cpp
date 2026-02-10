@@ -1349,6 +1349,7 @@ main (int   argc,
       nComp++;
     }
 
+    AMREX_ASSERT(isoComp!=-1);
     AMREX_ASSERT(nComp==varnames.size());
 
     int finestLevel = pf.finestLevel();
