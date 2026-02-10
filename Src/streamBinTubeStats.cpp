@@ -990,11 +990,7 @@ void readStreamBin(std::string infile,
   std::getline(ifs,dummy);
   faceData.resize(fds);
   ifs.read((char*)faceData.dataPtr(),sizeof(int)*faceData.size());
-#if AMREX_SPACEDIM == 2
-  nElts = fds/2;
-#else
-  nElts = fds/3;
-#endif
+  nElts = fds/static_cast(AMREX_SPACEDIM);
   Print() << "nElts = " << nElts << std::endl;
 
   // close header
@@ -1103,11 +1099,7 @@ writeSurfaceFromStreamTecplot(std::string infile,
   }
 
   for (int iElt=0; iElt<nElts; iElt++) {
-#if AMREX_SPACEDIM == 2
-    int offset=iElt*2;
-#else
-    int offset=iElt*3;
-#endif
+    int offset=iElt*static_cast(AMREX_SPACEDIM);
     os << faceData[offset] << " "
        << faceData[offset+1] << " "
        << faceData[offset+2] << std::endl;
