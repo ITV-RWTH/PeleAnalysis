@@ -585,7 +585,7 @@ main (int   argc,
   
   int zoneComp = -1;
   int thermalThicknessComp = -1;
-  int reactionZoneThicknessComp = -1;
+  //int reactionZoneThicknessComp = -1;
   for (iDerFlag=0; iDerFlag<nDerFlag; iDerFlag++) {
     if (derCompsIn[iDerFlag]=="principalCurvatureZones") {
       zoneComp = derIdxOut[iDerFlag][2];
@@ -980,7 +980,7 @@ void readStreamBin(std::string infile,
   // read variable names
   variableNames.resize(nComps);
   variableNames = parseVarNames(*is);
-  if (nComps!=variableNames.size())
+  if (nComps!=static_cast<int>(variableNames.size()))
     Abort("nComps != variableNames.size()");
 
   // connectivity data
@@ -1174,8 +1174,14 @@ writeSurfaceTecplot(std::string infile,
   // write connectivity
   int fds = nElts*static_cast<int>(AMREX_SPACEDIM);
 
-  for (int iElt=1; iElt<fds;)
-    os << iElt++ << " " << iElt++ << " " << iElt++ << std::endl;
+  for (int iElt=1; iElt<fds;){
+    os << iElt << " ";
+    ++iElt;
+    os << iElt++ << " ";
+    ++iElt;
+    os << iElt++ << std::endl;
+    ++iElt;
+  }
 
   os.close();
 }
