@@ -1194,6 +1194,18 @@ writeSurfaceBasic(std::string infile,
   std::string filename=infile+"_binVolInt_basic.dat";
 
   std::ofstream os(filename.c_str(),std::ios::out);
+  #if AMREX_SPACEDIM == 2
+  std::string vars("VARIABLES = X Y area volume");
+#else
+  std::string vars("VARIABLES = X Y Z area volume");
+#endif
+  for (int iAvg=0; iAvg<nAvg; iAvg++)
+    vars += " " + avgComps[iAvg] + "_avg";
+  for (int iInt=0; iInt<nInt; iInt++)
+    vars += " " + intComps[iInt] + "_volInt";
+  for (int iDer=0; iDer<nDer; iDer++)
+    vars += " " + derComps[iDer];
+  os << vars << std::endl;
 
   // write averages
   os << std::setprecision(12);
