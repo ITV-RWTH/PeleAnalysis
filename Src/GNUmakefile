@@ -50,7 +50,7 @@ USE_CUDA      = FALSE
 #EBASE   = surfDATtoMEF
 #EBASE   = trimMEFgen
 
-# tools that need review/combining/fixing/work
+# tools that need review/combining/fixing/work.  Comment with double ## t escape from CI
 ##EBASE   = avgToPlane
 ##EBASE   = convert2hdf5
 ##EBASE   = combineMEF

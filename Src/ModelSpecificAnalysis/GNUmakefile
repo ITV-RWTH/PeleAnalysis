@@ -31,7 +31,9 @@ TINY_PROFILE = FALSE
 #EBASE=plotXtoY
 #EBASE=plotYtoX
 #EBASE=testQPDtools
-#EBASE=testTsolve
+
+# tools that need review/combining/fixing/work. Comment with double ## t escape from CI.
+##EBASE=testTsolve
 
 CEXE_sources += $(EBASE).cpp
 
