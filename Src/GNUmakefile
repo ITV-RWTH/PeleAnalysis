@@ -7,12 +7,12 @@ PELE_ANALYSIS_HOME = ..
 # to link PeleAnalysis to your versions of PELE_PHYSICS_HOME and AMREX_HOME used by 
 # PeleLMeX or PeleC, make the following lines to point to the respective directories.
 #
-#PELE_PHYSICS_HOME = ../../PelePhysics
-#AMREX_HOME = ../../PelePhysics/Submodules/amrex
+PELE_PHYSICS_HOME = ../../PelePhysics
+AMREX_HOME = ../../PelePhysics/Submodules/amrex
 
 
 # AMReX
-DEBUG	      = FALSE
+DEBUG	      = TRUE
 DIM	      = 2
 PRECISION     = DOUBLE
 
@@ -27,46 +27,42 @@ USE_CUDA      = FALSE
 #EBASE   = template
 #EBASE   = amrToFE
 #EBASE   = avgPlotfiles
-#EBASE   = avgToPlane
-#EBASE   = convert2hdf5
 #EBASE   = checkIso
-#EBASE   = combineMEF
 #EBASE   = combinePlts
 #EBASE   = conditionalMean
 #EBASE   = curvature
-#EBASE   = decimateMEF
 #EBASE   = dumpFABslice
 #EBASE   = filterPlt
 #EBASE   = flattenAMRFile
 #EBASE   = grad
 #EBASE   = integral
-#EBASE   = interp
 #EBASE   = isoMEF
 #EBASE   = isosurface
 #EBASE   = jpdf
-#EBASE   = isosurface
 #EBASE   = makePlotfile
-#EBASE   = mergeMEF
-#EBASE   = multMEF
 #EBASE   = partStream
 #EBASE   = qCriterion
-#EBASE   = regridPlt
 #EBASE   = rmsVel
 #EBASE   = scaleMEF
-#EBASE   = sliceMEF
-#EBASE   = smoothMEF
 #EBASE   = stream2plt
 #EBASE   = streamBinTubeStats
-#EBASE   = StreamData
-#EBASE   = StreamPC
 #EBASE   = subPlt
 #EBASE   = surfMEFtoDAT
 #EBASE   = surfDATtoMEF
 #EBASE   = trimMEFgen
-#EBASE   = turbfile
 
 # tools that need review/combining/fixing/work
-#EBASE   = avgToPlane
+##EBASE   = avgToPlane
+##EBASE   = convert2hdf5
+##EBASE   = combineMEF
+##EBASE   = decimateMEF
+##EBASE   = interp
+##EBASE   = mergeMEF
+##EBASE   = multMEF
+##EBASE   = regridPlt
+##EBASE   = sliceMEF
+##EBASE   = smoothMEF
+##EBASE   = turbfile
 
 
 
