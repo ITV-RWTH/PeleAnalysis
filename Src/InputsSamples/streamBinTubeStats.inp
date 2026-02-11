@@ -3,7 +3,7 @@
 #------------------- IO CONTROL -----------------------------------------------------------
 infile = plt00000_streamBin               # streamBin dir produced by partStreams
 writeSurface = 0                          # [0, 1] DEF: 1; Write a file with information (coords, avg, int, der) for each node (stream start point) and connectivity.
-writeBasic = 1                            # [0, 1] DEF: 0; Like writeSurface, but without connectivity. Reduces disk size for large surfaces.
+writeBasic = 1                            # [0, 1] DEF: 0; Like writeSurface, but without connectivity. Simplifys output for matlab and reduces disk size for large surfaces.
 writeTecplotSurfaceFromStream = 0         # [0, 1] DEF: 0; Like writeSurface, but before any operation (I guess this is a debug option).
 writeStreamsToMatlab = 0                  # [0, 1] DEF: 0; Write all stream data to matlab file.
 dumpPKZstreams = 0                        # [0, 1] DEF: 0; Output for principalCurvatureZone (PKZ) tool.
@@ -31,8 +31,8 @@ rhoY = 0.011                              # Densitiy in the unburned times (Y_b 
 FCRVar = "I_R(H2)"                        # Name of the fuel source term 
 maxVolFac = 5.0                           # DEF: -1.0; Factor to cap large volumes in regions with diverging streams for numerical stability. 
                                           # Limits the maximum volume during integration to maxVolFac times the volume of the element at the isosurface. maxVolFac = -1.0 means no capping. 
-                                          # Value not always needed. Check convergence!i Ballpark: >5.0 but also depends on nSteps in partStreams.
-#percOfMean = -1.0                         # DEF: -1.0; Path shortening parameter for 'splaying' regions. Computes the mean area to volume ratios and shortenes paths that are below a certain percentage of this value.
+                                          # Value not always needed. Check convergence! Ballpark: >5.0 but also depends on nSteps in partStreams.
+#percOfMean = -1.0                         # Deprecated. DEF: -1.0; Path shortening parameter for 'splaying' regions. Computes the mean area to volume ratios and shortenes paths that are below a certain percentage of this value.
 
 #------------------- Options for principalCurvatureZone -----------------------------------
 #pkzLength = 1.293e-5                      # Basically the flame thickness. It's used to define when we have flat flame (FF in regions where |k| < 1/2*pkzLength).

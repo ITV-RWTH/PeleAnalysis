@@ -23,7 +23,7 @@ print_usage (int,
   std::cerr << "\t\t#------------------- IO CONTROL -----------------------------------------------------------\n";
   std::cerr << "\t\tinfile = plt00000_streamBin               # streamBin dir produced by partStreams\n";
   std::cerr << "\t\twriteSurface = 0                          # [0, 1] DEF: 1; Write a file with information (coords, avg, int, der) for each node (stream start point) and connectivity.\n";
-  std::cerr << "\t\twriteBasic = 1                            # [0, 1] DEF: 0; Like writeSurface, but without connectivity. Reduces disk size for large surfaces.\n";
+  std::cerr << "\t\twriteBasic = 1                            # [0, 1] DEF: 0; Like writeSurface, but without connectivity. Simplifys output for matlab and reduces disk size for large surfaces.\n";
   std::cerr << "\t\twriteTecplotSurfaceFromStream = 0         # [0, 1] DEF: 0; Like writeSurface, but before any operation (I guess this is a debug option).\n";
   std::cerr << "\t\twriteStreamsToMatlab = 0                  # [0, 1] DEF: 0; Write all stream data to matlab file.\n";
   std::cerr << "\t\tdumpPKZstreams = 0                        # [0, 1] DEF: 0; Output for principalCurvatureZone (PKZ) tool.\n";
@@ -51,11 +51,11 @@ print_usage (int,
   std::cerr << "\t\tFCRVar = 'I_R(H2)'                        # Name of the fuel source term\n";
   std::cerr << "\t\tmaxVolFac =                               # DEF: -1.0; Factor to cap large volumes in regions with diverging streams for numerical stability.\n";
   std::cerr << "\t\t                                          # Limits the maximum volume during integration to maxVolFac times the volume of the element at the isosurface. maxVolFac = -1.0 means no capping.\n";
-  std::cerr << "\t\t                                          # Value not always needed. Check convergence!i Ballpark: >5.0 but also depends on nSteps in partStreams.\n";
-  std::cerr << "\t\tpercOfMean =                              # DEF: -1.0; ???\n";
+  std::cerr << "\t\t                                          # Value not always needed. Check convergence! Ballpark: >5.0 but also depends on nSteps in partStreams.\n";
+  std::cerr << "\t\tpercOfMean = -1.0                         # Deprecated. DEF: -1.0; Path shortening parameter for 'splaying' regions. Computes the mean area to volume ratios and shortenes paths that are below a certain percentage of this value.\n";
   std::cerr << "\t\t\n";
   std::cerr << "\t\t#------------------- Options for principalCurvatureZone -----------------------------------\n";
-  std::cerr << "\t\t#pkzLength =                               # ???\n";
+  std::cerr << "\t\t#pkzLength = 1.293e-5                      # Basically the flame thickness. It's used to define when we have flat flame (FF in regions where |k| < 1/2*pkzLength).\n";
   std::cerr << "\t\t#pkzMkVar = MeanCurvature_prog_H2          # DEF: 'MeanCurvature_prog_'+fuelName; Mean curvature\n";
   std::cerr << "\t\t#pkzGkVar = GaussianCurvature_prog_H2      # DEF: 'GaussianCurvature_prog_'+fuelName; Gaussian curvature\n";
   std::cerr << "\t\t\n";
@@ -391,7 +391,7 @@ main (int   argc,
   int numFixedElts = 0;
   Real ds=-1.0;
   //calc streamLength from first stream of first element (should all be the same)?
-  //TODO: Only the same if steps are taken in physical space, not porg_var space
+  //TODO: Only the same if steps are taken in physical space, not prog_var space
   for (int iElt=0; iElt<nElts-1; iElt++) {
     Real s1 = 0.0;
     Real s2 = 0.0;
