@@ -391,6 +391,7 @@ main (int   argc,
   int numFixedElts = 0;
   Real ds=-1.0;
   //calc streamLength from first stream of first element (should all be the same)?
+  //TODO: Only the same if steps are taken in physical space, not porg_var space
   for (int iElt=0; iElt<nElts-1; iElt++) {
     Real s1 = 0.0;
     Real s2 = 0.0;
@@ -696,7 +697,7 @@ main (int   argc,
 
   
   //dump characteristic values for this file
-  std::string filename=infile+"/characteristics.dat";
+  std::string filename=infile+"/characteristics_"+fuelName+".dat";
 
   std::ofstream os(filename.c_str(),std::ios::out);
   
@@ -756,7 +757,8 @@ main (int   argc,
   // write basic
   if (writeBasic) {
     Print() << "Writing basic file ..." << std::endl;
-    writeSurfaceBasic(infile,
+    std::string prefix=infile+ "_" + fuelName; 
+    writeSurfaceBasic(prefix,
 		      nElts, eltArea,  eltVol,  surfLocs,
 		      nAvg,  avgComps, surfAvg,
 		      nInt,  intComps, surfInt,
@@ -1190,14 +1192,14 @@ writeSurfaceTecplot(std::string infile,
 // write all the surface quantities to a tecplot file
 //
 void
-writeSurfaceBasic(std::string infile,
+writeSurfaceBasic(std::string prefix,
 		  int nElts, Vector<Real>&        eltArea,  Vector<Real>&        eltVol,
 		  Vector<Array<dim3,AMREX_SPACEDIM>>& surfLocs,
 		  int nAvg,  Vector<std::string>& avgComps, Vector<Vector<Real>>& surfAvg,
 		  int nInt,  Vector<std::string>& intComps, Vector<Vector<Real>>& surfInt,
 		  int nDer,  Vector<std::string>& derComps, Vector<Vector<Real>>& surfDer)
 {
-  std::string filename=infile+"_binVolInt_basic.dat";
+  std::string filename=prefix+"_binVolInt_basic.dat";
 
   std::ofstream os(filename.c_str(),std::ios::out);
   #if AMREX_SPACEDIM == 2
