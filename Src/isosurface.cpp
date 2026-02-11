@@ -1345,7 +1345,7 @@ main (int   argc,
     }
     if (isoComp<AMREX_SPACEDIM) {
       varnames.push_back(isoCompName);
-      isoComp = nComp;
+      isoComp = AMREX_SPACEDIM + nComp;
       nComp++;
     }
 
