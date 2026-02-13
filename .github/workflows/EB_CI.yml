@@ -3,9 +3,9 @@ name: EB-Tools
 on:
   workflow_dispatch:
   push:
-    branches: [ dev_Marwin] #, development
+    branches: [development] 
   pull_request:
-     branches: [development]  
+    branches: [development]  
 
 jobs:
   # Formatting:
