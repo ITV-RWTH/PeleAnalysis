@@ -1,4 +1,4 @@
-// takes two hopefully identical plotfiles and tells you if you fucked up 
+// takes two plotfiles and calculates the difference 
 
 #include <string>
 #include <iostream>
@@ -8,6 +8,7 @@
 #include <AMReX_DataServices.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
+#include <AMReX_Utility.H>
 
 using namespace amrex;
 
@@ -29,7 +30,7 @@ int main (int argc, char* argv[])
 
   // get infile names and count
   int nfiles(pp.countval("infiles"));
-  Vector<std::string> infiles; infiles.resize(nfiles);
+  Vector<std::string> infiles(nfiles);
   pp.getarr("infiles",infiles);
 
   if (nfiles != 2){
@@ -37,20 +38,23 @@ int main (int argc, char* argv[])
   }
   // get and count variables to copy
   int nvars(pp.countval("vars"));
-  int id_comp_last_a  = 0;
-  int id_comp_last_b  = 0;
-  Vector<std::string> vars; vars.resize(nvars);
+  Vector<std::string> vars(nvars);
   pp.getarr("vars",vars);  
   Vector<std::string> new_vars = vars; 
   Vector<std::string> names;
   // outfile name
-  std::string outfile;
-  pp.get("outfile",outfile);
+  std::string outfile = infiles[0] + "_diff";
+  pp.query("outfile",outfile);
+
+  std::string diff_type = "absolute";
+  pp.query("diff_type", diff_type);
+
+  AMREX_ALWAYS_ASSERT((diff_type=="absolute") || (diff_type=="relative"));
   
   DataServices::SetBatchMode();
   Amrvis::FileType fileType(Amrvis::NEWPLT);
 
-//setting up for reading pltfiles 
+  //setting up for reading pltfiles 
   DataServices dataServices0(infiles[0], fileType); 
   DataServices dataServices1(infiles[1], fileType); 
 
@@ -62,21 +66,15 @@ int main (int argc, char* argv[])
   
   // getting the finest level (or whatever user sets)
   // aborting if finest level dont match
-  int finestLevel = -1;
+  int finestLevel = std::min(amrData0.FinestLevel(), amrData1.FinestLevel());
   finestLevel = amrData0.FinestLevel();
   pp.query("finestLevel",finestLevel);
-  // user changed finest lev
+
   if (
      (finestLevel > amrData1.FinestLevel()) || 
      (finestLevel > amrData0.FinestLevel())
      )
-      amrex::Abort("Warning: Declared finest level does not exist");
-  // user did not change finest lev  
-  if (
-     (amrData0.FinestLevel() != amrData1.FinestLevel()) && 
-     (amrData0.FinestLevel() != finestLevel)
-     )
-      amrex::Abort("Warning: The Finest Level of the infiles do not match");
+      amrex::Abort("Requested finest level exeeds finest level of one of the plotfiles");
 
   int Nlev = finestLevel + 1;
 
@@ -104,7 +102,6 @@ int main (int argc, char* argv[])
       geoms[lev] = Geometry(amrData0.ProbDomain()[lev],&rb,coord,&(is_per[0]));
       fileData0[lev] = new MultiFab(amrData0.boxArray(lev),dm,nvars,0);
       fileData1[lev] = new MultiFab(amrData1.boxArray(lev),dm,nvars,0);
-      allOnes[lev] = new MultiFab(amrData0.boxArray(lev),dm,nvars,0);
   }
 
   // data structure to create identical var tables
@@ -157,31 +154,43 @@ int main (int argc, char* argv[])
   } 
  
   // fill in the Multifabs with the infile Data
- for (int lev = 0; lev < Nlev; lev++){
-  for (int i = 0; i < idcomp0.size(); i++){
-    fileData0[lev]->ParallelCopy(amrData0.GetGrids(lev,idcomp0[i]),0,i,1);
-    fileData1[lev]->ParallelCopy(amrData1.GetGrids(lev,idcomp1[i]),0,i,1);
+  for (int lev = 0; lev < Nlev; lev++){
+    for (int i = 0; i < idcomp0.size(); i++){
+      fileData0[lev]->ParallelCopy(amrData0.GetGrids(lev,idcomp0[i]),0,i,1);
+      fileData1[lev]->ParallelCopy(amrData1.GetGrids(lev,idcomp1[i]),0,i,1);
+    }
   }
-    allOnes[lev]->setVal(1.0);
- }
 
-// creating an array containing the var names
- for (int i = 0; i < idcomp0.size(); i++){
-  names.push_back(plot0_VarNames[idcomp0[i]] + "_rel_diff");
- }
+  // creating an array containing the var names
+ 
+  std::string suffix;
+ 
+  if (diff_type == "absolute"){
+    suffix = "_diff";
+  } else if (diff_type == "relative"){
+    suffix = "_rel_diff";
+  }
   
-  // calculate the difference: hopefully
- for (int lev = 0; lev < Nlev; ++lev) {
-   for (int i = 0; i < nvars; i++){
-     fileData0[lev]->Divide(*fileData0[lev], *fileData1[lev], i, i, 1, 0);
-     fileData0[lev]->Subtract(*fileData0[lev], *allOnes[lev], i, i, 1, 0);
-   }
- }
+
+  for (int i = 0; i < idcomp0.size(); i++){
+    names.push_back(plot0_VarNames[idcomp0[i]] + suffix);
+  }
+  
+  // calculate the difference
+  for (int lev = 0; lev < Nlev; ++lev) {
+    for (int i = 0; i < nvars; i++){
+      fileData1[lev]->Subtract(*fileData1[lev], *fileData0[lev], i, i, 1, 0);
+      if (diff_type == "relative"){
+        fileData1[lev]->Divide(*fileData1[lev], *fileData0[lev], i, i, 1, 0);
+      }
+      
+    }
+  }
   
   // write pltfile
   Vector<int> isteps(Nlev, 0);
   Vector<IntVect> refRatios(Nlev-1,{AMREX_D_DECL(2, 2, 2)});
-  amrex::WriteMultiLevelPlotfile(outfile, Nlev, GetVecOfConstPtrs(fileData0), names, geoms, 0.0, isteps, refRatios);
+  amrex::WriteMultiLevelPlotfile(outfile, Nlev, GetVecOfConstPtrs(fileData1), names, geoms, 0.0, isteps, refRatios);
   
   amrex::Finalize();
   return 0;
