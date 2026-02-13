@@ -358,7 +358,7 @@ int main(int argc, char* argv[])
                         ppf.query("radius_outer", config.radius_outer);
                         ppf.query("value_inside", config.value_inside);
                         ppf.query("value_outside", config.value_outside);
-                        if (config.type == FieldType::CircleSmooth) {
+                        if (config.type == FieldType::RingSmooth) {
                             ppf.query("smooth_width", config.smooth_width);
                         }
                         break;
