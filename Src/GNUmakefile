@@ -18,7 +18,7 @@ PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = TRUE
+USE_MPI       = FALSE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
 
@@ -64,6 +64,7 @@ USE_CUDA      = FALSE
 ##EBASE   = sliceMEF
 ##EBASE   = smoothMEF
 ##EBASE   = turbfile
+
 
 
 CEXE_sources += $(EBASE).cpp
