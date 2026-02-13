@@ -178,13 +178,11 @@ int main (int argc, char* argv[])
   
   // calculate the difference
   for (int lev = 0; lev < Nlev; ++lev) {
-    for (int i = 0; i < nvars; i++){
-      fileData1[lev]->Subtract(*fileData1[lev], *fileData0[lev], i, i, 1, 0);
-      if (diff_type == "relative"){
-        fileData1[lev]->Divide(*fileData1[lev], *fileData0[lev], i, i, 1, 0);
-      }
-      
+    fileData1[lev]->Subtract(*fileData1[lev], *fileData0[lev], 0, 0, nvars, 0);
+    if (diff_type == "relative"){
+      fileData1[lev]->Divide(*fileData1[lev], *fileData0[lev], 0, 0, nvars, 0);
     }
+
   }
   
   // write pltfile
