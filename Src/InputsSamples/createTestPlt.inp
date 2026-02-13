@@ -34,7 +34,7 @@ plane_smooth.value_left = 2.0
 plane_smooth.value_right = -1.0
 plane_smooth.smooth_width = 0.2  # Transition width
 
-# Plane step function (vertical split at x=0.5)
+# Double plane step function (vertical split at x=0.5)
 double_plane_step.type = double_plane_step
 double_plane_step.axis = 0              # 0=x, 1=y, 2=z
 double_plane_step.position = 0.5        # Position along axis
@@ -42,7 +42,7 @@ double_plane_step.position_second = 0.6 # Position of second plane along axis
 double_plane_step.value_inside = 1.0      # Value on left/below
 double_plane_step.value_outside = 0.0     # Value on right/above
 
-# Plane with smooth transition
+# Double plane with smooth transition
 double_plane_smooth.type = double_plane_smooth
 double_plane_smooth.axis = 1            # y-axis
 double_plane_smooth.position = 0.5
