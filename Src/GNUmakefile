@@ -21,6 +21,7 @@ COMP          = gnu
 USE_MPI       = FALSE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
+USE_EB        = FALSE
 
 # Executable
 # Uncomment the desired exec
@@ -41,8 +42,6 @@ USE_CUDA      = FALSE
 #EBASE   = flattenAMRFile
 #EBASE   = generateTestPlt
 #EBASE   = grad
-#EBASE   = grad_EB
-#EBASE   = grad_EB_V2
 #EBASE   = integral
 #EBASE   = isoMEF
 #EBASE   = isosurface
@@ -67,7 +66,6 @@ USE_CUDA      = FALSE
 ##EBASE   = mergeMEF
 ##EBASE   = multMEF
 ##EBASE   = sliceMEF
-##EBASE   = SpeedTest
 ##EBASE   = smoothMEF
 
 
