@@ -92,7 +92,6 @@ int main (int argc, char* argv[])
 	     &(amrData0.ProbHi()[0]));
   Vector<MultiFab*> fileData0(Nlev);
   Vector<MultiFab*> fileData1(Nlev);
-  Vector<MultiFab*> allOnes(Nlev);
   Vector<Geometry> geoms(Nlev);
   int coord = 0;
   // create the geometry of MultiFabs, the "boxArray" Parent does'nt matter
@@ -137,13 +136,13 @@ int main (int argc, char* argv[])
 
     // if first idx is unchanged: var was not found, abort
     if (idx0 < 0){
-      Print() << "Error: Variable " << var << " could not be located in first infile \n";
+      Print() << "Error: Variable " << var << " not in first infile \n";
       DataServices::Dispatch(DataServices::ExitRequest, NULL);
     }
 
     // if second idx is unchanged: var was not found, abort
     if (idx1 < 0){
-      Print() << "Error: Variable " << var << " could not be located in second infile \n";
+      Print() << "Error: Variable " << var << " not in second infile \n";
       DataServices::Dispatch(DataServices::ExitRequest, NULL);
     }
 
