@@ -12,6 +12,8 @@ enum class FieldType {
     Constant,
     PlaneStep,
     PlaneSmooth,
+    DoublePlaneStep,
+    DoublePlaneSmooth,
     CircleStep,
     CircleSmooth,
     RingStep,
@@ -31,6 +33,7 @@ struct FieldConfig {
     // Plane parameters
     int plane_axis = 0;      // 0=x, 1=y, 2=z
     Real plane_position = 0.5;
+    Real plane_position_second = 0.6;
     Real smooth_width = 0.1;
     
     // Circle/Sphere parameters
@@ -54,6 +57,8 @@ FieldType parseFieldType(const std::string& type_str) {
         {"constant", FieldType::Constant},
         {"plane_step", FieldType::PlaneStep},
         {"plane_smooth", FieldType::PlaneSmooth},
+        {"double_plane_step", FieldType::DoublePlaneStep},
+        {"double_plane_smooth", FieldType::DoublePlaneSmooth},
         {"circle_step", FieldType::CircleStep},
         {"circle_smooth", FieldType::CircleSmooth},
         {"sphere_step", FieldType::CircleStep},    // Same as circle in code
@@ -124,6 +129,46 @@ Real evaluateField(const FieldConfig& config,
             Real edge1 = config.plane_position + config.smooth_width / 2.0;
             Real blend = smoothstep(edge0, edge1, coord);
             result = config.value_inside * (1.0 - blend) + config.value_outside * blend;
+            break;
+        }
+
+        case FieldType::DoublePlaneStep: {
+            Real coord;
+            if (config.plane_axis == 0) coord = x;
+            else if (config.plane_axis == 1) coord = y;
+            else coord = z;
+            
+            if ((coord < config.plane_position) || (coord > config.plane_position_second)) {
+                result = config.value_outside;
+            } else {
+                result = config.value_inside;
+            }
+            break;
+        }
+        
+        case FieldType::DoublePlaneSmooth: {
+            Real coord;
+            if (config.plane_axis == 0) coord = x;
+            else if (config.plane_axis == 1) coord = y;
+            else coord = z;
+            
+            // First plane transition
+            Real edge0_first = config.plane_position - config.smooth_width / 2.0;
+            Real edge1_first = config.plane_position + config.smooth_width / 2.0;
+            Real blend_first = smoothstep(edge0_first, edge1_first, coord);
+            
+            // Second plane transition
+            Real edge0_second = config.plane_position_second - config.smooth_width / 2.0;
+            Real edge1_second = config.plane_position_second + config.smooth_width / 2.0;
+            Real blend_second = smoothstep(edge0_second, edge1_second, coord);
+            
+            // Combine: outside if coord < first OR coord > second, inside if first < coord < second
+            // Assumes plane_position < plane_position_second
+            // blend_first: 0 when coord < first, 1 when coord > first
+            // blend_second: 0 when coord < second, 1 when coord > second
+            Real blend = blend_first * (1.0 - blend_second);
+            
+            result = config.value_inside * blend + config.value_outside * (1.0 - blend);
             break;
         }
         
@@ -326,6 +371,19 @@ int main(int argc, char* argv[])
                         ppf.query("value_left", config.value_inside);
                         ppf.query("value_right", config.value_outside);
                         if (config.type == FieldType::PlaneSmooth) {
+                            ppf.query("smooth_width", config.smooth_width);
+                        }
+                        break;
+                    }
+
+                    case FieldType::DoublePlaneStep:
+                    case FieldType::DoublePlaneSmooth:{
+                        ppf.query("axis", config.plane_axis);
+                        ppf.query("position", config.plane_position);
+                        ppf.query("position_second", config.plane_position_second);
+                        ppf.query("value_inside", config.value_inside);
+                        ppf.query("value_outside", config.value_outside);
+                        if (config.type == FieldType::DoublePlaneSmooth) {
                             ppf.query("smooth_width", config.smooth_width);
                         }
                         break;
