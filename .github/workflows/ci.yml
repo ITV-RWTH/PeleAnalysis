@@ -52,7 +52,7 @@ jobs:
 #        run: codespell
 
   TestAnalysisCodes:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         comp: [gnu, llvm, gnu-debug]  # TODO: cuda, hip, sycl
