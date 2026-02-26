@@ -1,4 +1,5 @@
 # Example input file for integral
+# This tool integrates 2D or 3D files in the requested direction(s).
 
 #------------------- IO CONTROL -----------------------------------------------------------
 infile = plt00000                          # Plot file for surface construction
