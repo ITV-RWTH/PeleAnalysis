@@ -12,8 +12,19 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
+ std::cerr
+    << "Utility to combine pltfiles";
   std::cerr << "usage:\n";
-  std::cerr << argv[0] << " infiles=<> outfile=<> vars=<>";
+  std::cerr << argv[0] << " infiles=<s1 s2 s3> outfile=<s> vars=<s1 s2 s3> [options] \n\tOptions:\n";
+ std::cerr
+    << "\t     infiles=<s1 s2 s3> where <s1> <s2> and <s3> are pltfiles\n";
+  std::cerr << "\t     outfile=<s> where <s> is the output pltfile \n";
+  std::cerr
+    << "\t     vars=<s1 s2 s3> where <s1> <s2> and <s3> are variable "
+       "names to select for combined pltfile\n";
+  std::cerr << "\t     finestLevel=<s> where <s> is the max refinement "
+               "level to combine, zero-indexed [DEF->-1]\n";
+  std::cerr << "\t     is_per=<s1 s2 s3> where <s1> <s2> and <s3> are [0,1], defining the periodicity in x, y and z direction [DEF -> 0 0 0] \n";
   exit(1);
 }
 
@@ -65,7 +76,7 @@ main(int argc, char* argv[])
   int Nlev = finestLevel + 1;
 
   // setting up periodicity
-  Vector<int> is_per(AMREX_SPACEDIM, 1);
+  Vector<int> is_per(AMREX_SPACEDIM, 0);
   pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
   Print() << "Periodicity assumed for this case: ";
   for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
