@@ -15,10 +15,21 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
+ std::cerr
+    << "Utility to calculate gradients";
   std::cerr << "usage:\n";
   std::cerr
     << argv[0]
-    << " infile=<plotfilename> \n\tOptions:\n\tis_per=<L M N> gradVar=<name>\n";
+    << " infile=<s> gradVar=<s> [options] \n\tOptions:\n";
+  std::cerr
+    << "\t     infile=<s> where <s> is a pltfile\n";
+  std::cerr << "\t     outfile=<s> where <s> is the output pltfile [DEF-><infile>_gt] \n";
+  std::cerr << "\t     gradVar=<s> where <s> is the variable of which the gradient is computed\n";
+  std::cerr << "\t     finestLevel=<s> where <s> is the max refinement "
+               "level to consider, zero-indexed [DEF->1000]\n";
+  std::cerr << "\t     Aux_Variables=<s1 s2 s3> where <s1> <s2> and <s3> are names of variables that should be read and written to the output file wihtout change [DEF -> None] \n";
+  std::cerr << "\t     sym_dir=<s1 s2 s3> where <s1> <s2> and <s3> are [0,1], defining the symmetry in x, y and z direction [DEF -> 0 0 0] \n";
+  std::cerr << "\t     is_per=<s1 s2 s3> where <s1> <s2> and <s3> are [0,1], defining the periodicity in x, y and z direction [DEF -> 0 0 0] \n";
   exit(1);
 }
 
@@ -41,7 +52,6 @@ main(int argc, char* argv[])
     // ---------------------------------------------------------------------
     // Set defaults input values
     // ---------------------------------------------------------------------
-    std::string gradVar = "temp";
     std::string infile = "";
     int finestLevel = 1000;
     int nAuxVar = 0;
@@ -123,7 +133,7 @@ main(int argc, char* argv[])
     Vector<int> sym_dir(AMREX_SPACEDIM, 0);
     pp.queryarr("sym_dir", sym_dir, 0, AMREX_SPACEDIM);
 
-    Vector<int> is_per(AMREX_SPACEDIM, 1);
+    Vector<int> is_per(AMREX_SPACEDIM, 0);
     pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
     Print() << "Periodicity assumed for this case: ";
     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
