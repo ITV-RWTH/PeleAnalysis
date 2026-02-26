@@ -15,20 +15,17 @@ is then followed by the element triples, one element per one, written in ASCII.
 The surfMEF conversion tools are used to transform to and from the MEF format, and to do simple arithmetic
 operations on the data.
 
-- combineMEF: Combine the components of two MEF files, assuming they have the same node positions and connectivity
-- mergeMEF: Merge the triangles of two different MEF files
-- multMEF: Multiply specific components of MEF files together
+- combineMEF: Combine the components of two MEF files, assuming they have the same node positions and connectivity (broken)
+- decimateMEF: ? (broken)
+- mergeMEF: Merge the triangles of two different MEF files (broken)
+- multMEF: Multiply specific components of MEF files together (broken)
 - scaleMEF: Scale specific components of the MEF by constants
-- sliceMEF: Compute a contour on an MEF surface
-- smoothMEF: Smooth an MEF surface
+- sliceMEF: Compute a contour on an MEF surface (broken)
+- smoothMEF: Smooth an MEF surface (broken)
 - surfDATtoMEF: Convert a Tecplot-formatted ASCII triangulated surface file into an MEF file
 - surfMEFtoDAT: Convert an MEF-file into a Tecplot-formatted ASCII triangulated surface file
 - trimMEFgen: Do an area-weighted binning of an MEF surface file, by assuming linear variatoin of the field on each triagle and slicing the triangles into bits at the bin boundaries
 
 
-```
-Usage:
-```
-
-Example:
+For selected tools, additional information on the inputs exist in this documentation.
 

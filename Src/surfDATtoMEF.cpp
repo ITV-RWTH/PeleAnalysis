@@ -14,6 +14,20 @@ using namespace amrex;
 
 #define SIZET int
 
+static void
+print_usage(int, char* argv[])
+{
+  std::cerr << "Usage:\n";
+  std::cerr
+    << argv[0]
+    << "./surfDATtoMEF3d.ex ./InputSamples/surfDATtoMEF.inp infile=<s> [options] \n\tOptions:\n";
+  std::cerr << "\t\t#------------------- IO CONTROL "
+               "-----------------------------------------------------------\n";
+  std::cerr << "\t\tinfile = plt00000_surf.dat                 # Surface file in DAT format to convert.\n";
+  std::cerr << "\t\toutfile = plt00000_surf.mef                # DEF: infile as .mef; Output file name.\n";
+  exit(1);
+}
+
 static bool
 isNumberLine(const std::string& line)
 {
@@ -179,7 +193,13 @@ main(int argc, char* argv[])
 {
   Initialize(argc, argv);
 
+  if (argc < 2)
+    print_usage(argc, argv);
+
   ParmParse pp;
+
+  if (pp.contains("help"))
+    print_usage(argc, argv);
 
   std::string infile;
   pp.get("infile", infile);
@@ -202,9 +222,6 @@ main(int argc, char* argv[])
   int nComp = names.size();
 
   map<std::string, std::string> zoneParams = GetZoneParams(ifs, nComp, buf);
-
-  Real areaEps = 1.e-12;
-  pp.query("areaEps", areaEps);
 
   int zoneID = 0;
   while (zoneParams.size() > 0) {
