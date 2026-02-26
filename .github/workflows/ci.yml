@@ -25,12 +25,12 @@ jobs:
       - name: Clone
         uses: actions/checkout@v4
       - name: Check formatting
-        uses: DoozyX/clang-format-lint-action@v0.20
+        uses: DoozyX/clang-format-lint-action@v0.18.1
         with:
           source: './Src'
           exclude: '.'
           extensions: 'H,h,cpp'
-          clangFormatVersion: 20
+          clangFormatVersion: 18
 #
 #  Codespell:
 #    runs-on: ubuntu-latest
