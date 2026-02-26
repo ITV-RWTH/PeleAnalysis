@@ -14,25 +14,38 @@ const bool verbose_DEF = false;
 static void
 PrintUsage(const char* progName)
 {
-  std::cerr << "Extracts a spatial subregion and/or variable subset from an AMReX plot file.\n\n";
+  std::cerr << "Extracts a spatial subregion and/or variable subset from an "
+               "AMReX plot file.\n\n";
   std::cerr
     << argv[0]
     << " ./InputSamples/isosurface.inp infile=<s> [options] \n\tOptions:\n";
 
-  std::cerr << "\t\t#------------------- IO CONTROL -----------------------------------------------------------\n";
-  std::cerr << "\t\tinfile      = plt00500                     # Input AMReX plot file\n";
-  std::cerr << "\t\toutfile     = plt00500_section             # DEF: <infile>_section; Output plot file name\n";
+  std::cerr << "\t\t#------------------- IO CONTROL "
+               "-----------------------------------------------------------\n";
+  std::cerr << "\t\tinfile      = plt00500                     # Input AMReX "
+               "plot file\n";
+  std::cerr << "\t\toutfile     = plt00500_section             # DEF: "
+               "<infile>_section; Output plot file name\n";
   std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- AMR Control ----------------------------------------------------------\n";
-  std::cerr << "\t\tfinestLevel = 2                            # DEF: finest level in file; Finest AMR level to include\n";
+  std::cerr << "\t\t#------------------- AMR Control "
+               "----------------------------------------------------------\n";
+  std::cerr << "\t\tfinestLevel = 2                            # DEF: finest "
+               "level in file; Finest AMR level to include\n";
   std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- Spatial Subsetting ---------------------------------------------------\n";
-  std::cerr << "\t\tbox = 32 0 0 64 128 128                    # DEF: full domain; lo and hi index bounds (ix,iy,iz iX,iY,iZ)\n";
+  std::cerr << "\t\t#------------------- Spatial Subsetting "
+               "---------------------------------------------------\n";
+  std::cerr << "\t\tbox = 32 0 0 64 128 128                    # DEF: full "
+               "domain; lo and hi index bounds (ix,iy,iz iX,iY,iZ)\n";
   std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- Variable Selection ---------------------------------------------------\n";
-  std::cerr << "\t\tcomps = 0 1 4 7                            # Specific component indices to extract (overrides sComp/nComp)\n";
-  std::cerr << "\t\t# sComp = 0                                # DEF: 0; Start component index (used if comps not set)\n";
-  std::cerr << "\t\t# nComp = 4                                # DEF: all components; Number of components (used if comps not set)usage:\n";
+  std::cerr << "\t\t#------------------- Variable Selection "
+               "---------------------------------------------------\n";
+  std::cerr << "\t\tcomps = 0 1 4 7                            # Specific "
+               "component indices to extract (overrides sComp/nComp)\n";
+  std::cerr << "\t\t# sComp = 0                                # DEF: 0; Start "
+               "component index (used if comps not set)\n";
+  std::cerr
+    << "\t\t# nComp = 4                                # DEF: all components; "
+       "Number of components (used if comps not set)usage:\n";
 
   exit(1);
 }

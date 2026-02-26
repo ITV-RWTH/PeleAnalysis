@@ -17,14 +17,20 @@ using namespace analysis_util;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Print a full structural summary of the compiled chemical mechanism.\n"
-               "No plot file is required -- all output is derived from the compiled mechanism.\n\nusage:\n";
+  std::cerr
+    << "Print a full structural summary of the compiled chemical mechanism.\n"
+       "No plot file is required -- all output is derived from the compiled "
+       "mechanism.\n\nusage:\n";
   std::cerr << argv[0] << " [options] \n\tOptions:\n";
-  std::cerr << "\t\t#------------------- Mechanism Inspection Options -----------------------------------------\n";
-  std::cerr << "\t\ttrElem = C                                 # DEF: C; Element for QPD edge graph construction\n";
+  std::cerr << "\t\t#------------------- Mechanism Inspection Options "
+               "-----------------------------------------\n";
+  std::cerr << "\t\ttrElem = C                                 # DEF: C; "
+               "Element for QPD edge graph construction\n";
   std::cerr << "\t\t\n";
-  std::cerr << "\t\t# All other output (element list, species list, composition, reaction count,\n";
-  std::cerr << "\t\t# reaction participation, RMAP, RRMAP, stoichiometric coefficients) is always\n";
+  std::cerr << "\t\t# All other output (element list, species list, "
+               "composition, reaction count,\n";
+  std::cerr << "\t\t# reaction participation, RMAP, RRMAP, stoichiometric "
+               "coefficients) is always\n";
   std::cerr << "\t\t# printed and requires no options.\n";
   exit(1);
 }

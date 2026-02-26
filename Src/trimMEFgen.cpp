@@ -22,31 +22,46 @@ using std::vector;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "This tool trims a 3D isosurface mesh based on field-value or radial criteria..\n\n";
+  std::cerr << "This tool trims a 3D isosurface mesh based on field-value or "
+               "radial criteria..\n\n";
   std::cerr << "Usage:\n";
-  std::cerr
-    << argv[0]
-    << "./trimMEFgen3d.gnu.MPI.ex ./InputSamples/integral.inp infile=<s> outfile=<s> [options] \n\tOptions:\n";
-  
-  std::cerr << "#------------------- IO CONTROL -----------------------------------------------------------\n";
-  std::cerr << "infile  = plt00000_surf.mef                      # Input MEF isosurface file to be processed.\n";
-  std::cerr << "outfile = plt00000_surf_trimmed.mef              # Output file for the processed isosurface.\n";
+  std::cerr << argv[0]
+            << "./trimMEFgen3d.gnu.MPI.ex ./InputSamples/integral.inp "
+               "infile=<s> outfile=<s> [options] \n\tOptions:\n";
+
+  std::cerr << "#------------------- IO CONTROL "
+               "-----------------------------------------------------------\n";
+  std::cerr << "infile  = plt00000_surf.mef                      # Input MEF "
+               "isosurface file to be processed.\n";
+  std::cerr << "outfile = plt00000_surf_trimmed.mef              # Output file "
+               "for the processed isosurface.\n";
   std::cerr << "\n";
-  std::cerr << "#------------------- Field-Value Trimming -------------------------------------------------\n";
-  std::cerr << "comps   = 3 4                              # Component indices to use for trimming.\n";
-  std::cerr << "signs   = gt lt                            # Comparison operators for each component (lt,le,gt,ge,eq).\n";
-  std::cerr << "vals    = 0.5 1.0                          # Threshold values; nodes satisfying condition are removed.\n";
+  std::cerr << "#------------------- Field-Value Trimming "
+               "-------------------------------------------------\n";
+  std::cerr << "comps   = 3 4                              # Component indices "
+               "to use for trimming.\n";
+  std::cerr << "signs   = gt lt                            # Comparison "
+               "operators for each component (lt,le,gt,ge,eq).\n";
+  std::cerr << "vals    = 0.5 1.0                          # Threshold values; "
+               "nodes satisfying condition are removed.\n";
   std::cerr << "\n";
-  std::cerr << "#------------------- Radial Trimming ------------------------------------------------------\n";
-  std::cerr << "RXY      = 0.05                            # Radial threshold: trim based on r = sqrt(x^2 + y^2).\n";
-  std::cerr << "sign_RXY = lt                              # Comparison operator for radial trim (lt,le,gt,ge,eq).\n";
+  std::cerr << "#------------------- Radial Trimming "
+               "------------------------------------------------------\n";
+  std::cerr << "RXY      = 0.05                            # Radial threshold: "
+               "trim based on r = sqrt(x^2 + y^2).\n";
+  std::cerr << "sign_RXY = lt                              # Comparison "
+               "operator for radial trim (lt,le,gt,ge,eq).\n";
   std::cerr << "\n";
-  std::cerr << "#------------------- Output Control -------------------------------------------------------\n";
-  std::cerr << "remComps = 5 6                             # Component indices to drop from the output file.\n";
+  std::cerr << "#------------------- Output Control "
+               "-------------------------------------------------------\n";
+  std::cerr << "remComps = 5 6                             # Component indices "
+               "to drop from the output file.\n";
   std::cerr << "\n";
-  std::cerr << "#------------------- Diagnostics ----------------------------------------------------------\n";
-  std::cerr << "do_area_stats = true                       # Print min/max triangle areas across the surface.\n";
- 
+  std::cerr << "#------------------- Diagnostics "
+               "----------------------------------------------------------\n";
+  std::cerr << "do_area_stats = true                       # Print min/max "
+               "triangle areas across the surface.\n";
+
   exit(1);
 }
 
@@ -426,7 +441,7 @@ main(int argc, char* argv[])
   if (argc < 2) {
     print_usage(argc, argv);
   }
-  
+
   ParmParse pp;
 
   if (pp.contains("help")) {

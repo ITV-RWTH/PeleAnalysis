@@ -14,8 +14,7 @@
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr
-    << "Utility to filter a pltfile. Returns output = infile_filtered";
+  std::cerr << "Utility to filter a pltfile. Returns output = infile_filtered";
   std::cerr << "usage:\n";
   std::cerr << argv[0] << " infile=<s> [options] \n\tOptions:\n";
   std::cerr << "\t     infile=<s> where s is a pltfile \n";

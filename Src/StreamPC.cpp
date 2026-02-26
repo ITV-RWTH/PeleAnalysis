@@ -208,10 +208,11 @@ StreamParticleContainer::RungeKutta4(
 
   Real dt;
   if (cSpace == 0) {
-      dt = hrk * dxFine;
+    dt = hrk * dxFine;
   } else {
-      Real abs_grad = std::sqrt(AMREX_D_TERM(vec[0]*vec[0], +vec[1]*vec[1], +vec[2]*vec[2]));
-      dt = min(0.95 * dx[0], hrk / abs_grad);
+    Real abs_grad = std::sqrt(
+      AMREX_D_TERM(vec[0] * vec[0], +vec[1] * vec[1], +vec[2] * vec[2]));
+    dt = min(0.95 * dx[0], hrk / abs_grad);
   }
 
   // convert gradC to gradC / |gradC| (will also clip to zero if barely any
@@ -374,7 +375,8 @@ StreamParticleContainer::InterpDataAtLocation(
           Vector<Real> ntrpvOut(fcomp); // components in infile
 
           // interpolate all data to particle location
-          InterpolateVector(x, v, dx, plo, phi, ntrpvOut, fcomp); // components in infile
+          InterpolateVector(
+            x, v, dx, plo, phi, ntrpvOut, fcomp); // components in infile
 
           // copy the interpolated data to the particle
           // first DIM components are particle location

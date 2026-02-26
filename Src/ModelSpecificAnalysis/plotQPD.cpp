@@ -17,26 +17,42 @@ typedef std::list<Edge> EdgeList;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Compute a Quasi-Planar Diagram (QPD) of atomic mass fluxes through a chemical mechanism from an AMReX/PeleLMeX plot file.\n\nusage:\n";
+  std::cerr
+    << "Compute a Quasi-Planar Diagram (QPD) of atomic mass fluxes through a "
+       "chemical mechanism from an AMReX/PeleLMeX plot file.\n\nusage:\n";
   std::cerr << argv[0] << " infile=<s> [options] \n\tOptions:\n";
-  std::cerr << "\t\t#------------------- IO CONTROL -----------------------------------------------------------\n";
-  std::cerr << "\t\tinfile      = plt00500                     # Input AMReX plot file (must contain X(...), temp, density)\n";
-  std::cerr << "\t\tQPDfileName = plt00500_QPD.dat             # DEF: <infile>_QPD.dat; Output QPD data file\n";
-  std::cerr << "\t\tQPDlabel    = plt00500                     # DEF: <infile>; Label written to header of output file\n";
+  std::cerr << "\t\t#------------------- IO CONTROL "
+               "-----------------------------------------------------------\n";
+  std::cerr << "\t\tinfile      = plt00500                     # Input AMReX "
+               "plot file (must contain X(...), temp, density)\n";
+  std::cerr << "\t\tQPDfileName = plt00500_QPD.dat             # DEF: "
+               "<infile>_QPD.dat; Output QPD data file\n";
+  std::cerr << "\t\tQPDlabel    = plt00500                     # DEF: "
+               "<infile>; Label written to header of output file\n";
   std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- AMR Control ----------------------------------------------------------\n";
-  std::cerr << "\t\tfinestLevel = 2                            # DEF: finest level in file; Finest AMR level to process\n";
+  std::cerr << "\t\t#------------------- AMR Control "
+               "----------------------------------------------------------\n";
+  std::cerr << "\t\tfinestLevel = 2                            # DEF: finest "
+               "level in file; Finest AMR level to process\n";
   std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- QPD Options ----------------------------------------------------------\n";
-  std::cerr << "\t\tQPDatom   = C                              # DEF: C; Atom to track through the reaction network\n";
-  std::cerr << "\t\tscaleNorm = 1.0                            # Optional additional scale factor for normalisation\n";
+  std::cerr << "\t\t#------------------- QPD Options "
+               "----------------------------------------------------------\n";
+  std::cerr << "\t\tQPDatom   = C                              # DEF: C; Atom "
+               "to track through the reaction network\n";
+  std::cerr << "\t\tscaleNorm = 1.0                            # Optional "
+               "additional scale factor for normalisation\n";
   std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- Fuel Species Diagnostics ---------------------------------------------\n";
-  std::cerr << "\t\tfuelSpec = CH4                             # If set, prints reaction partner breakdown to screen\n";
+  std::cerr << "\t\t#------------------- Fuel Species Diagnostics "
+               "---------------------------------------------\n";
+  std::cerr << "\t\tfuelSpec = CH4                             # If set, "
+               "prints reaction partner breakdown to screen\n";
   std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- Additional Flags -----------------------------------------------------\n";
-  std::cerr << "\t\t# dump_edges                               # Uncomment to print all edges to screen before computation\n";
-  std::cerr << "\t\t# verbose                                  # Uncomment to enable verbose AMReX data loading output\n";
+  std::cerr << "\t\t#------------------- Additional Flags "
+               "-----------------------------------------------------\n";
+  std::cerr << "\t\t# dump_edges                               # Uncomment to "
+               "print all edges to screen before computation\n";
+  std::cerr << "\t\t# verbose                                  # Uncomment to "
+               "enable verbose AMReX data loading output\n";
   exit(1);
 }
 

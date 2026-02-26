@@ -128,12 +128,11 @@ main(int argc, char* argv[])
     }
     Real progMinlvl = 1.0e20;
     Real progMaxlvl = -1.0e20;
-    
+
     if (useFileMinMax) {
       for (int lev = 0; lev < Nlev; ++lev) {
         amrData.MinMax(
-          amrData.ProbDomain()[lev], progressName, lev, progMinlvl,
-          progMaxlvl);
+          amrData.ProbDomain()[lev], progressName, lev, progMinlvl, progMaxlvl);
         progMin = std::min(progMin, progMinlvl);
         progMax = std::max(progMax, progMaxlvl);
       }

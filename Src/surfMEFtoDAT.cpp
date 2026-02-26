@@ -10,13 +10,15 @@ static void
 print_usage(int, char* argv[])
 {
   std::cerr << "Usage:\n";
-  std::cerr
-    << argv[0]
-    << "./surfMEFtoDAT3d.ex ./InputSamples/surfMEFtoDAT.inp infile=<s> [options] \n\tOptions:\n";
+  std::cerr << argv[0]
+            << "./surfMEFtoDAT3d.ex ./InputSamples/surfMEFtoDAT.inp infile=<s> "
+               "[options] \n\tOptions:\n";
   std::cerr << "\t\t#------------------- IO CONTROL "
                "-----------------------------------------------------------\n";
-  std::cerr << "\t\tinfile = plt00000_surf.mef                 # Surface file in MEF format to convert.\n";
-  std::cerr << "\t\toutfile = plt00000_surf.dat                # DEF: infile as .dat; Output file name.\n";
+  std::cerr << "\t\tinfile = plt00000_surf.mef                 # Surface file "
+               "in MEF format to convert.\n";
+  std::cerr << "\t\toutfile = plt00000_surf.dat                # DEF: infile "
+               "as .dat; Output file name.\n";
   exit(1);
 }
 

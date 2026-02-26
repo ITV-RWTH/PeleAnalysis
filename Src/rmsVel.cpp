@@ -9,7 +9,8 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Utility to compute volume-averaged RMS velocity from pltfiles\n";
+  std::cerr
+    << "Utility to compute volume-averaged RMS velocity from pltfiles\n";
   std::cerr << "usage:\n";
   std::cerr << argv[0] << " infiles=<s1 s2 s3> [options]\n\n";
   std::cerr << "Required:\n";

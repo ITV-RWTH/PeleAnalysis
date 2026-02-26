@@ -22,18 +22,23 @@ pele::physics::PeleParams<pele::physics::transport::TransParm<
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Calculates local species' Lewis numbers from a PeleLMeX plot file.\n\nusage:\n";
-  std::cerr
-    << argv[0]
-    << " infile=<s> [options] \n\tOptions:\n";
-  std::cerr << "\t\t#------------------- IO CONTROL -----------------------------------------------------------\n";
-  std::cerr << "\t\tinfile = plt00500                          # Input AMReX plot file (must contain Y(...), temp, density)\n";
+  std::cerr << "Calculates local species' Lewis numbers from a PeleLMeX plot "
+               "file.\n\nusage:\n";
+  std::cerr << argv[0] << " infile=<s> [options] \n\tOptions:\n";
+  std::cerr << "\t\t#------------------- IO CONTROL "
+               "-----------------------------------------------------------\n";
+  std::cerr << "\t\tinfile = plt00500                          # Input AMReX "
+               "plot file (must contain Y(...), temp, density)\n";
   std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- AMR Control ----------------------------------------------------------\n";
-  std::cerr << "\t\tfinestLevel = 2                            # DEF: finest level in file; Finest AMR level to process\n";
+  std::cerr << "\t\t#------------------- AMR Control "
+               "----------------------------------------------------------\n";
+  std::cerr << "\t\tfinestLevel = 2                            # DEF: finest "
+               "level in file; Finest AMR level to process\n";
   std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- Additional Flags -----------------------------------------------------\n";
-  std::cerr << "\t\t# verbose                                  # Uncomment to enable verbose AMReX data loading output\n";
+  std::cerr << "\t\t#------------------- Additional Flags "
+               "-----------------------------------------------------\n";
+  std::cerr << "\t\t# verbose                                  # Uncomment to "
+               "enable verbose AMReX data loading output\n";
   exit(1);
 }
 

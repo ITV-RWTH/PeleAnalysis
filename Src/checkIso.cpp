@@ -18,12 +18,11 @@ using std::vector;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr
-    << "This tool checks the correctness of an isofile, i.e., the consistent numbering of edges.";
+  std::cerr << "This tool checks the correctness of an isofile, i.e., the "
+               "consistent numbering of edges.";
   std::cerr << "usage:\n";
   std::cerr << argv[0] << "isoFile=<s> \n\tOptions:\n";
-  std::cerr
-    << "\t     isoFile=<s> where <s> is the isosurface file to check\n";
+  std::cerr << "\t     isoFile=<s> where <s> is the isosurface file to check\n";
   exit(1);
 }
 
