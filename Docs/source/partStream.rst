@@ -9,55 +9,61 @@ Given a plotfile containing a vector field and an MEF file containing
 a collection of "seed" points, create "streamlines" eminating from the
 seed points that are locally parallel to the vector field.  The
 resulting streamlines will be of a fixed length going both directions
-along the vector field from the seed point.  Results will be written in a
+along the vector field from the seed point unless `cSpace=1`, where 
+streams have the same length in progress variable space. Additionally,
+scalar fields from the plot file can be mapped onto the streamslines. 
+Results can be written in a number of different formats, as discussed below.
+
 custom plotfile-like data folder, which is discussed in the data section.
 These files cannot be directly visualized with standard plotfile tools.
 
-::
 
-   Usage:
-      ./stream2d.gnu.MPI.ex plotfile=<string> [options] 
-	Options:
-            isoFile=<string>  OR  seedLoc=<real real [real]
-            streamFile=<string>  OR  outFile=<string>
-            is_per=<int int int> (DEF=1 1 1)
-            finestLevel=<int> (DEF=finest level in plotfile)
-            progressName=<string> (DEF=temp)
-            traceAlongV=<bool> (DEF=0)
-            buildAltSurf=<bool> (DEF=0)
-                (if true, requires altVal=<real>, also takes dt=<real> (DEF=0) and altIsoFile=<string>)
-            nRKsteps=<int> (DEF=51)
-            hRK=<real> (DEF=.1 (*dx_finest in plotfile)
-            nGrow=<int> (DEF=4)
-            bounds=<float * 4> (DEF=NULL)
+Usage: ::
 
-Options
-#######
+   ./partStream2d.gnu.MPI.ex plotfile=<string> isofile=<string> 
+   
+Example: ::
+  
+   ./partStream2d.gnu.MPI.ex ./IOnputSamples/partStreams.inp 
+   
+
+
+
+   
+Tool Options
+############
 
 Seed points
 ***********
 
+::
+
+   #------------------- SEED POINTS ----------------------------------------------------------
+   oneSeedPerCell = 0                         # [0, 1], DEF: 0; If 1, places one particle in each cell. Can get very expensive/large for 3D files.
+   isoFile = plt00000_surf.mef                # DEF: None; If provided, places one particles in each node of the surface.
+   seedLoc = 0.1 0.0 0.3                      # DEF: None; If provided, places a single particle in the given location.
+   seedRakeNum = 10                           # DEF: None; If provided, places seedRakeNum evenly spaced seed points along a line segment between two endpoints seedRakeL and seedRakeR.
+   seedRakeL = 0.0 0.0 0.0                    # Left endpoint for seedRake. Requires AMREX_SPACEDIM real.
+   seedRakeR = 0.5 0.5 0.5                    # Rigth endpoint for seedRake. Requires AMREX_SPACEDIM real.
+
 Streamlines are computed to emanate from seed points specified by the
-user. The seed points can be defined as the nodes of a triangulated
-surface (in 3D) or a "polyline" (2D), or can be specified directly in
-the ParmParsed input.
+user. Currently, there are four options to initialize the seed points:
 
-If a triangulated surface or polyline is used (by passing the name of
-the MEF file via the `isoFile` keyword), the resulting streamlines
-retain the connectivity inferred by the input structure.  And since
-the steamlines will not, in general, cross they will bound a triangular-prism
-shaped volume extending a distance from the surface on either side.  The union of these
-volumes tile a layer around the original triagulated surface.  In 2D, the
-streamlines will bound a polygonal structure that similarly tiles the
-region around the original polyline.
-
-If the seed points are specified directly in the input, no connectivity
-information is inferred. Currently, the only option for this mode is
-accessible via the `seedLoc` keyword, which specifies the coordinates
-of a single seed point.
+1. `oneSeedPerCell` initializes one particle per uncovered cell. Can get very expensive/large for 3D files.
+2. If a triangulated surface or polyline is used (by passing the name of the MEF file via the `isoFile` keyword), the resulting streamlines retain the connectivity inferred by the input structure. And since the steamlines will not, in general, cross they will bound a triangular-prism shaped volume extending a distance from the surface on either side. The union of these volumes tile a layer around the original triagulated surface.  In 2D, the streamlines will bound a polygonal structure that similarly tiles the region around the original polyline.
+3. `seedLoc` allowes to initialize a seed in a specific location, specified via the coordinates of a single seed point provided to `seedLoc`.
+4. `seedRakeNum` places `seedRakeNum` evenly spaced seed points along a line segment between two endpoints `seedRakeL` and `seedRakeR`.
 
 Integration options
 *******************
+
+::
+
+   #------------------- INTEGRATION OPTIONS --------------------------------------------------
+   Nsteps = 400                               # DEF: 50; Number of steps in each direction. Length of stream will be 2*Nsteps-1.
+   hRK = 0.1                                  # DEF: 0.1; Step size in physical length, given as fraction onf the finest level cell size.
+   cSpace = 0                                 # [0, 1], DEF: 0; If 1, steps are equidistant in cSpace.
+
 
 Figure :numref:`fig:stream:RK4` illustrates a streamline (in black)
 that is computed from a vector field, whose components are specified
@@ -87,38 +93,30 @@ number of such intervals, `nRK`.
 
    \end{center}
 
-Vector field
-************
-
-Currently, the vector field can be constructed to align with the gradient of a scalar
-field, or with the flow velocity (if the option `traceAlongV = t`). If the the velocity
-field is not used, the required components of the gradient vector field (identified
-via the keyword, `progressName`) are computed on the fly with second-order centered
-differences.
-
-Alt surface
-***********
-
-If the keyword `buildAltSurf = t`, a new triangulated surface is constructed after the
-streamlines are generated. This surface will be created where the scalar identified as
-`progressName` takes the value specified by the keyword, `altVal` along the streamlines.
-The connectivity of this surface will be identical to the connectivity of the original
-surface (specified with the keyword, `isoFile`).  The new surface is written to the
-file indicated by the keyword, `altIsoFile`.
-
-
 
 Algorithm details
 *****************
 
+::
+
+   #------------------- INPUT CONTROL -------------------------------------------------------
+   infile = plt00000                          # Plot file for particle stream construction
+   vectorField = Y(H2)_gx Y(H2)_gy Y(H2)_gy   # Names of gradient vector components.
+   vars = I_R(H2)                             # Variables to map on the streams
+   #------------------- GRID CONTROL ---------------------------------------------------------
+   finestLevel = 1                            # DEF: finest level of plot file; Sets the finest level to read.
+   is_per = 1 1 0                             # Sets case periodicity
+   nGrow = 1                                  # DEF: 1; Grow cells.
+
 The algorithm starts by determining the finest AMR level box in the
-plotfile (indicated by the keyword, `plotfile`) that contains the
+plotfile (indicated by the keyword, `infile`) that contains the
 physical location of each seed point (up to and including the level
 indicated by the keyword, `finestLevel`).  Then, as the required
 plotfile data is read (in parallel), a distribution map will be
 created for each level, and we use this to assign the processor that
 will be responsible for computing the streamline associated with that
-point.
+point. The vector field is defined via the specified names in `vectorField`.
+Additionally, the variables specified in `vars` will be interpolated onto the computed streams.
 
 The RK4 scheme is used to integrate the vector field, :math:`u`, along streamline
 for a distance :math:`h` from A to B (see Figure :numref:`fig:stream:RK4`):
@@ -138,6 +136,9 @@ the above expressions. A simple way to orchestrate this interpolater is
 to base it on source data that lives on a logically rectangular,
 uniformly space grid, as this allows simple/fast "mod" operations to
 locate the specific source data indices for the interpolation.
+
+.. note::
+   The following section is probably deprecated.
 
 However, if the seed point starts off, for example, near the boundary
 of the owning box, it is possible that the integration will eventually
@@ -180,3 +181,19 @@ tool has been written to run in parallel with MPI. For maximum
 flexibility, there is also a separate tool that can read the
 streamline generated with the above strategy, and interpolate a set of
 fields onto the streamlines.
+
+Output formats
+**************
+
+::
+
+   #------------------- OUTPUT CONTROL -------------------------------------------------------
+   outfile = plt00000                         # DEF: infile; Name base of putput files
+   writeParticles = 0                         # [0, 1], DEF: 0; Write particles as plt file (Not sure how this looks in the end.)
+   particlefile = plt00000_particles          # DEF: outfile + "_particles"; Name of writeParticles output file/dir
+   writeStreams = 0                           # [0, 1], DEF: 0; Write streamlines in Tecplot ascii format.
+   streamfile = plt00000_stream               # DEF: outfile + "_stream"; Name of writeStreams output file/dir
+   writeStreamBin                             # [0, 1], DEF: 0; Write streamlines as binary.
+   streamBinfile = plt00000_streamBin         # DEF: outfile + "_streamBin"; Name of writeStreamBin output file/dir
+   
+
