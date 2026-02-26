@@ -2,56 +2,27 @@
 
 New contributions to *PeleAnalysis* are welcome !
 
-The *PeleAnalysis* contributions workflow follows these steps:
-1. Fork the main repository
-2. Create an `AmazingNewFeature` branch implementing your changes
-3. Open a Pull Request (PR) from `AmazingNewFeature` on your fork to branch `development` of the main *PeleAnalysis* repository
+To add a new feature to PeleAnalysis, the procedure is:
 
-Follow [GitHub directions](https://docs.github.com/en/free-pro-team@latest/github/getting-started-with-github/fork-a-repo)
-to fork *PeleAnalysis* main repo on your GitHub account, and use a recursive `git clone` to get your fork of *PeleAnalysis* and its dependencies.
+1. Create a branch for the new feature (locally) ::
 
-Then step into the *PeleAnalysis* folder and add the main *PeleAnalysis* repository as the `upstream` remote in order to keep track of the main repo :
+    git checkout -b AmazingNewFeature
 
-       git add remote upstream https://github.com/AMReX-Combustion/PeleAnalysis
+2. Develop the feature, merging changes often from the ``development`` branch into your ``AmazingNewFeature`` branch ::
+   
+    git commit -m "Developed AmazingNewFeature"
+    git checkout development
+    git pull                     [fix any identified conflicts between local and remote branches of "development"]
+    git checkout AmazingNewFeature
+    git merge development        [fix any identified conflicts between "development" and "AmazingNewFeature"]
 
-At any point, you can update the `development` branch of your local repository with changes implemented in the main *PeleAnalysis* repo by pulling from `upstream` :
+3. Push feature branch to PeleAnalysis repository (if you have write access, otherwise fork the repo and
+push the new branch to your fork)::
 
-        git checkout development
-        git pull upstream development
+    git push -u origin AmazingNewFeature [Note: -u option required only for the first push of new branch]
 
-We recommend setting your development branch to track the upstream one instead of your fork:
+4.  Submit a merge request through the github project page - be sure you are requesting to merge your branch to the ``development`` branch of the ``ITV-RWTH/PeleAnalysis`` and not to the main repository ``AMReX-Combustion/PeleAnalysis``.
 
-        git branch -u upstream/development
-
-You are now free to modify your own fork of *PeleAnalysis*. To add a new feature to *PeleAnalysis*, the procedure is:
-
-1. Create a branch for the new feature from the `development` branch (locally) :
-
-        git checkout development
-        git checkout -b AmazingNewFeature
-
-2. and commit your changes to your local repo :
-
-        git commit -m "Developed AmazingNewFeature"
-
-3. Alongside your development, regularly merge changes from the main repo `development` branch into your `AmazingNewFeature` branch,
-fix any conflicts, and push your changes to your GitHub fork :
-
-        git push -u origin AmazingNewFeature
-
-4. When you are ready to propose your new feature/improvement/bug fix to the main *PeleAnalysis* repo, reiterate Step 3 and submit a PR through the GitHub page from your fork onto the `development` branch of the main repo:
-
- - Click on the ``compare & pull request`` button to start your PR.
- - Provide a title and a short description for your PR:
-   * what feature/fix do you propose
-   * how did you test it
-   * any other information deemed useful : does it modify the default *PeleLM* behavior ? ...
- - Press ``Create pull request``.
-
-Please DO NOT write large PR, as they are very difficult and time-consuming to review.
-As much as possible, split them into small targeted PRs.
-For example, if find typos in the documentation open a pull request that only fixes typos.
-If you want to fix a bug, make a small pull request that only fixes a bug.
 
 ## PeleAnalysis Coding Style Guide
 
