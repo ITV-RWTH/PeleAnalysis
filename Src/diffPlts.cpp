@@ -15,8 +15,20 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
+  std::cerr
+    << "Utility to substract two pltfiles";
   std::cerr << "usage:\n";
-  std::cerr << argv[0] << " infiles=<reference and change> outfile=<> vars=<>";
+  std::cerr << argv[0] << " infiles=<reference and change> vars=<s1 s2 s3> [options] \n\tOptions:\n";
+  std::cerr
+    << "\t     infiles=<reference and change> where reference and change are pltfiles\n";
+  std::cerr << "\t     outfile=<s> where <s> is the output pltfile [DEF -> <refernce>_diff] \n";
+  std::cerr
+    << "\t     vars=<s1 s2 s3> where <s1> <s2> and <s3> are variable "
+       "names to select for substracting\n";
+  std::cerr << "\t     finestLevel=<s> where <s> is the max refinement "
+               "level to combine, zero-indexed [DEF->joint finest level of both input files]\n";
+  std::cerr << "\t     is_per=<s1 s2 s3> where <s1> <s2> and <s3> are [0,1], defining the periodicity in x, y and z direction [DEF -> 0 0 0] \n";
+  std::cerr << "\t	diff_type=<s>, [relative, absolute], Calculate absolute or relative difference, [DEF->absolute] \n";
   exit(1);
 }
 
@@ -29,6 +41,9 @@ main(int argc, char* argv[])
     print_usage(argc, argv);
 
   ParmParse pp;
+  if (pp.contains("help")) {
+      print_usage(argc, argv);
+    }
 
   // get infile names and count
   int nfiles(pp.countval("infiles"));
@@ -81,7 +96,7 @@ main(int argc, char* argv[])
   int Nlev = finestLevel + 1;
 
   // setting up periodicity
-  Vector<int> is_per(AMREX_SPACEDIM, 1);
+  Vector<int> is_per(AMREX_SPACEDIM, 0);
   pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
   Print() << "Periodicity assumed for this case: ";
   for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
