@@ -8,7 +8,7 @@ The tool `averagePlotfiles` averages the given plotfiles. It is flexible with re
 
 Usage: ::
 
-  ./avgPlotfilesFlexible2d.gnu.MPI.ex infiles=$(ls -d plt*) [options]
+  ./avgPlotfiles2d.gnu.MPI.ex infiles=$(ls -d plt*) [options]
 
 Example: ::
 

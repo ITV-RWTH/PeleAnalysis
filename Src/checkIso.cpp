@@ -15,6 +15,18 @@ using std::set;
 using std::string;
 using std::vector;
 
+static void
+print_usage(int, char* argv[])
+{
+  std::cerr
+    << "This tool checks the correctness of an isofile, i.e., the consistent numbering of edges.";
+  std::cerr << "usage:\n";
+  std::cerr << argv[0] << "isoFile=<s> \n\tOptions:\n";
+  std::cerr
+    << "\t     isoFile=<s> where <s> is the isosurface file to check\n";
+  exit(1);
+}
+
 static std::vector<std::string>
 parseVarNames(std::istream& is)
 {
@@ -69,7 +81,13 @@ main(int argc, char* argv[])
 {
   amrex::Initialize(argc, argv);
   {
+    if (argc < 2) {
+      print_usage(argc, argv);
+    }
     ParmParse pp;
+    if (pp.contains("help")) {
+      print_usage(argc, argv);
+    }
 
     // Read in isosurface
     std::string isoFile;
