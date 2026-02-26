@@ -115,11 +115,6 @@ main(int argc, char* argv[])
   if (binMax <= binMin)
     amrex::Abort("Bad bin min,max");
 
-  bool floor = false;
-  pp.query("floor", floor);
-  bool ceiling = false;
-  pp.query("ceiling", ceiling);
-
   Real domainVol = -1;
   Vector<int> weights;
   Vector<std::string> compNames;

@@ -1,4 +1,4 @@
-# Example input file for integral
+# Example input file for amrToFE
 
 #------------------- IO CONTROL -----------------------------------------------------------
 infile = plt00000                          # Plot file
