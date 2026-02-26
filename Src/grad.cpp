@@ -52,6 +52,7 @@ main(int argc, char* argv[])
     // ---------------------------------------------------------------------
     // Set defaults input values
     // ---------------------------------------------------------------------
+    std::string gradVar;
     std::string infile = "";
     int finestLevel = 1000;
     int nAuxVar = 0;
