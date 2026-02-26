@@ -15,17 +15,17 @@ static void
 print_usage(int, char* argv[])
 {
   std::cerr
-    << "Utility to average pltfiles on same domain but with non-matching AMR";
+    << "Utility to filter a pltfile. Returns output = infile_filtered";
   std::cerr << "usage:\n";
   std::cerr << argv[0] << " infile=<s> [options] \n\tOptions:\n";
   std::cerr << "\t     infile=<s> where s is a pltfile \n";
   std::cerr
     << "\t     variables=<s1 s2 s3> where <s1> <s2> and <s3> are variable "
-       "names to select for combined pltfile [DEF-> all possible]\n";
+       "names to filter [DEF-> all possible]\n";
   std::cerr << "\t     max_filter_level=<int> where <int> is the max "
                "refinement level to filter, zero-indexed [DEF->1000]\n";
   std::cerr << "\t     filter_type=<int> where <int> is the filter type as "
-               "defined in PeleC (1->box, 2->Gaussian, etc) [DEF->1000]\n";
+               "defined in PeleC (1->box, 2->Gaussian, etc) [DEF->1]\n";
   std::cerr << "\t     base_fgr=<int> where <int> is the desired filter to "
                "grid ratio on the base level, must be even [DEF->2]\n";
   std::cerr << "\t     same_fgr_all_levels=<bool> where if true the same "
