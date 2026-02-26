@@ -12,24 +12,47 @@ into a minimal set of polylines before writing. Optionally, map other
 variables to surface, and optionally compute signed distance from this
 surface onto the cell-centered mesh of the plotfile.
 
+Usage: ::
+   
+   ./isosurface2d.gnu.MPI.ex infile=<s> isoCompName=<s> isoVal=<v> [options]
+
+Example: ::
+
+   ./isosurface2d.gnu.MPI.ex InputSamples/isosurface.inp
+
+
+Tool Options
+############
 
 ::
 
-  Usage:
-    ./isosurface2d.gnu.MPI.ex inputs infile=<s> isoCompName=<s> isoVal=<v> [options] 
-	Options:
-	     infile=<s> where <s> is a pltfile
-	     isoCompName=<s> where <s> is the quantity being contoured
-	     isoVal=<v> where <v> is an isopleth value
-	     Choosing quantities to interp to surface: 
-	       comps=int comp list [overrides sComp/nComp]
-	       sComp=start comp[DEF->0]
-	       nComp=number of comps[DEF->all]
-	     finestLevel=<n> finest level to use in pltfile[DEF->all]
-	     writeSurf=<1,0> output surface in binary MEF format [DEF->1]
-	     outfile=<s> name of tecplot output file [DEF->gen'd]
-	     build_distance_function=<t,f> create cc signed distance function [DEF->f]
-	     rm_external_elements=<t,f> remove elts beyond what is needed for watertight surface [DEF->t]
+   #------------------- IO CONTROL -----------------------------------------------------------
+   infile = plt00000                          # Plot file for surface construction
+   outfile_base = plt00000_surf               # DEF: infile+isoCompName+time+isoval; Base name for output files
+   distance.outfile = plt00000_distance       # DEF: distance; Name of output distance file, see build_distance_function.
+   writeSurf = 1                              # [0, 1], DEF: 1; Flag to write surface file.
+   surfFormat = MEF                           # [MEF, XDMF], DEF: MEF; MEF (Marcs Element Format) is used by other PeleAnalysis tools.
+   surface_is_large = 0                       # [0, 1], DEF: 0; Option for memory-intense surfaces. If the surface is large, write data to disk/clear mem/read up into a single fab.
+   chunk_size = 32768                         # Int, DEF: 32768; Only relevant if surface_is_large = 1.
+   tmpFile = isoTEMPFILE                      # DEF: isoTEMPFILE; Only relevant if surface_is_large = 1.
+   
+   #------------------- GRID CONTROL ---------------------------------------------------------
+   finestLevel = 1                            # DEF: finest level of plot file; Sets the finest level to read.
+   is_per = 1 1 0                             # Sets case periodicity for correct connectivity and area calculation.
+   nGrow = 1                                  # DEF: 1; Grow cells.
+   
+   #------------------- VARIABLES ------------------------------------------------------------
+   isoCompName = "Y_(H2)"                     # Set the variable name for isosurface computation.
+   isoVal = 0.001                             # Set the iso value for isosurface computation.
+   #comps = HeatRelease                       # Optional: Additional values to map on the surface.
+   
+   #------------------- Options ------------------------------------------------------------
+   computeArea = 1                            # [0, 1], DEF: 0; Compute surface area (length in 2D) of isosurface.
+   rm_external_elements = true                # [true, false], DEF: true; Remove nodes outside of g1box before merging set with master list.
+   build_distance_function = false            # [true, false], DEF: false; create cc signed distance function.
+   dmax = 1e-3                                # DEF: dx of coarse level; Maximum distance from surface for build_distance_function.
+   verbose = 1                                # [0, 1], DEF: 0; Verbosity
+   #collate = 1                                # [0, 1], DEF: 1; Communicate node and element info from all procs to IOProc.
 
 
 Details

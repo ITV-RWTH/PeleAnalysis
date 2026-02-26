@@ -28,7 +28,7 @@ print_usage(int, char* argv[])
   std::cerr << "usage:\n";
   std::cerr
     << argv[0]
-    << " inputs infile=<s> isoCompName=<s> isoVal=<v> [options] \n\tOptions:\n";
+    << "./isosurface3d.ex ./InputSamples/isosurface.inp infile=<s> isoCompName=<s> isoVal=<v> [options] \n\tOptions:\n";
   std::cerr << "\t\t#------------------- IO CONTROL "
                "-----------------------------------------------------------\n";
   std::cerr << "\t\tinfile = plt00000                          # Plot file for "
