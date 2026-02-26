@@ -45,7 +45,6 @@ main(int argc, char* argv[])
     Real progMax = -1.0e20;
     int finestLevel = 1000;
     int verbose = 0;
-    int floorIt = 0;
     int useFileMinMax = 1;
     bool do_strain = false;
     bool do_gaussCurv = false;
@@ -75,7 +74,6 @@ main(int argc, char* argv[])
     pp.query("progressName", progressName);
     pp.query("progMin", progMin);
     pp.query("progMax", progMax);
-    pp.query("floorIt", floorIt);
     pp.query("useFileMinMax", useFileMinMax);
 
     // Clip results outside the flame front ? ( C ~ 0 or C ~ 1)
@@ -130,29 +128,28 @@ main(int argc, char* argv[])
     }
     Real progMinlvl = 1.0e20;
     Real progMaxlvl = -1.0e20;
-    if (useFileMinMax || floorIt) {
-      if (useFileMinMax) {
-        for (int lev = 0; lev < Nlev; ++lev) {
-          amrData.MinMax(
-            amrData.ProbDomain()[lev], progressName, lev, progMinlvl,
-            progMaxlvl);
-          progMin = std::min(progMin, progMinlvl);
-          progMax = std::max(progMax, progMaxlvl);
-        }
-        ParallelDescriptor::ReduceRealMin(progMin);
-        ParallelDescriptor::ReduceRealMax(progMax);
+    
+    if (useFileMinMax) {
+      for (int lev = 0; lev < Nlev; ++lev) {
+        amrData.MinMax(
+          amrData.ProbDomain()[lev], progressName, lev, progMinlvl,
+          progMaxlvl);
+        progMin = std::min(progMin, progMinlvl);
+        progMax = std::max(progMax, progMaxlvl);
       }
+      ParallelDescriptor::ReduceRealMin(progMin);
+      ParallelDescriptor::ReduceRealMax(progMax);
+    }
 
-      Print() << "progressName = " << progressName
-              << " at index: " << amrData.StateNumber(progressName) << "\n";
-      Print() << "useFileMinMax = " << useFileMinMax << "\n";
-      Print() << "Min/Max = " << progMin << " / " << progMax << "\n";
+    Print() << "progressName = " << progressName
+            << " at index: " << amrData.StateNumber(progressName) << "\n";
+    Print() << "useFileMinMax = " << useFileMinMax << "\n";
+    Print() << "Min/Max = " << progMin << " / " << progMax << "\n";
 
-      ParallelDescriptor::Barrier();
+    ParallelDescriptor::Barrier();
 
-      if (progMin >= progMax) {
-        amrex::Abort("progMin must be less than progMax");
-      }
+    if (progMin >= progMax) {
+      amrex::Abort("progMin must be less than progMax");
     }
 
     // ---------------------------------------------------------------------
