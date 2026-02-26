@@ -13,8 +13,8 @@ print_usage(int, char* argv[])
   std::cerr << "usage:\n";
   std::cerr << argv[0] << "infiles=<s1 s2 s3> [options] \n\tOptions:\n";
   std::cerr
-    << "\t     infiles=<s1 s2 s3> where <s1> <s2> amnd <s3> are pltfiles\n";
-  std::cerr << "\t     outfile=<s> where <s> is the output pltfile\n";
+    << "\t     infiles=<s1 s2 s3> where <s1> <s2> and <s3> are pltfiles\n";
+  std::cerr << "\t     outfile=<s> where <s> is the output pltfile [DEF -> plt_averaged] \n";
   std::cerr
     << "\t     variables=<s1 s2 s3> where <s1> <s2> and <s3> are variable "
        "names to select for combined pltfile [DEF-> all possible]\n";
