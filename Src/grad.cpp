@@ -60,7 +60,7 @@ main(int argc, char* argv[])
     ParmParse pp;
 
     pp.get("infile", infile);
-    pp.query("gradVar", gradVar);
+    pp.get("gradVar", gradVar);
     pp.query("finestLevel", finestLevel);
 
     // Initialize DataService
