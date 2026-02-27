@@ -1,45 +1,56 @@
 .. PeleAnalysis documentation master file
+
 PeleAnalysis documentation
 ==========================
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Basics:
 
-   amrToFE
-   averagePlotfile
-   buildPMF
-   checkIso
-   combinePlts
-   conditionalMean
-   curvature
-   data
-   diffPlts
-   filterPlt
-   flattenAMRFile
-   grad
-   integral
-   isosurface
-   jpdf
-   makePlotfile
-   partStream
-   plotQPD
-   plotTransportCoeff
-   plotTYtoLe
-   plotXtoY
-   plotYtoX
-   qCriterion
-   rmsVel
-   sampleStreamlines
-   scaleMEF
-   stream
-   stream2plt
-   streamBinTubeStats
-   streamSub
-   streamTubeStats
-   subPlt
-   surfMEFtools
-   testQPDtools
-   trimMEFgen
+   basics/data
+   basics/template
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Analysis:
+
+   analysis/amrToFE
+   analysis/avgPlotfiles
+   analysis/checkIso
+   analysis/combinePlts
+   analysis/conditionalMean
+   analysis/curvature
+   analysis/diffPlts
+   analysis/filterPlt
+   analysis/flattenAMRFile
+   analysis/grad
+   analysis/integral
+   analysis/isosurface
+   analysis/jpdf
+   analysis/makePlotfile
+   analysis/partStream
+   analysis/qCriterion
+   analysis/rmsVel
+   analysis/sampleStreamlines
+   analysis/scaleMEF
+   analysis/stream2plt
+   analysis/streamBinTubeStats
+   analysis/streamSub
+   analysis/subPlt
+   analysis/surfMEFtools
+   analysis/trimMEFgen
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Model Specific:
+
+   modelSpecific/plotQPD
+   modelSpecific/plotTransportCoeff
+   modelSpecific/plotTYtoLe
+   modelSpecific/plotXtoY
+   modelSpecific/plotYtoX
+   modelSpecific/testQPDtools
+
+   
 
 README.rst:
 ^^^^^^^^^^^
@@ -50,3 +61,4 @@ Indices and tables
 ==================
 * :ref:`genindex`
 * :ref:`search`
+

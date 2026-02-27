@@ -2,9 +2,10 @@
 
 
 checkIso
-*****************************************************************
+********
 
 The tool `checkIso` checks the correctness of an isofile, i.e., the consistent numbering of edges.
+
 Usage: ::
 
   ./checkIso2d.gnu.MPI.ex isoFile=<s>

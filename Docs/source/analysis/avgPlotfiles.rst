@@ -1,8 +1,8 @@
 .. highlight:: bash
 
 
-averagePlotfiles - Create a pltfile by averaging existing pltfiles
-*****************************************************************
+averagePlotfiles
+****************
 
 The tool `averagePlotfiles` averages the given plotfiles. It is flexible with respect to the underlaying BoxArrays: the output file will be refined anywhere *any* of the input files are refined (coarse data is interpolated to the finer levels in each file as needed before averaging to obtain this result). Both tools require that all files have the same domain and base grid. The user can select a specifc list of variables, in which case that list must be present in all input files, but otherwise the input files may contain different sets of variables.
 

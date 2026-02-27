@@ -1,9 +1,8 @@
 .. highlight:: bash
 
 
-******************************************
-isosurface - Isosurface of plotfile scalar
-******************************************
+isosurface
+**********
 
 Create isosurfaces (contours) from a component in a plotfile, given
 the name of the variable and a value.  The result is written as an MEF
@@ -67,7 +66,7 @@ covered data, and properly connects cells across coarse-fine interfaces. Once we
 
 .. _fig:isosurface:dual:
 
-.. figure:: ./Isosurface/dualGrid.png
+.. figure:: ../figs/Isosurface/dualGrid.png
    :width: 3in
 
    In 2D, the isocontour (in black) is computed from the dual grid

@@ -80,7 +80,7 @@ number of such intervals, `nRK`.
 
 .. _fig:stream:RK4:
 
-.. figure:: ./Stream/RK4.png
+.. figure:: ../figs/partStream/RK4.png
    :width: 3in
 
    Streamlines (in black) are computed by integrating the vector field
@@ -159,7 +159,7 @@ physical domain boundaries.
 
 .. _fig:stream:Grow:
 
-.. figure:: ./Stream/StreamInterpGrowBox.png
+.. figure:: ../figs/partStream/StreamInterpGrowBox.png
    :width: 3in
 
    A streamline (red) is generated from the seed point (blue), which

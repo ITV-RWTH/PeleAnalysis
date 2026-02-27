@@ -1,8 +1,8 @@
 .. highlight:: bash
 
 
-filterPlt - apply a filter to a Plot file
-*****************************************
+filterPlt
+*********
 
 This tool utilizes the PelePhysics PltFileManager utility to read in plot files
 and the PelePhysics Filter utility to apply different types of filters. To compile,

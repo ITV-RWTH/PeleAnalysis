@@ -1,9 +1,8 @@
 .. highlight:: bash
 
 
-******************************************
-integral - Integration tool
-******************************************
+integral
+********
 
 Calculate integrals of 2D and 3D plot files in a given number of directions. Details on controling the integral directions can be found below.
 

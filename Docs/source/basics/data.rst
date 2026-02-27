@@ -117,7 +117,7 @@ used with ``MEF`` files are typically created on-the-fly for the sole purpsoe of
 operations. Outside of IO, the data is typically moved into structures
 that more clearly indicate usage.
 
-.. figure:: ./surf.png
+.. figure:: ../figs/Data/surf.png
    :width: 75.0%
 
    : An isotherm of a flame-in-a-box case, where the surface is
@@ -179,7 +179,7 @@ seed surface can be used to define a connectivity of prism-shaped
 elements that tile a subregion of the domain between the hot and cold
 ends of the integral curves.
 
-.. figure:: ./hairySurf.png
+.. figure:: ../figs/Data/hairySurf.png
    :width: 50.0%
 
    : An isotherm from a flame calculation, where the triangles defining the surface

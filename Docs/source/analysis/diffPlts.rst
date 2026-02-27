@@ -1,8 +1,8 @@
 .. highlight:: bash
 
 
-diffPlts - Substract two plotfiles
-*******************************
+diffPlts
+********
 
 Create a new plotfile that includes the difference of the reference and the change plotfile for the specified variables. The input plotfiles *must* have the same AMR hierarchy,
 up to the finest level requested for the output.

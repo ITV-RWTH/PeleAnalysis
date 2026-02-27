@@ -1,8 +1,12 @@
 .. highlight:: bash
 
 
-amrToFE - Convert AMReX plotfiles to a finite-element style mesh (Tecplot ASCII/Binary or FLT)
-*******************************************************************************************
+amrToFE
+*******
+
+.. warning::
+
+   This documentation is deprecated or the tool erroneous. 
 
 ``amrToFE`` reads an AMReX plotfile and produces an unstructured finite-element style
 representation consisting of:
