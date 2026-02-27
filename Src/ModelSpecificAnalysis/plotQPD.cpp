@@ -22,7 +22,7 @@ print_usage(int, char* argv[])
               << " infile=FILE [OPTIONS]\n\n"
 
               << "Required arguments:\n"
-              << "  infile=FILE        MEF file\n\n"
+              << "  infile=FILE        AMReX plotfile\n\n"
 
               << "Options:\n"
               << "  -h, --help         Show this help message\n\n"
