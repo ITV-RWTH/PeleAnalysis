@@ -1,0 +1,61 @@
+# USAGE: make -j <nprocs> -f GNUmakefile.all [target(s)]
+# 	example: make -j 24 -f GNUmakefile.all grad integral qCriterion
+# 	example: make -j 24 -f GNUmakefile.all all
+
+PELE_ANALYSIS_HOME = ..
+
+DEBUG = FALSE
+DIM = 3
+PRECISION = DOUBLE
+
+COMP = gnu
+USE_MPI = FALSE
+USE_OMP = FALSE
+USE_CUDA = FALSE
+
+TARGETS = \
+    amrToFE \
+    avgPlotfiles \
+    binMEF \
+    checkIso \
+    combinePlts \
+    conditionalMean \
+    createTestPlt \
+    curvature \
+    diffPlts \
+    filterPlt \
+    flattenAMRFile \
+    grad \
+    integral \
+    isoMEF \
+    jpdf \
+    makePlotfile \
+    qCriterion \
+    rmsVel \
+    scaleMEF \
+    slicePlot \
+    streamBinTubeStats \
+    subPlt \
+    surfDATtoMEF \
+    surfMEFtoDAT \
+    template \
+    trimMEFgen \
+    isosurface \
+    partStream \
+    stream2plt
+
+.NOTPARALLEL:
+
+.PHONY: all
+
+all: $(TARGETS)
+
+$(TARGETS):
+	+$(MAKE) \
+       PELE_ANALYSIS_HOME=$(PELE_ANALYSIS_HOME) \
+       DEBUG=$(DEBUG) \
+       DIM=$(DIM) \
+       PRECISION=$(PRECISION) \
+       COMP=$(COMP) \
+       USE_MPI=$(USE_MPI) USE_OMP=$(USE_OMP) USE_CUDE=$(USE_CUDE) \
+       EBASE=$@

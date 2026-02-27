@@ -24,9 +24,6 @@ print_usage(int, char* argv[])
               << "  compName=NAME      Component for gradient evaluation\n\n"
 
               << "Options:\n"
-              << "  finestLevel=N      Finest AMR level to process\n"
-              << "                      (default: plotfile finest level)\n"
-              << "  outfile=FILE       Output gradient plotfile\n"
               << "  -h, --help         Show this help message\n\n"
               << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
               << "the documentation.\n";

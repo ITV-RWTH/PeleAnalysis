@@ -1265,13 +1265,11 @@ main(int argc, char* argv[])
   {
     if (argc < 2) {
       print_usage(argc, argv);
+    } else if ((std::strcmp(argv[1], "-h") == 0) || (std::strcmp(argv[1], "--help") == 0)) {
+      print_usage(argc, argv);
     }
 
     ParmParse pp;
-
-    if (pp.contains("help")) {
-      print_usage(argc, argv);
-    }
 
     int verbose = 0;
     pp.query("verbose", verbose);
