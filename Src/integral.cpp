@@ -11,69 +11,20 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr
-    << "This tool integrates 2D or 3D files in the requested direction(s).\n\n";
-  std::cerr << "Usage:\n";
-  std::cerr << argv[0]
-            << "./integral3d.gnu.MPI.ex ./InputSamples/integral.inp infile=<s> "
-               "vars=<s, list<s>> integralDimension=<i> dir=<i> [options] "
-               "\n\tOptions:\n";
+    std::cerr << "Usage:\n"
+              << "  " << argv[0]
+              << " infile=FILE compName=NAME [OPTIONS]\n\n"
 
-  std::cerr << "#------------------- IO CONTROL "
-               "-----------------------------------------------------------\n";
-  std::cerr << "infile = plt00000                          # Plot file for "
-               "surface construction\n";
-  std::cerr << "finestLevel = 0                            # DEF: finest level "
-               "of plot file; Sets the finest level to read.\n";
-  std::cerr << "\n";
-  std::cerr << "#------------------- Variables "
-               "------------------------------------------------------------\n";
-  std::cerr
-    << "vars = I_R(H2)                             # Variables to integrate\n";
-  std::cerr << "cVar = Y(H2)                               # Set variable to "
-               "restrict integrated region.\n";
-  std::cerr << "cMin = 1e-5                                # Cell below this "
-               "value (for cVar) are skipped for integral\n";
-  std::cerr << "cMax = 0.0111                              # Cell above this "
-               "value (for cVar) are skipped for integral\n";
-  std::cerr << "\n";
-  std::cerr << "#------------------- Integral options "
-               "-----------------------------------------------------\n";
-  std::cerr
-    << "integralDimension = 3                      # [1, 2, 3]; Integral "
-       "dimension up to AMREX_SPACEDIM. For integralDimension<AMREX_SPACEDIM "
-       "additional flags for the direction must be provided.\n";
-  std::cerr << "avg = 0                                    # [0, 1], DEF: 0; "
-               "If 1, devides the integral by the area.\n";
-  std::cerr << "\n";
-  std::cerr << "#---------- Only relevant for integralDimension = 1 "
-               "-------------------------\n";
-  std::cerr << "dir = 0                                    # [0, 1, 2], up to "
-               "AMREX_SPACEDIM-1. Dimansion along which to integrate.\n";
-  std::cerr << "\n";
-  std::cerr << "#---------- Only relevant for integralDimension = 2 and "
-               "AMREX_SPACEDIM=3 ----\n";
-  std::cerr << "dir1 = 0                                   # [0, 1, 2]. First "
-               "dimesion along which to integrate.\n";
-  std::cerr << "dir2 = 1                                   # [0, 1, 2]. First "
-               "dimesion along which to integrate.\n";
-  std::cerr << "\n";
-  std::cerr << "#----------------- Additional options "
-               "----------------------------------------------------\n";
-  std::cerr << "format = dat                               # [dat, ppm], DEF: "
-               "dat; Option to create a ppm (portable pixmap) image file. Only "
-               "available for AMREX_SPACEDIM=3 and integralDimension=1\n";
-  std::cerr << "useminmax1 = -1e5 1e5                      # Minimum and "
-               "maximum for normalization in ppm. Need to provide 2 values for "
-               "each integrated var.\n";
-  std::cerr << "#useminmax2 = -2e5 4e5                      # Minimum and "
-               "maximum for normalization in ppm. Need to provide 2 values for "
-               "each integrated var.\n";
-  std::cerr << "goPastMax = 0                              # [0, 1], DEF: 1; "
-               "For format = ppm, specify behaviour over vMax. 0: cap, 1: "
-               "extra color scale over magenta to white.\n";
+              << "Required arguments:\n"
+              << "  infile=FILE        AMReX plotfile\n"
+              << "  compName=NAME      Component to integrate\n\n"
 
-  exit(1);
+              << "Options:\n"
+              << "  -h, --help         Show this help message\n\n"
+              << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+              << "the documentation.\n";
+
+    std::exit(1);
 }
 
 #if AMREX_SPACEDIM == 3
@@ -496,16 +447,14 @@ int
 main(int argc, char* argv[])
 {
   amrex::Initialize(argc, argv);
-  {
+  { 
     if (argc < 2) {
+      print_usage(argc, argv);
+    } else if ((std::strcmp(argv[1], "-h") == 0) || (std::strcmp(argv[1], "--help") == 0)) {
       print_usage(argc, argv);
     }
 
     ParmParse pp;
-
-    if (pp.contains("help")) {
-      print_usage(argc, argv);
-    }
 
     std::string infile;
     pp.get("infile", infile);

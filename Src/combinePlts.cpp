@@ -12,31 +12,33 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Utility to combine pltfiles";
-  std::cerr << "usage:\n";
-  std::cerr << argv[0]
-            << " infiles=<s1 s2 s3> outfile=<s> vars=<s1 s2 s3> [options] "
-               "\n\tOptions:\n";
-  std::cerr
-    << "\t     infiles=<s1 s2 s3> where <s1> <s2> and <s3> are pltfiles\n";
-  std::cerr << "\t     outfile=<s> where <s> is the output pltfile \n";
-  std::cerr << "\t     vars=<s1 s2 s3> where <s1> <s2> and <s3> are variable "
-               "names to select for combined pltfile\n";
-  std::cerr << "\t     finestLevel=<s> where <s> is the max refinement "
-               "level to combine, zero-indexed [DEF->-1]\n";
-  std::cerr
-    << "\t     is_per=<s1 s2 s3> where <s1> <s2> and <s3> are [0,1], defining "
-       "the periodicity in x, y and z direction [DEF -> 0 0 0] \n";
-  exit(1);
+    std::cerr << "Usage:\n"
+              << "  " << argv[0]
+              << " infile=LIST outfile=FILE [OPTIONS]\n\n"
+
+              << "Required arguments:\n"
+              << "  infile=LIST        List of AMReX plotfiles to combine\n"
+              << "  outfile=FILE       Output combined plotfile\n\n"
+
+              << "Options:\n"
+              << "  -h, --help         Show this help message\n\n"
+
+              << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+              << "the documentation.\n";
+
+    std::exit(1);
 }
 
 int
 main(int argc, char* argv[])
 {
   amrex::Initialize(argc, argv);
-
-  if (argc < 2)
+  
+  if (argc < 2) {
     print_usage(argc, argv);
+  } else if ((std::strcmp(argv[1], "-h") == 0) || (std::strcmp(argv[1], "--help") == 0)) {
+    print_usage(argc, argv);
+  }
 
   ParmParse pp;
 

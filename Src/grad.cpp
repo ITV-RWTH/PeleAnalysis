@@ -15,26 +15,23 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Utility to calculate gradients";
-  std::cerr << "usage:\n";
-  std::cerr << argv[0] << " infile=<s> gradVar=<s> [options] \n\tOptions:\n";
-  std::cerr << "\t     infile=<s> where <s> is a pltfile\n";
-  std::cerr << "\t     outfile=<s> where <s> is the output pltfile "
-               "[DEF-><infile>_gt] \n";
-  std::cerr << "\t     gradVar=<s> where <s> is the variable of which the "
-               "gradient is computed\n";
-  std::cerr << "\t     finestLevel=<s> where <s> is the max refinement "
-               "level to consider, zero-indexed [DEF->1000]\n";
-  std::cerr << "\t     Aux_Variables=<s1 s2 s3> where <s1> <s2> and <s3> are "
-               "names of variables that should be read and written to the "
-               "output file wihtout change [DEF -> None] \n";
-  std::cerr
-    << "\t     sym_dir=<s1 s2 s3> where <s1> <s2> and <s3> are [0,1], defining "
-       "the symmetry in x, y and z direction [DEF -> 0 0 0] \n";
-  std::cerr
-    << "\t     is_per=<s1 s2 s3> where <s1> <s2> and <s3> are [0,1], defining "
-       "the periodicity in x, y and z direction [DEF -> 0 0 0] \n";
-  exit(1);
+    std::cerr << "Usage:\n"
+              << "  " << argv[0]
+              << " infile=FILE compName=NAME [OPTIONS]\n\n"
+
+              << "Required arguments:\n"
+              << "  infile=FILE        AMReX plotfile\n"
+              << "  compName=NAME      Component for gradient evaluation\n\n"
+
+              << "Options:\n"
+              << "  finestLevel=N      Finest AMR level to process\n"
+              << "                      (default: plotfile finest level)\n"
+              << "  outfile=FILE       Output gradient plotfile\n"
+              << "  -h, --help         Show this help message\n\n"
+              << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+              << "the documentation.\n";
+
+    std::exit(1);
 }
 
 std::string
@@ -51,24 +48,16 @@ main(int argc, char* argv[])
   {
     if (argc < 2) {
       print_usage(argc, argv);
+    } else if ((std::strcmp(argv[1], "-h") == 0) || (std::strcmp(argv[1], "--help") == 0)) {
+      print_usage(argc, argv);
     }
-
-    // ---------------------------------------------------------------------
-    // Set defaults input values
-    // ---------------------------------------------------------------------
+    
     std::string gradVar;
     std::string infile = "";
     int finestLevel = 1000;
     int nAuxVar = 0;
 
-    // ---------------------------------------------------------------------
-    // ParmParse
-    // ---------------------------------------------------------------------
     ParmParse pp;
-
-    if (pp.contains("help")) {
-      print_usage(argc, argv);
-    }
 
     pp.get("infile", infile);
     pp.query("gradVar", gradVar);
