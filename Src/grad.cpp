@@ -52,7 +52,7 @@ main(int argc, char* argv[])
       print_usage(argc, argv);
     }
     
-    std::string gradVar;
+    std::string gradVar = "";
     std::string infile = "";
     int finestLevel = 1000;
     int nAuxVar = 0;
