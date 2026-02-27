@@ -30,6 +30,7 @@ USE_CUDA      = FALSE
 #EBASE   = checkIso
 #EBASE   = combinePlts
 #EBASE   = conditionalMean
+#EBASE   = convert2hdf5
 #EBASE   = createTestPlt
 #EBASE   = curvature
 #EBASE   = diffPlts
@@ -54,7 +55,6 @@ USE_CUDA      = FALSE
 
 # tools that need review/combining/fixing/work.  Comment with double ## t escape from CI
 ##EBASE   = avgToPlane
-##EBASE   = convert2hdf5
 ##EBASE   = combineMEF
 ##EBASE   = decimateMEF
 ##EBASE   = dumpFABslice
