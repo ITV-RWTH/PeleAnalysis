@@ -2,6 +2,8 @@
 # 	example: make -j 24 -f GNUmakefile.all grad integral qCriterion
 # 	example: make -j 24 -f GNUmakefile.all all
 
+AMREX_HOME = ../../PelePhysics/Submodules/amrex
+PELE_PHYSICS_HOME = ../../PelePhysics
 PELE_ANALYSIS_HOME = ..
 
 DEBUG = FALSE
@@ -52,6 +54,8 @@ all: $(TARGETS)
 
 $(TARGETS):
 	+$(MAKE) \
+       AMREX_HOME=$(AMREX_HOME) \
+       PELE_PHYSICS_HOME=$(PELE_PHYSICS_HOME) \
        PELE_ANALYSIS_HOME=$(PELE_ANALYSIS_HOME) \
        DEBUG=$(DEBUG) \
        DIM=$(DIM) \
