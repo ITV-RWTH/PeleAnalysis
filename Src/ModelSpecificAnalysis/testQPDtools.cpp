@@ -17,22 +17,19 @@ using namespace analysis_util;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr
-    << "Print a full structural summary of the compiled chemical mechanism.\n"
-       "No plot file is required -- all output is derived from the compiled "
-       "mechanism.\n\nusage:\n";
-  std::cerr << argv[0] << " [options] \n\tOptions:\n";
-  std::cerr << "\t\t#------------------- Mechanism Inspection Options "
-               "-----------------------------------------\n";
-  std::cerr << "\t\ttrElem = C                                 # DEF: C; "
-               "Element for QPD edge graph construction\n";
-  std::cerr << "\t\t\n";
-  std::cerr << "\t\t# All other output (element list, species list, "
-               "composition, reaction count,\n";
-  std::cerr << "\t\t# reaction participation, RMAP, RRMAP, stoichiometric "
-               "coefficients) is always\n";
-  std::cerr << "\t\t# printed and requires no options.\n";
-  exit(1);
+    std::cerr << "Usage:\n"
+              << "  " << argv[0]
+              << " [OPTIONS]\n\n"
+
+              << "Required arguments:\n"
+              << "  - \n\n"
+
+              << "Options:\n"
+              << "  -h, --help         Show this help message\n\n"
+              << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+              << "the documentation.\n";
+
+    std::exit(1);
 }
 
 int
@@ -40,13 +37,13 @@ main(int argc, char* argv[])
 {
   Initialize(argc, argv);
   {
-    if (argc < 2)
+    if (argc < 2) {
       print_usage(argc, argv);
+    } else if ((std::strcmp(argv[1], "-h") == 0) || (std::strcmp(argv[1], "--help") == 0)) {
+      print_usage(argc, argv);
+    }
 
     ParmParse pp;
-
-    if (pp.contains("help"))
-      print_usage(argc, argv);
 
     Print() << " ==> Element list \n";
     Vector<std::string> elem_names;
