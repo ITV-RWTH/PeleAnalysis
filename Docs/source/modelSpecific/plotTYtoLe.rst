@@ -1,7 +1,7 @@
 .. highlight:: bash
-******************************************
-plotYTtoLe - Lewis Number Computation Tool
-******************************************
+
+plotYTtoLe
+**********
 Compute per-species Lewis numbers from an AMReX plot file produced by a reacting flow solver such as PeleLMeX. The tool reads species mass fractions, temperature, and density from each AMR level, calls the PelePhysics transport library to evaluate mixture transport coefficients, and derives the Lewis number for every species at every grid point. Results are written as a new AMReX plot file.
 
 The Lewis number for species *n* is defined as:

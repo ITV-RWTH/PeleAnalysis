@@ -1,7 +1,7 @@
 .. highlight:: bash
-******************************************
-plotQPD - Quasi-Planar Diagram Tool
-******************************************
+
+plotQPD
+*******
 Compute a Quasi-Planar Diagram (QPD) of atomic mass fluxes through a chemical mechanism from an AMReX plot file produced by a reacting flow solver such as PeleLMeX. The tool integrates forward and reverse reaction rates across the entire domain, maps them onto species-to-species edges for a chosen atom, normalises the fluxes, and writes the result as a plain-text edge-list file suitable for QPD visualisation tools.
 
 QPDs are a standard diagnostic in combustion analysis, used to identify dominant reaction pathways, quantify how an atom (typically carbon) flows between species, and determine which intermediates play the most significant role in fuel breakdown. Each edge in the diagram connects two species and carries the net flux of the tracked atom between them, summed over all reactions that link that pair.
@@ -82,7 +82,7 @@ This format is compatible with standard QPD visualisation tools. The species lis
 
 Relation to Other Tools
 ########################
-- This tool requires **mole fractions** ``X(...)`` as input, whereas :doc:`plotYTtoLe` and :doc:`plotTransportCoeff` require **mass fractions** ``Y(...)``. Ensure the correct variable names are present in the plot file before running.
+- This tool requires **mole fractions** ``X(...)`` as input, whereas :doc:`plotTYtoLe` and :doc:`plotTransportCoeff` require **mass fractions** ``Y(...)``. Ensure the correct variable names are present in the plot file before running.
 - The reaction rate evaluation uses the Chemkin-style routines ``CKPX`` (pressure from mole fractions) and ``CKKFKR`` (forward and reverse rate constants), which are part of the compiled chemical mechanism.
 
 Dependencies

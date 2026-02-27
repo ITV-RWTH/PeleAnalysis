@@ -1,8 +1,8 @@
 .. highlight:: bash
 
 
-rmsVel - Calculate rms velocity fluctuations 
-*****************************************************************
+rmsVel
+******
 
 The tool `rmsVel` calculates the rms velocity flcutuations over the given plotfiles as
 .. math::

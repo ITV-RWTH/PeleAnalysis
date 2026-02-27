@@ -30,11 +30,9 @@ PeleAnalysis documentation
    analysis/partStream
    analysis/qCriterion
    analysis/rmsVel
-   analysis/sampleStreamlines
    analysis/scaleMEF
    analysis/stream2plt
    analysis/streamBinTubeStats
-   analysis/streamSub
    analysis/subPlt
    analysis/surfMEFtools
    analysis/trimMEFgen

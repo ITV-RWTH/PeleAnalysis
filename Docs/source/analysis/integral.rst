@@ -19,6 +19,7 @@ Tool Options
 #############
 
 ::
+
    #------------------- IO CONTROL -----------------------------------------------------------
    infile = plt00000                          # Plot file for surface construction
    finestLevel = 0                            # DEF: finest level of plot file; Sets the finest level to read.
@@ -31,7 +32,8 @@ Tool Options
 
 `vars` takes a space-separated list of variable names. Some varnames need to be wrapped in `""`. The integration space can be restricted to a specific progress variable space based on `cVar`. Cells, where the value of `cVar` is lower than `cMin` or `cMax` are excluded from the integral.
 
-::   
+::
+
    #------------------- Integral options -----------------------------------------------------
    integralDimension = 3                      # [1, 2, 3]; Integral dimension up to AMREX_SPACEDIM. For integralDimension<AMREX_SPACEDIM additional flags for the direction must be provided.
    avg = 0                                    # [0, 1], DEF: 0; If 1, divides the integral by the area.
@@ -45,7 +47,8 @@ Tool Options
 
 The `integralDimension` defines in how many dimensions the integral is performed. `integralDimension = 1` calculates the integral along lines. The axis of the lines is defined via `dir`. E.g. `dir = 0` calculates line integrals along the x axis. `integralDimension = 2` calculates the integral on planes / slices. For `AMREX_SPACEDIM=2`, this is the full integral and needs no specification of the direction. For `AMREX_SPACEDIM=3`, the orientation of the planes is provided via `dir1` and `dir2`. The option `avg` results in returning the average insteag of the integral.
 
-::   
+::
+
    #----------------- Additional options ----------------------------------------------------
    format = dat                               # [dat, ppm], DEF: dat; Option to create a ppm (portable pixmap) image file. Only available for AMREX_SPACEDIM=3 and integralDimension=1
    useminmax1 = -1e5 1e5                      # Minimum and maximum for normalization in ppm. Need to provide 2 values for each integrated var.

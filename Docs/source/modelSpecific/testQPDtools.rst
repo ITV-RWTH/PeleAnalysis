@@ -1,7 +1,7 @@
 .. highlight:: bash
-******************************************
-testQPDtools - Chemical Mechanism Introspection Tool
-******************************************
+
+testQPDtools
+************
 Print a comprehensive structural summary of the compiled chemical mechanism. Unlike other tools in this suite, ``testQPDtools`` requires no plot file input — all output is derived directly from the mechanism compiled into the executable at build time. It is primarily used to verify that the correct mechanism has been compiled, to inspect reaction connectivity and stoichiometry, and to preview the QPD edge graph that will be used by :doc:`plotQPD`.
 
 The following information is printed to stdout in order:

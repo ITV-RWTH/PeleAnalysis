@@ -1,8 +1,8 @@
 .. highlight:: bash
-******************************************
-plotTransportCoeff - Transport Coefficient Extraction Tool
-******************************************
-Evaluate and output all mixture transport coefficients from an AMReX plot file produced by a reacting flow solver such as PeleLMeX. The tool reads species mass fractions, temperature, and density at each AMR level, calls the PelePhysics transport library to compute the full set of transport coefficients, and writes the results as a new AMReX plot file. This tool is closely related to :doc:`plotYTtoLe`, which derives Lewis numbers from the same transport coefficients; here the raw coefficients are written directly without further post-processing.
+
+plotTransportCoeff
+******************
+Evaluate and output all mixture transport coefficients from an AMReX plot file produced by a reacting flow solver such as PeleLMeX. The tool reads species mass fractions, temperature, and density at each AMR level, calls the PelePhysics transport library to compute the full set of transport coefficients, and writes the results as a new AMReX plot file. This tool is closely related to :doc:`plotTYtoLe`, which derives Lewis numbers from the same transport coefficients; here the raw coefficients are written directly without further post-processing.
 
 The following transport coefficients are computed and written for each grid point:
 
@@ -80,7 +80,7 @@ The output inherits the domain geometry, coordinate system, and box structure fr
 
 Relation to Other Tools
 ########################
-- :doc:`plotYTtoLe` uses the same inputs and calls the same transport library, but derives Lewis numbers :math:`\mathrm{Le}(n) = D_n / (\lambda / C_{p,\mathrm{mix}})` rather than writing the raw coefficients.
+- :doc:`plotTYtoLe` uses the same inputs and calls the same transport library, but derives Lewis numbers :math:`\mathrm{Le}(n) = D_n / (\lambda / C_{p,\mathrm{mix}})` rather than writing the raw coefficients.
 - The ``rhoD`` values written by this tool are the density-weighted diffusivities :math:`\rho D_n`. To recover the mass diffusivity :math:`D_n` alone, divide by the ``density`` field from the original plot file.
 
 Dependencies
