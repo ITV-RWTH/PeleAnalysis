@@ -6,12 +6,6 @@
 #include <AMReX_DataServices.H>
 #include <AMReX_PlotFileUtil.H>
 
-#if AMREX_SPACEDIM == 2
-extern "C" {
-void FLIPROWSY(const Real* dat, ARLIM_P(lo), ARLIM_P(hi));
-};
-#endif
-
 using namespace amrex;
 
 static void
@@ -188,7 +182,24 @@ main(int argc, char* argv[])
     //
     // Write the FAB to the data file after flipping rows in Y direction.
     //
-    FLIPROWSY(xfab.dataPtr(), ARLIM(xfab.loVect()), ARLIM(xfab.hiVect()));
+    {
+        const Box& box = xfab.box();
+        const int ylo = box.smallEnd(1);
+        const int yhi = box.bigEnd(1);
+        const int xlo = box.smallEnd(0);
+        const int xhi = box.bigEnd(0);
+
+        for (int x = xlo; x <= xhi; x++) {
+            for (int y = ylo; y < ylo + (yhi - ylo + 1) / 2; y++) {
+                int ymirror = yhi - (y - ylo);
+                IntVect lo_iv(x, y);
+                IntVect hi_iv(x, ymirror);
+                Real tmp = xfab(lo_iv, 0);
+                xfab(lo_iv, 0) = xfab(hi_iv, 0);
+                xfab(hi_iv, 0) = tmp;
+            }
+        }
+    }
     xfab.writeOn(ifsd);
 #elif AMREX_SPACEDIM == 3
 
