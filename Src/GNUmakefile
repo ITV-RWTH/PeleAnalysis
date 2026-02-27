@@ -27,6 +27,7 @@ USE_CUDA      = FALSE
 #EBASE   = template
 #EBASE   = amrToFE
 #EBASE   = avgPlotfiles
+#EBASE   = avgToPlane
 #EBASE   = checkIso
 #EBASE   = combinePlts
 #EBASE   = conditionalMean
@@ -44,6 +45,7 @@ USE_CUDA      = FALSE
 #EBASE   = makePlotfile
 #EBASE   = partStream
 #EBASE   = qCriterion
+#EBASE   = regridPlt
 #EBASE   = rmsVel
 #EBASE   = scaleMEF
 #EBASE   = stream2plt
@@ -52,19 +54,17 @@ USE_CUDA      = FALSE
 #EBASE   = surfMEFtoDAT
 #EBASE   = surfDATtoMEF
 #EBASE   = trimMEFgen
+#EBASE   = turbfile
 
 # tools that need review/combining/fixing/work.  Comment with double ## t escape from CI
-##EBASE   = avgToPlane
 ##EBASE   = combineMEF
 ##EBASE   = decimateMEF
 ##EBASE   = dumpFABslice
 ##EBASE   = interp
 ##EBASE   = mergeMEF
 ##EBASE   = multMEF
-##EBASE   = regridPlt
 ##EBASE   = sliceMEF
 ##EBASE   = smoothMEF
-##EBASE   = turbfile
 
 
 
