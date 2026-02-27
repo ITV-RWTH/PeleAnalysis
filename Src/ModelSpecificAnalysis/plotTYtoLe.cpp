@@ -22,24 +22,19 @@ pele::physics::PeleParams<pele::physics::transport::TransParm<
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Calculates local species' Lewis numbers from a PeleLMeX plot "
-               "file.\n\nusage:\n";
-  std::cerr << argv[0] << " infile=<s> [options] \n\tOptions:\n";
-  std::cerr << "\t\t#------------------- IO CONTROL "
-               "-----------------------------------------------------------\n";
-  std::cerr << "\t\tinfile = plt00500                          # Input AMReX "
-               "plot file (must contain Y(...), temp, density)\n";
-  std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- AMR Control "
-               "----------------------------------------------------------\n";
-  std::cerr << "\t\tfinestLevel = 2                            # DEF: finest "
-               "level in file; Finest AMR level to process\n";
-  std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- Additional Flags "
-               "-----------------------------------------------------\n";
-  std::cerr << "\t\t# verbose                                  # Uncomment to "
-               "enable verbose AMReX data loading output\n";
-  exit(1);
+    std::cerr << "Usage:\n"
+              << "  " << argv[0]
+              << " infile=FILE [OPTIONS]\n\n"
+
+              << "Required arguments:\n"
+              << "  infile=FILE        AMReX plotfile\n\n"
+
+              << "Options:\n"
+              << "  -h, --help         Show this help message\n\n"
+              << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+              << "the documentation.\n";
+
+    std::exit(1);
 }
 
 std::string
@@ -54,13 +49,13 @@ main(int argc, char* argv[])
 {
   Initialize(argc, argv);
   {
-    if (argc < 2)
+    if (argc < 2) {
       print_usage(argc, argv);
+    } else if ((std::strcmp(argv[1], "-h") == 0) || (std::strcmp(argv[1], "--help") == 0)) {
+      print_usage(argc, argv);
+    }
 
     ParmParse pp;
-
-    if (pp.contains("help"))
-      print_usage(argc, argv);
 
     if (pp.contains("verbose"))
       AmrData::SetVerbose(true);
