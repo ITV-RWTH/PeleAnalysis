@@ -9,36 +9,35 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr
-    << "Utility to compute volume-averaged RMS velocity from pltfiles\n";
-  std::cerr << "usage:\n";
-  std::cerr << argv[0] << " infiles=<s1 s2 s3> [options]\n\n";
-  std::cerr << "Required:\n";
-  std::cerr << "\t infiles=<s1 s2 ...>   List of plotfiles\n\n";
-  std::cerr << "Options:\n";
-  std::cerr << "\t finestLevel=<int>    Finest AMR level to use "
-               "[DEF -> plotfile finest level]\n";
-  std::cerr << "\nDescription:\n";
-  std::cerr << "\t Computes volume-averaged RMS velocity based on\n";
-  std::cerr << "\t x_velocity, y_velocity, z_velocity\n";
-  std::cerr << "\t Outputs: RmsVel.dat (time  urms)\n";
-  std::cerr << std::endl;
-  exit(1);
+    std::cerr << "Usage:\n"
+              << "  " << argv[0]
+              << " infiles=FILE FILE FILE [OPTIONS]\n\n"
+
+              << "Required arguments:\n"
+              << "  infile=FILE FILE FILE      AMReX plotfiles\n"
+
+              << "Options:\n"
+              << "  -h, --help         Show this help message\n\n"
+              << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+              << "the documentation.\n";
+
+    std::exit(1);
 }
+
+
 
 int
 main(int argc, char* argv[])
 {
   Initialize(argc, argv);
   {
+
     if (argc < 2) {
+      print_usage(argc, argv);
+    } else if ((std::strcmp(argv[1], "-h") == 0) || (std::strcmp(argv[1], "--help") == 0)) {
       print_usage(argc, argv);
     }
     ParmParse pp;
-
-    if (pp.contains("help")) {
-      print_usage(argc, argv);
-    }
 
     // Open first plotfile header and create an amrData object pointing into it
     int nPlotFiles = pp.countval("infiles");
