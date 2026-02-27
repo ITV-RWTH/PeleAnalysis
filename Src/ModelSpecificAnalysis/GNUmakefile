@@ -7,8 +7,8 @@ PELE_ANALYSIS_HOME = ../..
 # to link PeleAnalysis to your versions of PELE_PHYSICS_HOME and AMREX_HOME used by 
 # PeleLMeX or PeleC, make the following lines to point to the respective directories.
 #
-#PELE_PHYSICS_HOME = ../../../PelePhysics
-#AMREX_HOME = ../../../PelePhysics/Submodules/amrex
+# PELE_PHYSICS_HOME = $(abspath ../../../PelePhysics)
+# AMREX_HOME = $(abspath ../../../PelePhysics/Submodules/amrex)
 
 # AMReX
 DIM        = 3
@@ -25,7 +25,7 @@ USE_CUDA   = FALSE
 USE_HIP    = FALSE
 TINY_PROFILE = FALSE
 
-#EBASE=plotQPD
+EBASE=plotQPD
 #EBASE=plotTYtoLe
 #EBASE=plotTransportCoeff
 #EBASE=plotXtoY
