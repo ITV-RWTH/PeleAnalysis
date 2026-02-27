@@ -18,6 +18,7 @@ PeleAnalysis documentation
    analysis/checkIso
    analysis/combinePlts
    analysis/conditionalMean
+   analysis/convert2hdf5
    analysis/curvature
    analysis/diffPlts
    analysis/filterPlt
@@ -29,6 +30,7 @@ PeleAnalysis documentation
    analysis/makePlotfile
    analysis/partStream
    analysis/qCriterion
+   analysis/regridPlt
    analysis/rmsVel
    analysis/scaleMEF
    analysis/stream2plt
@@ -36,6 +38,7 @@ PeleAnalysis documentation
    analysis/subPlt
    analysis/surfMEFtools
    analysis/trimMEFgen
+   analysis/turbfile
 
 .. toctree::
    :maxdepth: 2
