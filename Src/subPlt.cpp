@@ -12,42 +12,21 @@ using namespace amrex;
 const bool verbose_DEF = false;
 
 static void
-PrintUsage(const char* progName)
+print_usage(int, char* argv[])
 {
-  std::cerr << "Extracts a spatial subregion and/or variable subset from an "
-               "AMReX plot file.\n\n";
-  std::cerr
-    << argv[0]
-    << " ./InputSamples/isosurface.inp infile=<s> [options] \n\tOptions:\n";
+    std::cerr << "Usage:\n"
+              << "  " << argv[0]
+              << " infile=FILE [OPTIONS]\n\n"
 
-  std::cerr << "\t\t#------------------- IO CONTROL "
-               "-----------------------------------------------------------\n";
-  std::cerr << "\t\tinfile      = plt00500                     # Input AMReX "
-               "plot file\n";
-  std::cerr << "\t\toutfile     = plt00500_section             # DEF: "
-               "<infile>_section; Output plot file name\n";
-  std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- AMR Control "
-               "----------------------------------------------------------\n";
-  std::cerr << "\t\tfinestLevel = 2                            # DEF: finest "
-               "level in file; Finest AMR level to include\n";
-  std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- Spatial Subsetting "
-               "---------------------------------------------------\n";
-  std::cerr << "\t\tbox = 32 0 0 64 128 128                    # DEF: full "
-               "domain; lo and hi index bounds (ix,iy,iz iX,iY,iZ)\n";
-  std::cerr << "\t\t\n";
-  std::cerr << "\t\t#------------------- Variable Selection "
-               "---------------------------------------------------\n";
-  std::cerr << "\t\tcomps = 0 1 4 7                            # Specific "
-               "component indices to extract (overrides sComp/nComp)\n";
-  std::cerr << "\t\t# sComp = 0                                # DEF: 0; Start "
-               "component index (used if comps not set)\n";
-  std::cerr
-    << "\t\t# nComp = 4                                # DEF: all components; "
-       "Number of components (used if comps not set)usage:\n";
+              << "Required arguments:\n"
+              << "  infile=FILE        AMReX plotfile\n\n"
 
-  exit(1);
+              << "Options:\n"
+              << "  -h, --help         Show this help message\n\n"
+              << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+              << "the documentation.\n";
+
+    std::exit(1);
 }
 
 static Vector<Vector<int>> contigLists(const Vector<int> orig);
@@ -55,15 +34,16 @@ static Vector<Vector<int>> contigLists(const Vector<int> orig);
 int
 main(int argc, char* argv[])
 {
-  if (argc == 1)
-    PrintUsage(argv[0]);
-
   Initialize(argc, argv);
   {
-    ParmParse pp;
 
-    if (pp.contains("help"))
-      PrintUsage(argv[0]);
+    if (argc < 2) {
+      print_usage(argc, argv);
+    } else if ((std::strcmp(argv[1], "-h") == 0) || (std::strcmp(argv[1], "--help") == 0)) {
+      print_usage(argc, argv);
+    }
+
+    ParmParse pp;
 
     FArrayBox::setFormat(FABio::FAB_IEEE_32);
     //
