@@ -8,20 +8,19 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-    std::cerr << "Usage:\n"
-              << "  " << argv[0]
-              << " infile=LIST outfile=FILE [OPTIONS]\n\n"
+  std::cerr << "Usage:\n"
+            << "  " << argv[0] << " infile=LIST outfile=FILE [OPTIONS]\n\n"
 
-              << "Required arguments:\n"
-              << "  infile=LIST        List of AMReX plotfiles to average\n"
-              << "  outfile=FILE       Output averaged plotfile\n\n"
+            << "Required arguments:\n"
+            << "  infile=LIST        List of AMReX plotfiles to average\n"
+            << "  outfile=FILE       Output averaged plotfile\n\n"
 
-              << "Options:\n"
-              << "  -h, --help         Show this help message\n\n"
-              << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
-              << "the documentation.\n";
+            << "Options:\n"
+            << "  -h, --help         Show this help message\n\n"
+            << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+            << "the documentation.\n";
 
-    std::exit(1);
+  std::exit(1);
 }
 
 int
@@ -31,7 +30,9 @@ main(int argc, char* argv[])
   {
     if (argc < 2) {
       print_usage(argc, argv);
-    } else if ((std::strcmp(argv[1], "-h") == 0) || (std::strcmp(argv[1], "--help") == 0)) {
+    } else if (
+      (std::strcmp(argv[1], "-h") == 0) ||
+      (std::strcmp(argv[1], "--help") == 0)) {
       print_usage(argc, argv);
     }
 

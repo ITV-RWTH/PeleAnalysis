@@ -15,20 +15,19 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-    std::cerr << "Usage:\n"
-              << "  " << argv[0]
-              << " infile=FILE compName=NAME [OPTIONS]\n\n"
+  std::cerr << "Usage:\n"
+            << "  " << argv[0] << " infile=FILE compName=NAME [OPTIONS]\n\n"
 
-              << "Required arguments:\n"
-              << "  infile=FILE        AMReX plotfile\n"
-              << "  compName=NAME      Component for gradient evaluation\n\n"
+            << "Required arguments:\n"
+            << "  infile=FILE        AMReX plotfile\n"
+            << "  compName=NAME      Component for gradient evaluation\n\n"
 
-              << "Options:\n"
-              << "  -h, --help         Show this help message\n\n"
-              << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
-              << "the documentation.\n";
+            << "Options:\n"
+            << "  -h, --help         Show this help message\n\n"
+            << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+            << "the documentation.\n";
 
-    std::exit(1);
+  std::exit(1);
 }
 
 std::string
@@ -45,10 +44,12 @@ main(int argc, char* argv[])
   {
     if (argc < 2) {
       print_usage(argc, argv);
-    } else if ((std::strcmp(argv[1], "-h") == 0) || (std::strcmp(argv[1], "--help") == 0)) {
+    } else if (
+      (std::strcmp(argv[1], "-h") == 0) ||
+      (std::strcmp(argv[1], "--help") == 0)) {
       print_usage(argc, argv);
     }
-    
+
     std::string gradVar = "";
     std::string infile = "";
     int finestLevel = 1000;

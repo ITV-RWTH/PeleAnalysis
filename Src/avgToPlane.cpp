@@ -8,19 +8,19 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Usage:\n"
-            << "  " << argv[0]
-            << " infile=FILE palette=FILE [OPTIONS]\n\n"
+  std::cerr
+    << "Usage:\n"
+    << "  " << argv[0] << " infile=FILE palette=FILE [OPTIONS]\n\n"
 
-            << "Required arguments:\n"
-            << "  infile=FILE    Input AMReX plotfile\n"
-            << "  palette=FILE   Binary colour palette file (256 RGB triplets)\n\n"
+    << "Required arguments:\n"
+    << "  infile=FILE    Input AMReX plotfile\n"
+    << "  palette=FILE   Binary colour palette file (256 RGB triplets)\n\n"
 
-            << "Options:\n"
-            << "  -h, --help     Show this help message\n\n"
+    << "Options:\n"
+    << "  -h, --help     Show this help message\n\n"
 
-            << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
-            << "the documentation.\n";
+    << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+    << "the documentation.\n";
 
   std::exit(1);
 }
@@ -74,7 +74,9 @@ main(int argc, char* argv[])
   {
     if (argc < 2) {
       print_usage(argc, argv);
-    } else if ((std::strcmp(argv[1], "-h") == 0) || (std::strcmp(argv[1], "--help") == 0)) {
+    } else if (
+      (std::strcmp(argv[1], "-h") == 0) ||
+      (std::strcmp(argv[1], "--help") == 0)) {
       print_usage(argc, argv);
     }
 
@@ -181,8 +183,7 @@ main(int argc, char* argv[])
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
         // No tiling: avoid write races on the projected (flat) FAB
-        for (MFIter mfi(mf_full, false); mfi.isValid(); ++mfi)
-        {
+        for (MFIter mfi(mf_full, false); mfi.isValid(); ++mfi) {
           const Box& tile_box = mfi.tilebox();
           Box flat_box = ProjectBox(tile_box, dir, loc);
 
@@ -272,7 +273,7 @@ pixelizeData(
   image.resize(Box(IntVect::TheZeroVector(), img), 1);
 
   Array4<Real const> data_arr = data.const_array();
-  Array4<int>        img_arr  = image.array();
+  Array4<int> img_arr = image.array();
 
   IntVect div;
   div[slicedir] = sliceloc;
@@ -281,7 +282,8 @@ pixelizeData(
     for (int j = se[d[1]]; j <= be[d[1]]; ++j) {
       div[d[0]] = i;
       div[d[1]] = j;
-      const Real normed = (data_arr(div[0], div[1], div[2], 0) - data_min) / del;
+      const Real normed =
+        (data_arr(div[0], div[1], div[2], 0) - data_min) / del;
       img_arr(i - se[d[0]], j - se[d[1]], 0, 0) =
         std::max(0, static_cast<int>(nvm1 * std::min(normed, 1.0_rt)));
     }

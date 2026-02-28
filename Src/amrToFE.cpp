@@ -109,27 +109,27 @@ struct Element
 static void
 print_usage(int, char* argv[])
 {
-    std::cerr << "Usage:\n"
-              << "  " << argv[0]
-              << " infile=FILE outfile=FILE vars=LIST [OPTIONS]\n\n"
+  std::cerr
+    << "Usage:\n"
+    << "  " << argv[0] << " infile=FILE outfile=FILE vars=LIST [OPTIONS]\n\n"
 
-              << "Required arguments:\n"
-              << "  infile=FILE        AMReX plotfile\n"
-              << "  outfile=FILE       Output finite-element file\n"
-              << "  vars=LIST          Variables to export (comma-separated)\n\n"
+    << "Required arguments:\n"
+    << "  infile=FILE        AMReX plotfile\n"
+    << "  outfile=FILE       Output finite-element file\n"
+    << "  vars=LIST          Variables to export (comma-separated)\n\n"
 
-              << "Options:\n"
-              << "  finestLevel=N      Finest AMR level to process (default: all)\n"
-              << "  nghost=N           Number of ghost cells (default: 0)\n"
-              << "  format=TYPE        Output format (e.g. vtk, exodus, fe)\n"
-              << "  region=BOX         Subregion selection (lo:hi per direction)\n"
-              << "  stride=N           Sampling stride (default: 1)\n"
-              << "  -h, --help         Show this help message\n\n"
+    << "Options:\n"
+    << "  finestLevel=N      Finest AMR level to process (default: all)\n"
+    << "  nghost=N           Number of ghost cells (default: 0)\n"
+    << "  format=TYPE        Output format (e.g. vtk, exodus, fe)\n"
+    << "  region=BOX         Subregion selection (lo:hi per direction)\n"
+    << "  stride=N           Sampling stride (default: 1)\n"
+    << "  -h, --help         Show this help message\n\n"
 
-              << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
-              << "the documentation.\n";
+    << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+    << "the documentation.\n";
 
-    std::exit(1);
+  std::exit(1);
 }
 
 static BoxArray
