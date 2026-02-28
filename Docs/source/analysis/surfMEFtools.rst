@@ -16,7 +16,7 @@ The surfMEF conversion tools are used to transform to and from the MEF format, a
 operations on the data.
 
 - combineMEF: Combine the components of two MEF files, assuming they have the same node positions and connectivity (broken)
-- decimateMEF: ? (broken)
+- decimateMEF: ? (broken) requires compilation of qslim `make qslim` before building the tool
 - mergeMEF: Merge the triangles of two different MEF files (broken)
 - multMEF: Multiply specific components of MEF files together (broken)
 - scaleMEF: Scale specific components of the MEF by constants

@@ -60,7 +60,6 @@ USE_CUDA      = FALSE
 ##EBASE   = combineMEF
 ##EBASE   = decimateMEF
 ##EBASE   = dumpFABslice
-##EBASE   = interp
 ##EBASE   = mergeMEF
 ##EBASE   = multMEF
 ##EBASE   = sliceMEF
