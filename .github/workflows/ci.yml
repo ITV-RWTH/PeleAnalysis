@@ -117,7 +117,7 @@ jobs:
         run: |
           ccache -z
           set +e
-          EBASE_OPTIONS=$(grep -oP 'EBASE\s*=\s*\K[^ ]+' GNUmakefile | grep -v '^##')
+          EBASE_OPTIONS=$(grep -oP '^#(?!#)\s*EBASE\s*=\s*\K[^ ]+' GNUmakefile)
           DIM=${{matrix.dim}}
           EXPECTED_FAILURES=$([ "$DIM" = "2" ] && echo "$EXPECTED_2D_FAILURES" || echo "$EXPECTED_3D_FAILURES")
 
@@ -153,7 +153,7 @@ jobs:
         run: |
           ccache -z
           set +e
-          EBASE_OPTIONS=$(grep -oP 'EBASE\s*=\s*\K[^ ]+' GNUmakefile | grep -v '^##')
+          EBASE_OPTIONS=$(grep -oP '^#(?!#)\s*EBASE\s*=\s*\K[^ ]+' GNUmakefile)
           DIM=${{matrix.dim}}
           EXPECTED_FAILURES=$([ "$DIM" = "2" ] && echo "$EXPECTED_2D_FAILURES" || echo "$EXPECTED_3D_FAILURES")
 
