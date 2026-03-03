@@ -3,7 +3,7 @@ name: PeleAnalysis-CI
 on:
    workflow_dispatch:
    push:
-     branches: [development]
+     branches: [development, tl_fixCI]
    pull_request:
      branches: [development]
 
@@ -121,10 +121,9 @@ jobs:
 
           for TYPE in $EBASE_OPTIONS; do \
             printf "\n-------- ${TYPE} --------\n";
-            OUTPUT=$(make -j ${{ env.NPROCS }} EBASE=${TYPE} USE_CCACHE=TRUE ${{ matrix.amrex_build_args }} 2>&1)i || true; \
+            OUTPUT=$(make -j ${{ env.NPROCS }} EBASE=${TYPE} USE_CCACHE=TRUE ${{ matrix.amrex_build_args }} 2>&1); \
             RESULT=$?; \
             echo "${OUTPUT}"; \
-            make realclean; \
             if [ ${RESULT} -ne 0 ]; then \
               if echo "${OUTPUT}" | grep -q "static_assert.*AMREX_SPACEDIM\s*=="; then \
                 echo "Skipping failure due to AMREX_SPACEDIM assertion for ${TYPE}."; \
@@ -133,6 +132,7 @@ jobs:
                 exit ${RESULT}; \
               fi; \
             fi; \
+            make realclean; \
           done
       - name: Src ccache report
         working-directory: ${{env.BASE_WORKING_DIRECTORY}}
