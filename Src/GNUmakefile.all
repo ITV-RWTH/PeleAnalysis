@@ -18,33 +18,35 @@ USE_CUDA = FALSE
 TARGETS = \
     amrToFE \
     avgPlotfiles \
-    binMEF \
+    avgToPlane \
     checkIso \
     combinePlts \
     conditionalMean \
-    createTestPlt \
+    convert2hdf5 \
     curvature \
     diffPlts \
+    dumpFABslice \
     filterPlt \
     flattenAMRFile \
+    generateTestPlt \
     grad \
     integral \
     isoMEF \
+    isosurface \
     jpdf \
     makePlotfile \
+    partStream \
     qCriterion \
+    regridPlt \
     rmsVel \
     scaleMEF \
-    slicePlot \
+    stream2plt \
     streamBinTubeStats \
     subPlt \
     surfDATtoMEF \
     surfMEFtoDAT \
     template \
     trimMEFgen \
-    isosurface \
-    partStream \
-    stream2plt
 
 .NOTPARALLEL:
 
