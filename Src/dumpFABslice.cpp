@@ -9,19 +9,20 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Usage:\n"
-            << "  " << argv[0] << " infile=FILE [OPTIONS]\n\n"
+  std::cerr
+    << "Usage:\n"
+    << "  " << argv[0] << " infile=FILE [OPTIONS]\n\n"
 
-            << "Required arguments:\n"
-            << "  infile=FILE        List of AMReX plotfiles to average\n\n"
+    << "Required arguments:\n"
+    << "  infile=FILE        List of AMReX plotfiles to average\n\n"
 #if AMREX_SPACEDIM == 3
-            << "  dir=<i>                  Direction to take slice (0=x, 1=y, 2=z)\n"
-            << "  num=<i>                  Plane index along dir to extract\n"
+    << "  dir=<i>                  Direction to take slice (0=x, 1=y, 2=z)\n"
+    << "  num=<i>                  Plane index along dir to extract\n"
 #endif
-            << "Options:\n"
-            << "  -h, --help         Show this help message\n\n"
-            << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
-            << "the documentation.\n";
+    << "Options:\n"
+    << "  -h, --help         Show this help message\n\n"
+    << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+    << "the documentation.\n";
 
   std::exit(1);
 }
