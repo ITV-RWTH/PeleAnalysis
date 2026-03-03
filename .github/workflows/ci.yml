@@ -57,8 +57,6 @@ jobs:
       matrix:
         comp: [gnu, llvm, gnu-debug]  # TODO: cuda, hip, sycl
         dim: [2, 3]
-        python-version: ['3.11']
-        poetry-version: ['1.4.2']
         include:
           - comp: gnu
             amrex_build_args: 'COMP=gnu'
@@ -68,9 +66,6 @@ jobs:
             amrex_build_args: 'COMP=llvm'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{matrix.python-version}}
       - name: Clone PeleAnalysis
         uses: actions/checkout@v4
         with:
@@ -90,7 +85,7 @@ jobs:
           # Tools known to only support specific dimensions.
           # List tools here instead of relying on static_assert grep.
           # Format: space-separated tool names.
-          echo "EXPECTED_2D_FAILURES='qCriterion'" >> $GITHUB_ENV
+          echo "EXPECTED_2D_FAILURES=qCriterion" >> $GITHUB_ENV
           echo "EXPECTED_3D_FAILURES=''" >> $GITHUB_ENV
 
       - name: Install Ccache
