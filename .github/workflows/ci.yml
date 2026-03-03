@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        comp: [gnu, llvm]  # TODO: cuda, hip, sycl
+        comp: [gnu, llvm, gnu-debug]  # TODO: cuda, hip, sycl
         dim: [2, 3]
         python-version: ['3.11']
         poetry-version: ['1.4.2']
