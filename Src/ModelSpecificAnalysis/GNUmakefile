@@ -25,15 +25,14 @@ USE_CUDA   = FALSE
 USE_HIP    = FALSE
 TINY_PROFILE = FALSE
 
-EBASE=plotQPD
+#EBASE=plotQPD
 #EBASE=plotTYtoLe
 #EBASE=plotTransportCoeff
 #EBASE=plotXtoY
 #EBASE=plotYtoX
 #EBASE=testQPDtools
+#EBASE=testTsolve
 
-# tools that need review/combining/fixing/work. Comment with double ## t escape from CI.
-##EBASE=testTsolve
 
 CEXE_sources += $(EBASE).cpp
 

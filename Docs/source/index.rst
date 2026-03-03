@@ -15,14 +15,17 @@ PeleAnalysis documentation
 
    analysis/amrToFE
    analysis/avgPlotfiles
+   analysis/avgToPlane
    analysis/checkIso
    analysis/combinePlts
    analysis/conditionalMean
    analysis/convert2hdf5
    analysis/curvature
    analysis/diffPlts
+   analysis/dumpFABslice
    analysis/filterPlt
    analysis/flattenAMRFile
+   analysis/generateTestPlt
    analysis/grad
    analysis/integral
    analysis/isosurface
@@ -50,7 +53,7 @@ PeleAnalysis documentation
    modelSpecific/plotXtoY
    modelSpecific/plotYtoX
    modelSpecific/testQPDtools
-
+   modelSpecific/testTsolve
    
 
 README.rst:

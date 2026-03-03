@@ -7,6 +7,29 @@
 
 using namespace amrex;
 
+static void
+print_usage(int, char* argv[])
+{
+  std::cerr
+    << "Usage:\n"
+    << "  " << argv[0] << " [OPTIONS]\n\n"
+
+    << "Required arguments:\n"
+    << "  amr.n_cell=N [N N]         Number of cells per dimension\n"
+    << "  geometry.prob_lo=X [Y Z]   Physical lower bound of the domain\n"
+    << "  geometry.prob_hi=X [Y Z]   Physical upper bound of the domain\n"
+    << "  geometry.is_periodic=N [N N] Periodicity flags per dimension\n"
+    << "  field.names=NAME [NAME ...] Space-separated list of field names\n"
+    << "  <name>.type=TYPE           Field type for each named field\n\n"
+
+    << "  -h, --help                 Show this help message\n\n"
+
+    << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+    << "the documentation.\n";
+
+  std::exit(1);
+}
+
 // Enum for field types
 enum class FieldType {
   Constant,
@@ -301,6 +324,14 @@ main(int argc, char* argv[])
 {
   amrex::Initialize(argc, argv);
   {
+    if (argc < 2) {
+      print_usage(argc, argv);
+    } else if (
+      (std::strcmp(argv[1], "-h") == 0) ||
+      (std::strcmp(argv[1], "--help") == 0)) {
+      print_usage(argc, argv);
+    }
+
     // Read parameters
     ParmParse pp;
 
