@@ -86,10 +86,10 @@ endif
 
 ifeq ($(EBASE),convert2hdf5)
    USE_HDF5 = TRUE
-   USE_HDF5_ZFP = TRUE
-   HDF5_HOME = /path/to/hdf5
-   ZFP_HOME = /path/to/zfp
-   H5Z_HOME = /path/to/h5z-zfp
+   USE_HDF5_ZFP = FALSE
+   HDF5_HOME = $(HDF5_DIR) # /path/to/hdf5
+   ZFP_HOME = $(ZFP_DIR)  # /path/to/zfp
+   H5Z_HOME = $(H5Z_DIR) # /path/to/h5z-zfp
 endif
 
 ifeq ($(EBASE),decimateMEF) #make qslim first!
