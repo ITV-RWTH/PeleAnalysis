@@ -101,21 +101,48 @@ surface_area(
   return Area;
 }
 
+int
+find_comp(const std::vector<std::string>& names, const std::string& comp)
+{
+  for (int i = 0; i < names.size(); ++i) {
+    if (names[i] == comp)
+      return i;
+  }
+  Print() << "comp: " << comp << std::endl;
+  amrex::Abort("Component not found in names.");
+  return -1; // unreachable, but suppresses compiler warning
+}
+
 void
 trim_surface(
-  const Vector<int>& comps,
+  const Vector<std::string>& comps,
   const Vector<std::string>& signs,
   const Vector<Real>& vals,
   FArrayBox& nodes,
   Vector<int>& faceData,
-  int nodesPerElt)
+  int nodesPerElt,
+  std::vector<std::string> names)
 {
   const Box& nbox = nodes.box();
-  const int nc = comps.size();
-  Vector<Real*> dat(nc);
-  for (int i = 0; i < nc; ++i)
-    dat[i] = nodes.dataPtr(comps[i]);
+  const Real* xdat = nodes.dataPtr(0);
+  const Real* ydat = nodes.dataPtr(1);
+#if AMREX_SPACEDIM == 3
+  const Real* zdat = nodes.dataPtr(2);
+#endif
 
+  // Include the radius to the comp logic as comp = -1
+  const int nc = comps.size();
+  Vector<const Real*> dat(nc);
+  for (int i = 0; i < nc; ++i) {
+    if (comps[i] == "RXY" || comps[i] == "RXZ" || comps[i] == "RXZ") {
+      // RXY, RXZ, and RXZ do not have a corresponding comp.
+      // Inserting a nullptr here and catching it later.
+      dat[i] = nullptr;
+    } else {
+      dat[i] = nodes.dataPtr(find_comp(names, comps[i]));
+    }
+  }
+    
   int cnt = 0;
   int cnt_new = 0;
   std::vector<int> nodeIdx;
@@ -123,7 +150,24 @@ trim_surface(
        nbox.next(iv), cnt++) {
     bool remove_this_node = false;
     for (int i = 0; i < nc; ++i) {
-      const Real data = dat[i][cnt];
+      Real data;
+      if (comps[i] == "RXY") {
+        Real x = xdat[cnt];
+        Real y = ydat[cnt];
+        data = std::sqrt(x * x + y * y);
+#if AMREX_SPACEDIM == 3
+      } else if (comps[i] == "RXZ") {
+        Real x = xdat[cnt];
+        Real z = zdat[cnt];
+        data = std::sqrt(x * x + z * z);
+      } else if (comps[i] == "RYZ") {
+        Real y = ydat[cnt];
+        Real z = zdat[cnt];
+        data = std::sqrt(y * y + z * z);
+#endif
+      } else {
+        data = dat[i][cnt];
+      }
       if (signs[i] == "lt") {
         remove_this_node |= (data < vals[i]);
       } else if (signs[i] == "le") {
@@ -195,97 +239,7 @@ trim_surface(
     faceData[i] = newFaceData[i];
 }
 
-void
-trim_surface_RXY(
-  const std::string& sign,
-  Real radius,
-  FArrayBox& nodes,
-  Vector<int>& faceData,
-  int nodesPerElt)
-{
-  const Box& nbox = nodes.box();
-  const Real* xdat = nodes.dataPtr(0);
-  const Real* ydat = nodes.dataPtr(1);
 
-  int cnt = 0;
-  int cnt_new = 0;
-  std::vector<int> nodeIdx;
-  for (IntVect iv = nbox.smallEnd(); iv <= nbox.bigEnd();
-       nbox.next(iv), cnt++) {
-    Real x = xdat[cnt];
-    Real y = ydat[cnt];
-    Real r = std::sqrt(x * x + y * y);
-    bool remove_this_node = false;
-
-    if (sign == "lt") {
-      remove_this_node = (r < radius);
-    } else if (sign == "le") {
-      remove_this_node |= (r <= radius);
-    } else if (sign == "gt") {
-      remove_this_node |= (r > radius);
-    } else if (sign == "ge") {
-      remove_this_node |= (r >= radius);
-    } else if (sign == "eq") {
-      remove_this_node |= (r == radius);
-    } else {
-      Print() << "sign_RXY: " << sign << std::endl;
-      amrex::Abort("Bad sign data.  Use one of [lt,le,gt,ge,eq]");
-    }
-
-    nodeIdx.push_back(remove_this_node ? -1 : cnt_new++);
-  }
-  int nNodesNEW = cnt_new;
-
-  // Build new nodes structure with bad points removed
-  Box newBox(IntVect::TheZeroVector(), (nNodesNEW - 1) * amrex::BASISV(0));
-  int nNodesOLD = nbox.numPts();
-  int nComp = nodes.nComp();
-  FArrayBox newNodes(newBox, nComp);
-  Vector<Real*> odp(nComp);
-  Vector<Real*> ndp(nComp);
-  for (int j = 0; j < nComp; ++j) {
-    odp[j] = nodes.dataPtr(j);
-    ndp[j] = newNodes.dataPtr(j);
-  }
-  cnt_new = 0;
-  for (int i = 0; i < nNodesOLD; ++i) {
-    int newNode = nodeIdx[i];
-    if (newNode >= 0)
-      for (int j = 0; j < nComp; ++j)
-        ndp[j][newNode] = odp[j][i];
-  }
-  nodes.resize(newBox, nComp);
-  nodes.copy(newNodes);
-  newNodes.clear(); // Make some space...not really necessary, but what the heck
-
-  const int nElts = faceData.size() / nodesPerElt;
-  AMREX_ASSERT(nElts * nodesPerElt == faceData.size()); // Idiot check
-
-  // Remove elements that refer to removed nodes
-  std::vector<int> newFaceData;
-  cnt_new = 0;
-  for (int i = 0; i < nElts; ++i) {
-    int offset = nodesPerElt * i;
-    bool eltGood = true;
-    for (int j = 0; j < nodesPerElt; ++j)
-      eltGood &=
-        (nodeIdx[faceData[offset + j] - 1] >=
-         0); // Remember that faceData is 1-based
-
-    if (eltGood) {
-      int new_offset = nodesPerElt * cnt_new;
-      for (int j = 0; j < nodesPerElt; ++j)
-        newFaceData.push_back(
-          nodeIdx[faceData[offset + j] - 1] +
-          1); // Make sure new faceData is 1-based
-      cnt_new++;
-    }
-  }
-
-  faceData.resize(cnt_new * nodesPerElt);
-  for (int i = 0; i < faceData.size(); ++i)
-    faceData[i] = newFaceData[i];
-}
 
 void
 remove_unused_nodes(FArrayBox& nodes, Vector<int>& faceData, int nodesPerElt)
@@ -429,32 +383,28 @@ main(int argc, char* argv[])
   Print() << "Surface area before: " << surface_area(nodes, faceData, nodesPerElt)
        << '\n';
 
-  Vector<int> comps;
   int nc = pp.countval("comps");
+  
+  Vector<std::string> comps(nc);
+  Vector<std::string> signs(nc);
+  Vector<Real> vals(nc);
   if (nc > 0) {
     comps.resize(nc);
     pp.getarr("comps", comps, 0, nc);
 
-    Vector<std::string> signs(nc);
     int ns = pp.countval("signs");
-    AMREX_ASSERT(ns == nc);
+    AMREX_ALWAYS_ASSERT(ns == nc);
     pp.getarr("signs", signs, 0, nc);
 
-    Vector<Real> vals(nc);
     int nv = pp.countval("vals");
-    AMREX_ASSERT(nv == nc);
+    AMREX_ALWAYS_ASSERT(nv == nc);
     pp.getarr("vals", vals, 0, nc);
-
-    trim_surface(comps, signs, vals, nodes, faceData, nodesPerElt);
+  } else {
+    amrex::Abort("No triming tarfet in inputs");
   }
 
-  Real RXY = -1;
-  pp.query("RXY", RXY);
-  if (RXY >= 0) {
-    std::string sign_RXY;
-    pp.get("sign_RXY", sign_RXY);
-    trim_surface_RXY(sign_RXY, RXY, nodes, faceData, nodesPerElt);
-  }
+  trim_surface(comps, signs, vals, nodes, faceData, nodesPerElt, names);
+  
   Print() << "Surface area after: " << surface_area(nodes, faceData, nodesPerElt)
        << '\n';
 
