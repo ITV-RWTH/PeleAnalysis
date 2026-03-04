@@ -364,6 +364,7 @@ main(int argc, char* argv[])
 
   Print() << "Surface area before: " << surface_area(nodes, faceData, nodesPerElt)
        << '\n';
+  Print() << "WARNING: Area is not periodicity-safe\n";
 
   int nc = pp.countval("comps");
   
@@ -391,6 +392,7 @@ main(int argc, char* argv[])
   
   Print() << "Surface area after: " << surface_area(nodes, faceData, nodesPerElt)
        << '\n';
+  Print() << "WARNING: Area is not periodicity-safe\n";
 
   nElts = faceData.size() / nodesPerElt;
   AMREX_ASSERT(nElts * nodesPerElt == faceData.size());
@@ -430,6 +432,7 @@ main(int argc, char* argv[])
   bool do_area_stats = false;
   pp.query("do_area_stats", do_area_stats);
   if (do_area_stats) {
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(AMREX_SPACEDIM==3,"do_area_stats only implemented for 3D");
     Vector<Real> area(nElts);
 
     int idX = 0;
