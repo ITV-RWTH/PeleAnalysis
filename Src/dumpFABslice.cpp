@@ -83,7 +83,7 @@ main(int argc, char* argv[])
       for (int n = 0; n < numVars; n++) {
         DataServices::Dispatch(
           DataServices::DumpSlicePlaneOneVar, &dataServices, dir, num,
-          varNames[n]);
+          &varNames[n]);
       }
     } else {
       DataServices::Dispatch(
