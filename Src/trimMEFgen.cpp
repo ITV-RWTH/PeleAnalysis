@@ -69,18 +69,20 @@ surface_area(
   for (int i = 0; i < dat.size(); ++i)
     dat[i] = nodes.dataPtr(i);
 
-  AMREX_ASSERT(nodesPerElt == 3); // not general enough for anything else
   int nElts = faceData.size() / nodesPerElt;
   Real Area = 0;
   Vector<Real> p0(AMREX_SPACEDIM), p1(AMREX_SPACEDIM), p2(AMREX_SPACEDIM);
   for (int k = 0; k < nElts; ++k) {
     // set points of
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < AMREX_SPACEDIM; ++i) {
       p0[i] = dat[i][faceData[k * nodesPerElt + 0] - 1];
       p1[i] = dat[i][faceData[k * nodesPerElt + 1] - 1];
+#if AMREX_SPACEDIM == 3
       p2[i] = dat[i][faceData[k * nodesPerElt + 2] - 1];
+#endif
     }
 
+#if AMREX_SPACEDIM == 3
     Area +=
       0.5 *
       sqrt(
@@ -97,6 +99,9 @@ surface_area(
         pow(
           (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]),
           2));
+#elif AMREX_SPACEDIM == 2
+    Area += sqrt(pow(p0[0] - p1[0], 2) + pow(p0[1] - p1[1], 2));
+#endif
   }
   return Area;
 }
