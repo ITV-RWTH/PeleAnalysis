@@ -140,7 +140,9 @@ trim_surface(
   const int nc = comps.size();
   Vector<const Real*> dat(nc);
   for (int i = 0; i < nc; ++i) {
-    if (comps[i] == "RXY" || comps[i] == "RXZ" || comps[i] == "RYZ" || comps[i] == "RXYZ") {
+    if (
+      comps[i] == "RXY" || comps[i] == "RXZ" || comps[i] == "RYZ" ||
+      comps[i] == "RXYZ") {
       // RXY, RXZ, RYZ, and RXYZ do not have a corresponding comp.
       // Inserting a nullptr here and catching it later.
       dat[i] = nullptr;
@@ -148,7 +150,7 @@ trim_surface(
       dat[i] = nodes.dataPtr(find_comp(names, comps[i]));
     }
   }
-    
+
   int cnt = 0;
   std::vector<bool> removeNode(nbox.numPts(), false);
   for (IntVect iv = nbox.smallEnd(); iv <= nbox.bigEnd();
@@ -218,7 +220,9 @@ trim_surface(
     if (eltGood) {
       int new_offset = nodesPerElt * cnt_new;
       for (int j = 0; j < nodesPerElt; ++j)
-        newFaceData.push_back(faceData[offset + j]); // faceData is already 1-based, no remapping needed
+        newFaceData.push_back(
+          faceData[offset + j]); // faceData is already 1-based, no remapping
+                                 // needed
       cnt_new++;
     }
   }
@@ -298,7 +302,7 @@ remove_unused_nodes(FArrayBox& nodes, Vector<int>& faceData, int nodesPerElt)
 
     if (ParallelDescriptor::IOProcessor())
       Print() << "Removed " << nNodesOLD - nNodesNEW << " unusued nodes"
-                << std::endl;
+              << std::endl;
   }
 }
 
@@ -367,12 +371,12 @@ main(int argc, char* argv[])
   int nodesPerElt = faceData.size() / nElts;
   AMREX_ASSERT(nodesPerElt * nElts == faceData.size());
 
-  Print() << "Surface area before: " << surface_area(nodes, faceData, nodesPerElt)
-       << '\n';
+  Print() << "Surface area before: "
+          << surface_area(nodes, faceData, nodesPerElt) << '\n';
   Print() << "WARNING: Area is not periodicity-safe\n";
 
   int nc = pp.countval("comps");
-  
+
   Vector<std::string> comps(nc);
   Vector<std::string> signs(nc);
   Vector<Real> vals(nc);
@@ -393,10 +397,11 @@ main(int argc, char* argv[])
     amrex::Abort("No triming tarfet in inputs");
   }
 
-  trim_surface(comps, signs, vals, nodes, faceData, nodesPerElt, names, rmBound);
-  
-  Print() << "Surface area after: " << surface_area(nodes, faceData, nodesPerElt)
-       << '\n';
+  trim_surface(
+    comps, signs, vals, nodes, faceData, nodesPerElt, names, rmBound);
+
+  Print() << "Surface area after: "
+          << surface_area(nodes, faceData, nodesPerElt) << '\n';
   Print() << "WARNING: Area is not periodicity-safe\n";
 
   nElts = faceData.size() / nodesPerElt;
@@ -437,7 +442,8 @@ main(int argc, char* argv[])
   bool do_area_stats = false;
   pp.query("do_area_stats", do_area_stats);
   if (do_area_stats) {
-    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(AMREX_SPACEDIM==3,"do_area_stats only implemented for 3D");
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+      AMREX_SPACEDIM == 3, "do_area_stats only implemented for 3D");
     Vector<Real> area(nElts);
 
     int idX = 0;
@@ -458,7 +464,7 @@ main(int argc, char* argv[])
     }
 
     Print() << "  Triangle area min, max: " << area_min << " , " << area_max
-         << '\n';
+            << '\n';
   }
 
   remove_unused_nodes(nodes, faceData, nodesPerElt);
