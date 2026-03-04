@@ -193,11 +193,7 @@ main(int argc, char* argv[])
       for (int x = xlo; x <= xhi; x++) {
         for (int y = ylo; y < ylo + (yhi - ylo + 1) / 2; y++) {
           int ymirror = yhi - (y - ylo);
-          IntVect lo_iv(x, y);
-          IntVect hi_iv(x, ymirror);
-          Real tmp = xfab(lo_iv, 0);
-          xfab(lo_iv, 0) = xfab(hi_iv, 0);
-          xfab(hi_iv, 0) = tmp;
+          std::swap(xfab(IntVect(x, y), 0), xfab(IntVect(x, ymirror), 0));
         }
       }
     }
