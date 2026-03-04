@@ -120,8 +120,9 @@ trim_surface(
   const Vector<Real>& vals,
   FArrayBox& nodes,
   Vector<int>& faceData,
-  int nodesPerElt,
-  std::vector<std::string> names)
+  const int nodesPerElt,
+  const std::vector<std::string> names,
+  const int rmBound)
 {
   const Box& nbox = nodes.box();
   const Real* xdat = nodes.dataPtr(0);
@@ -144,11 +145,9 @@ trim_surface(
   }
     
   int cnt = 0;
-  int cnt_new = 0;
-  std::vector<int> nodeIdx;
+  std::vector<bool> removeNode(nbox.numPts(), false);
   for (IntVect iv = nbox.smallEnd(); iv <= nbox.bigEnd();
        nbox.next(iv), cnt++) {
-    bool remove_this_node = false;
     for (int i = 0; i < nc; ++i) {
       Real data;
       if (comps[i] == "RXY") {
@@ -174,67 +173,47 @@ trim_surface(
         data = dat[i][cnt];
       }
       if (signs[i] == "lt") {
-        remove_this_node |= (data < vals[i]);
+        removeNode[cnt] = removeNode[cnt] || (data < vals[i]);
       } else if (signs[i] == "le") {
-        remove_this_node |= (data <= vals[i]);
+        removeNode[cnt] = removeNode[cnt] || (data <= vals[i]);
       } else if (signs[i] == "gt") {
-        remove_this_node |= (data > vals[i]);
+        removeNode[cnt] = removeNode[cnt] || (data > vals[i]);
       } else if (signs[i] == "ge") {
-        remove_this_node |= (data >= vals[i]);
+        removeNode[cnt] = removeNode[cnt] || (data >= vals[i]);
       } else if (signs[i] == "eq") {
-        remove_this_node |= (data == vals[i]);
+        removeNode[cnt] = removeNode[cnt] || (data == vals[i]);
       } else {
         Print() << "i,signs[i] " << i << "," << signs[i] << std::endl;
         amrex::Abort("Bad signs data. Use one of [lt,le,gt,ge,eq]");
       }
     }
-
-    nodeIdx.push_back(remove_this_node ? -1 : cnt_new++);
   }
-  int nNodesNEW = cnt_new;
 
-  // Build new nodes structure with bad points removed
-  Box newBox(IntVect::TheZeroVector(), (nNodesNEW - 1) * amrex::BASISV(0));
-  int nNodesOLD = nbox.numPts();
-  int nComp = nodes.nComp();
-  FArrayBox newNodes(newBox, nComp);
-  Vector<Real*> odp(nComp);
-  Vector<Real*> ndp(nComp);
-  for (int j = 0; j < nComp; ++j) {
-    odp[j] = nodes.dataPtr(j);
-    ndp[j] = newNodes.dataPtr(j);
-  }
-  cnt_new = 0;
-  for (int i = 0; i < nNodesOLD; ++i) {
-    int newNode = nodeIdx[i];
-    if (newNode >= 0)
-      for (int j = 0; j < nComp; ++j)
-        ndp[j][newNode] = odp[j][i];
-  }
-  nodes.resize(newBox, nComp);
-  nodes.copy(newNodes);
-  newNodes.clear(); // Make some space...not really necessary, but what the heck
-
+  // Only remove elements that have nodes that fall into the trim criterion
+  // Unsued nodes will be purged by remove_unused_nodes
   const int nElts = faceData.size() / nodesPerElt;
   AMREX_ASSERT(nElts * nodesPerElt == faceData.size()); // Idiot check
 
-  // Remove elements that refer to removed nodes
   std::vector<int> newFaceData;
-  cnt_new = 0;
+  int cnt_new = 0;
   for (int i = 0; i < nElts; ++i) {
     int offset = nodesPerElt * i;
-    bool eltGood = true;
-    for (int j = 0; j < nodesPerElt; ++j)
-      eltGood &=
-        (nodeIdx[faceData[offset + j] - 1] >=
-         0); // Remember that faceData is 1-based
-
+    bool eltGood;
+    if (rmBound == 0) {
+      // Remove element only if ALL nodes violate the criterion
+      eltGood = false;
+      for (int j = 0; j < nodesPerElt; ++j)
+        eltGood |= !removeNode[faceData[offset + j] - 1];
+    } else {
+      // Remove element if ANY node violates the criterion (default)
+      eltGood = true;
+      for (int j = 0; j < nodesPerElt; ++j)
+        eltGood &= !removeNode[faceData[offset + j] - 1];
+    }
     if (eltGood) {
       int new_offset = nodesPerElt * cnt_new;
       for (int j = 0; j < nodesPerElt; ++j)
-        newFaceData.push_back(
-          nodeIdx[faceData[offset + j] - 1] +
-          1); // Make sure new faceData is 1-based
+        newFaceData.push_back(faceData[offset + j]); // faceData is already 1-based, no remapping needed
       cnt_new++;
     }
   }
@@ -243,8 +222,6 @@ trim_surface(
   for (int i = 0; i < faceData.size(); ++i)
     faceData[i] = newFaceData[i];
 }
-
-
 
 void
 remove_unused_nodes(FArrayBox& nodes, Vector<int>& faceData, int nodesPerElt)
@@ -393,6 +370,7 @@ main(int argc, char* argv[])
   Vector<std::string> comps(nc);
   Vector<std::string> signs(nc);
   Vector<Real> vals(nc);
+  int rmBound = 1;
   if (nc > 0) {
     comps.resize(nc);
     pp.getarr("comps", comps, 0, nc);
@@ -404,11 +382,12 @@ main(int argc, char* argv[])
     int nv = pp.countval("vals");
     AMREX_ALWAYS_ASSERT(nv == nc);
     pp.getarr("vals", vals, 0, nc);
+    pp.query("rmBound", rmBound);
   } else {
     amrex::Abort("No triming tarfet in inputs");
   }
 
-  trim_surface(comps, signs, vals, nodes, faceData, nodesPerElt, names);
+  trim_surface(comps, signs, vals, nodes, faceData, nodesPerElt, names, rmBound);
   
   Print() << "Surface area after: " << surface_area(nodes, faceData, nodesPerElt)
        << '\n';
