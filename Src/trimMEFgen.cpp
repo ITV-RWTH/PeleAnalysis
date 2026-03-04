@@ -134,8 +134,8 @@ trim_surface(
   const int nc = comps.size();
   Vector<const Real*> dat(nc);
   for (int i = 0; i < nc; ++i) {
-    if (comps[i] == "RXY" || comps[i] == "RXZ" || comps[i] == "RXZ") {
-      // RXY, RXZ, and RXZ do not have a corresponding comp.
+    if (comps[i] == "RXY" || comps[i] == "RXZ" || comps[i] == "RYZ" || comps[i] == "RXYZ") {
+      // RXY, RXZ, RYZ, and RXYZ do not have a corresponding comp.
       // Inserting a nullptr here and catching it later.
       dat[i] = nullptr;
     } else {
@@ -164,6 +164,11 @@ trim_surface(
         Real y = ydat[cnt];
         Real z = zdat[cnt];
         data = std::sqrt(y * y + z * z);
+      } else if (comps[i] == "RXYZ") {
+        Real x = xdat[cnt];
+        Real y = ydat[cnt];
+        Real z = zdat[cnt];
+        data = std::sqrt(x * x + y * y + z * z);
 #endif
       } else {
         data = dat[i][cnt];
