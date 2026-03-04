@@ -11,14 +11,6 @@
 
 using namespace amrex;
 
-using std::cerr;
-using std::cout;
-using std::endl;
-using std::map;
-using std::ofstream;
-using std::string;
-using std::vector;
-
 static void
 print_usage(int, char* argv[])
 {
@@ -42,16 +34,16 @@ void read_iso(
   FArrayBox& nodes,
   Vector<int>& faceData,
   int& nElts,
-  vector<string>& names,
-  string& label);
+  std::vector<std::string>& names,
+  std::string& label);
 
 void write_iso(
   const std::string& outfile,
   const FArrayBox& nodes,
   const Vector<int>& faceData,
   int nElts,
-  const vector<string>& names,
-  const string& label);
+  const std::vector<std::string>& names,
+  const std::string& label);
 
 static std::vector<std::string>
 parseVarNames(std::istream& is)
@@ -112,7 +104,7 @@ surface_area(
 void
 trim_surface(
   const Vector<int>& comps,
-  const Vector<string>& signs,
+  const Vector<std::string>& signs,
   const Vector<Real>& vals,
   FArrayBox& nodes,
   Vector<int>& faceData,
@@ -126,7 +118,7 @@ trim_surface(
 
   int cnt = 0;
   int cnt_new = 0;
-  vector<int> nodeIdx;
+  std::vector<int> nodeIdx;
   for (IntVect iv = nbox.smallEnd(); iv <= nbox.bigEnd();
        nbox.next(iv), cnt++) {
     bool remove_this_node = false;
@@ -143,7 +135,7 @@ trim_surface(
       } else if (signs[i] == "eq") {
         remove_this_node |= (data == vals[i]);
       } else {
-        cout << "i,signs[i] " << i << "," << signs[i] << endl;
+        Print() << "i,signs[i] " << i << "," << signs[i] << std::endl;
         amrex::Abort("Bad signs data. Use one of [lt,le,gt,ge,eq]");
       }
     }
@@ -178,7 +170,7 @@ trim_surface(
   AMREX_ASSERT(nElts * nodesPerElt == faceData.size()); // Idiot check
 
   // Remove elements that refer to removed nodes
-  vector<int> newFaceData;
+  std::vector<int> newFaceData;
   cnt_new = 0;
   for (int i = 0; i < nElts; ++i) {
     int offset = nodesPerElt * i;
@@ -205,7 +197,7 @@ trim_surface(
 
 void
 trim_surface_RXY(
-  const string& sign,
+  const std::string& sign,
   Real radius,
   FArrayBox& nodes,
   Vector<int>& faceData,
@@ -217,7 +209,7 @@ trim_surface_RXY(
 
   int cnt = 0;
   int cnt_new = 0;
-  vector<int> nodeIdx;
+  std::vector<int> nodeIdx;
   for (IntVect iv = nbox.smallEnd(); iv <= nbox.bigEnd();
        nbox.next(iv), cnt++) {
     Real x = xdat[cnt];
@@ -236,7 +228,7 @@ trim_surface_RXY(
     } else if (sign == "eq") {
       remove_this_node |= (r == radius);
     } else {
-      cout << "sign_RXY: " << sign << endl;
+      Print() << "sign_RXY: " << sign << std::endl;
       amrex::Abort("Bad sign data.  Use one of [lt,le,gt,ge,eq]");
     }
 
@@ -270,7 +262,7 @@ trim_surface_RXY(
   AMREX_ASSERT(nElts * nodesPerElt == faceData.size()); // Idiot check
 
   // Remove elements that refer to removed nodes
-  vector<int> newFaceData;
+  std::vector<int> newFaceData;
   cnt_new = 0;
   for (int i = 0; i < nElts; ++i) {
     int offset = nodesPerElt * i;
@@ -341,7 +333,7 @@ remove_unused_nodes(FArrayBox& nodes, Vector<int>& faceData, int nodesPerElt)
     AMREX_ASSERT(nElts * nodesPerElt == faceData.size()); // Idiot check
 
     // Redefine elements with new numbering
-    vector<int> newFaceData;
+    std::vector<int> newFaceData;
     cnt_new = 0;
     for (int i = 0; i < nElts; ++i) {
       int offset = nodesPerElt * i;
@@ -350,7 +342,7 @@ remove_unused_nodes(FArrayBox& nodes, Vector<int>& faceData, int nodesPerElt)
         if (
           nodeIdx[faceData[offset + j] - 1] < 0 ||
           nodeIdx[faceData[offset + j] - 1] >= nNodesOLD)
-          std::cout << "messed up" << std::endl;
+          Print() << "messed up" << std::endl;
 
         newFaceData.push_back(
           nodeIdx[faceData[offset + j] - 1] +
@@ -364,7 +356,7 @@ remove_unused_nodes(FArrayBox& nodes, Vector<int>& faceData, int nodesPerElt)
       faceData[i] = newFaceData[i];
 
     if (ParallelDescriptor::IOProcessor())
-      std::cout << "Removed " << nNodesOLD - nNodesNEW << " unusued nodes"
+      Print() << "Removed " << nNodesOLD - nNodesNEW << " unusued nodes"
                 << std::endl;
   }
 }
@@ -421,20 +413,20 @@ main(int argc, char* argv[])
   ParmParse pp;
 
   int nElts;
-  string infile;
+  std::string infile;
   pp.get("infile", infile);
-  string outfile;
+  std::string outfile;
   pp.get("outfile", outfile);
 
   FArrayBox nodes;
   Vector<int> faceData;
-  vector<string> names;
-  string label;
+  std::vector<std::string> names;
+  std::string label;
   read_iso(infile, nodes, faceData, nElts, names, label);
   int nodesPerElt = faceData.size() / nElts;
   AMREX_ASSERT(nodesPerElt * nElts == faceData.size());
 
-  cout << "Surface area before: " << surface_area(nodes, faceData, nodesPerElt)
+  Print() << "Surface area before: " << surface_area(nodes, faceData, nodesPerElt)
        << '\n';
 
   Vector<int> comps;
@@ -443,7 +435,7 @@ main(int argc, char* argv[])
     comps.resize(nc);
     pp.getarr("comps", comps, 0, nc);
 
-    Vector<string> signs(nc);
+    Vector<std::string> signs(nc);
     int ns = pp.countval("signs");
     AMREX_ASSERT(ns == nc);
     pp.getarr("signs", signs, 0, nc);
@@ -459,11 +451,11 @@ main(int argc, char* argv[])
   Real RXY = -1;
   pp.query("RXY", RXY);
   if (RXY >= 0) {
-    string sign_RXY;
+    std::string sign_RXY;
     pp.get("sign_RXY", sign_RXY);
     trim_surface_RXY(sign_RXY, RXY, nodes, faceData, nodesPerElt);
   }
-  cout << "Surface area after: " << surface_area(nodes, faceData, nodesPerElt)
+  Print() << "Surface area after: " << surface_area(nodes, faceData, nodesPerElt)
        << '\n';
 
   nElts = faceData.size() / nodesPerElt;
@@ -478,7 +470,7 @@ main(int argc, char* argv[])
     int nCompsNew = names.size() - nrc;
     FArrayBox newNodes(nodes.box(), nCompsNew);
     int cnt = 0;
-    Vector<string> newNames(nCompsNew);
+    Vector<std::string> newNames(nCompsNew);
     for (int i = 0; i < names.size(); ++i) {
       bool keepThisComp = true;
       for (int j = 0; j < remComps.size(); ++j) {
@@ -523,7 +515,7 @@ main(int argc, char* argv[])
       area_max = std::max(area_max, area[i]);
     }
 
-    cout << "  Triangle area min, max: " << area_min << " , " << area_max
+    Print() << "  Triangle area min, max: " << area_min << " , " << area_max
          << '\n';
   }
 
@@ -541,8 +533,8 @@ write_iso(
   const FArrayBox& nodes,
   const Vector<int>& faceData,
   int nElts,
-  const vector<string>& names,
-  const string& label)
+  const std::vector<std::string>& names,
+  const std::string& label)
 {
   // Rotate data to vary quickest on component
   int nCompSurf = nodes.nComp();
@@ -563,7 +555,7 @@ write_iso(
 
   std::ofstream ofs;
   ofs.open(outfile.c_str(), std::ios::out | std::ios::trunc | std::ios::binary);
-  ofs << label << endl;
+  ofs << label << std::endl;
   for (int i = 0; i < nCompSurf; ++i) {
     ofs << names[i];
     if (i < nCompSurf - 1)
@@ -572,7 +564,7 @@ write_iso(
       ofs << std::endl;
   }
   int nodesPerElt = faceData.size() / nElts;
-  ofs << nElts << " " << nodesPerElt << endl;
+  ofs << nElts << " " << nodesPerElt << std::endl;
   tnodes.writeOn(ofs);
   ofs.write((char*)faceData.dataPtr(), sizeof(int) * faceData.size());
   ofs.close();
@@ -584,8 +576,8 @@ read_iso(
   FArrayBox& nodes,
   Vector<int>& faceData,
   int& nElts,
-  vector<string>& names,
-  string& label)
+  std::vector<std::string>& names,
+  std::string& label)
 {
   std::ifstream ifs;
   ifs.open(infile.c_str(), std::ios::in | std::ios::binary);
