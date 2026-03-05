@@ -301,8 +301,9 @@ remove_unused_nodes(FArrayBox& nodes, Vector<int>& faceData, int nodesPerElt)
       faceData[i] = newFaceData[i];
 
     if (ParallelDescriptor::IOProcessor())
-      Print() << "Removed " << nNodesOLD - nNodesNEW << " unusued nodes"
-              << std::endl;
+      Print() << "Input surf has " << nNodesOLD << " nodes\n" << std::endl;
+      Print() << "Output surf has " << nNodesNEW << " nodes\n" << std::endl;
+      Print() << "Removed " << nNodesOLD - nNodesNEW << " unusued nodes\n";
   }
 }
 
