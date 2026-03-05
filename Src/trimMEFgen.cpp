@@ -300,11 +300,9 @@ remove_unused_nodes(FArrayBox& nodes, Vector<int>& faceData, int nodesPerElt)
     for (int i = 0; i < faceData.size(); ++i)
       faceData[i] = newFaceData[i];
 
-    if (ParallelDescriptor::IOProcessor()) {
-      Print() << "Input surf has " << nNodesOLD << " nodes\n";
-      Print() << "Output surf has " << nNodesNEW << " nodes\n";
-      Print() << "Removed " << nNodesOLD - nNodesNEW << " unusued nodes\n";
-    }
+    Print() << "Input surf has " << nNodesOLD << " nodes\n";
+    Print() << "Output surf has " << nNodesNEW << " nodes\n";
+    Print() << "Removed " << nNodesOLD - nNodesNEW << " unusued nodes\n";
   }
 }
 
@@ -383,21 +381,22 @@ main(int argc, char* argv[])
   Vector<std::string> signs(nc);
   Vector<Real> vals(nc);
   int rmBound = 1;
-  if (nc > 0) {
-    comps.resize(nc);
-    pp.getarr("comps", comps, 0, nc);
 
-    int ns = pp.countval("signs");
-    AMREX_ALWAYS_ASSERT(ns == nc);
-    pp.getarr("signs", signs, 0, nc);
-
-    int nv = pp.countval("vals");
-    AMREX_ALWAYS_ASSERT(nv == nc);
-    pp.getarr("vals", vals, 0, nc);
-    pp.query("rmBound", rmBound);
-  } else {
-    amrex::Abort("No triming tarfet in inputs");
+  if (nc == 0) {
+    amrex::Abort("No triming target in inputs...");
   }
+
+  comps.resize(nc);
+  pp.getarr("comps", comps, 0, nc);
+
+  int ns = pp.countval("signs");
+  AMREX_ALWAYS_ASSERT(ns == nc);
+  pp.getarr("signs", signs, 0, nc);
+
+  int nv = pp.countval("vals");
+  AMREX_ALWAYS_ASSERT(nv == nc);
+  pp.getarr("vals", vals, 0, nc);
+  pp.query("rmBound", rmBound);
 
   trim_surface(
     comps, signs, vals, nodes, faceData, nodesPerElt, names, rmBound);
@@ -408,6 +407,11 @@ main(int argc, char* argv[])
 
   nElts = faceData.size() / nodesPerElt;
   AMREX_ASSERT(nElts * nodesPerElt == faceData.size());
+
+  if (nElts <= 0) {
+    Print() << "No surface left. Stopping here...\n";
+    return 1;
+  }
 
   Vector<int> remComps;
   int nrc = pp.countval("remComps");
