@@ -1,7 +1,7 @@
 # Example input file for conditionalMean
 
 #------------------- IO CONTROL -----------------------------------------------------------
-infile = plt00000 plt00001                 # Plot file
+infile = plt00000 plt00001                 # Plot file list
 finestLevel = 0                            # DEF: finest level of plot file; Sets the 
                                            # finest level to read.
 doBin = true                               # [true, false], DEF: true; infile format

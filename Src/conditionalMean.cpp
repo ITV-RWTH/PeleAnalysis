@@ -15,12 +15,12 @@ print_usage(int, char* argv[])
 {
   std::cerr << "Usage:\n"
             << "  " << argv[0]
-            << " infile=FILE condCompName=NAME avgCompName=NAME [OPTIONS]\n\n"
+            << " infile=FILE binComp=ID avgComps=ID1 ID2 [OPTIONS]\n\n"
 
             << "Required arguments:\n"
-            << "  infile=FILE        AMReX plotfile\n"
-            << "  condCompName=NAME  Conditioning variable\n"
-            << "  avgCompName=NAME   Component to average\n\n"
+            << "  infile=FILE1 FILE2 List of AMReX plotfiles\n"
+            << "  binComp=ID  	     ID of variable to condition on\n"
+            << "  avgComps=ID1 ID2   IDs of components to average\n\n"
 
             << "Options:\n"
             << "  -h, --help         Show this help message\n\n"
