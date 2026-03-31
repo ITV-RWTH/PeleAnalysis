@@ -13,10 +13,10 @@ static void
 print_usage(int, char* argv[])
 {
   std::cerr << "Usage:\n"
-            << "  " << argv[0] << " infile=LIST outfile=FILE [OPTIONS]\n\n"
+            << "  " << argv[0] << " infiles=LIST outfile=FILE [OPTIONS]\n\n"
 
             << "Required arguments:\n"
-            << "  infile=LIST        List of AMReX plotfiles to combine\n"
+            << "  infiles=LIST       List of AMReX plotfiles to combine\n"
             << "  outfile=FILE       Output combined plotfile\n\n"
 
             << "Options:\n"
