@@ -143,6 +143,9 @@ main(int argc, char* argv[])
         auto const& in_a = indata.array(mfi);
 	amrex::ParallelFor(
           bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+	    for (int n = 0; n < nCompIn; n++) {
+              out_a(i, j, k, n) = in_a(i, j, k, n);
+            }
             out_a(i, j, k, outVar_id) = in_a(i, j, k, inVarA_id) * in_a(i, j, k, inVarB_id);
           });
       }
