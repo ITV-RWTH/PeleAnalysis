@@ -1,7 +1,7 @@
 PELE_ANALYSIS_HOME ?= $(abspath ../..)
 PELE_PHYSICS_HOME ?= $(abspath $(lastword $(PELE_ANALYSIS_HOME)/Submodules/PelePhysics))
 AMREX_HOME        ?= $(abspath $(lastword $(PELE_PHYSICS_HOME)/Submodules/amrex))
-SUNDIALS_HOME     ?= $(abspath $(lastword $(PELE_PHYSICS_HOME)/Submodules/sundials))
+SUNDIALS_HOME     ?= $(abspath $(lastword $(PELE_PHYSICS_HOME)/Submodules/sundials/build/install))
 
 BL_NO_FORT = TRUE
 
