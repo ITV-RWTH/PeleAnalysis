@@ -13,7 +13,7 @@ PELE_ANALYSIS_HOME = ..
 
 # AMReX
 DEBUG	      = FALSE
-DIM	      = 2
+DIM	      = 3
 PRECISION     = DOUBLE
 
 # Compilation
@@ -44,6 +44,8 @@ USE_CUDA      = FALSE
 #EBASE   = isosurface
 #EBASE   = jpdf
 #EBASE   = makePlotfile
+#EBASE   = multiply
+#EBASE   = divide
 #EBASE   = partStream
 #EBASE   = qCriterion
 #EBASE   = regridPlt
