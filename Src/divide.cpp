@@ -97,14 +97,14 @@ main(int argc, char* argv[])
     int outVar_id = nCompOut - 1;
 
     Vector<std::string> inNames = amrData.PlotVarNames();
-    auto id = std::find(inNames.begin(), inNames.begin(), inVarAName);
+    auto id = std::find(inNames.begin(), inNames.end(), inVarAName);
     int inVarA_id; 
     if (id != inNames.end()) {
 	inVarA_id = std::distance(inNames.begin(), id);
     } else {
 	Abort("Variable " + inVarAName + " not found in file " + infileName + "!");
     } 
-    id = std::find(inNames.begin(), inNames.begin(), inVarBName);
+    id = std::find(inNames.begin(), inNames.end(), inVarBName);
     int inVarB_id;
     if (id != inNames.end()) {
 	inVarB_id = std::distance(inNames.begin(), id);
