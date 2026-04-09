@@ -71,10 +71,6 @@ main (int   argc,
       inNames[n+nFeatures] = targets[n];
       destFillComps[n+nFeatures] = n+nFeatures;
     }
-    Vector<Real> f_scaling(nFeatures,1.0);
-    pp.queryarr("f_scaling",f_scaling);
-    Vector<Real> t_scaling(nTargets,1.0);
-    pp.queryarr("t_scaling",t_scaling); 
 
     // Loop over AMR levels in the plotfile, read the data and do work
     int finestLevel = amrData.FinestLevel();
