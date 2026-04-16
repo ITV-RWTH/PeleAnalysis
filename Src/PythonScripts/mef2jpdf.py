@@ -1,11 +1,28 @@
-import pyvista as pv
-import numpy as np
+#!/usr/bin/env python
+
+import argparse
 import glob
 import meshio
+import numpy as np
+import os
+import pyvista as pv
 
-NDIMS = 3
-XVAR = "MeanCurvature_progVar"
-YVAR = "Sd(H2)"
+parser = argparse.ArgumentParser()
+parser.add_argument("--ndims", type=int, default=3, help="number of spatial dimensions", required=True)
+parser.add_argument("--xvar_in", type=str, help="name of x-variable (as in mef-file)", required=True)
+parser.add_argument("--yvar_in", type=str, help="name of x-variable (as in mef-file)", required=True)
+parser.add_argument("--xvar_out", type=str, help="name of x-variable in out-jPDF", required=True)
+parser.add_argument("--yvar_out", type=str, help="name of x-variable in out-jPDF", required=True)
+parser.add_argument("-n", "--nbins", type=int, help="number of bins", required=True)
+parser.add_argument("-i", "--infiles", metavar="PATTERN", help="mef infile names pattern (remember quotes for patterns, e.g. --infiles \"plt*.mef)", required=True)
+args = parser.parse_args()
+NDIM = args.ndims
+XVAR_IN = args.xvar_in
+YVAR_IN = args.yvar_in
+XVAR_OUT = args.xvar_out
+YVAR_OUT = args.yvar_out
+NBINS = args.nbins
+INFILES_PATTERN = args.infiles
 
 def shape_from_header(h):
     start, stop, _, nfields = h.split()[-4:]
@@ -48,7 +65,7 @@ def read_mef(filename):
 
     return mesh, faces
 
-mef_files = glob.glob("plt*_all_subplt_new_progVar_0.9.mef")
+mef_files = glob.glob(INFILES_PATTERN)
 
 # Pass 1: find global min/max
 xmin, xmax = np.inf, -np.inf   # global x min/max
@@ -58,10 +75,10 @@ for f in mef_files:
     mesh = mesh.triangulate()
     for key in list(mesh.point_data.keys()):
         mesh.cell_data[key + "_center"] = mesh.point_data[key][faces].mean(axis=1)
-    xmin = min(xmin, mesh.cell_data[f"{XVAR}_center"].min())
-    xmax = max(xmax, mesh.cell_data[f"{XVAR}_center"].max())
-    ymin = min(ymin, mesh.cell_data[f"{YVAR}_center"].min())
-    ymax = max(ymax, mesh.cell_data[f"{YVAR}_center"].max())
+    xmin = min(xmin, mesh.cell_data[f"{XVAR_IN}_center"].min())
+    xmax = max(xmax, mesh.cell_data[f"{XVAR_IN}_center"].max())
+    ymin = min(ymin, mesh.cell_data[f"{YVAR_IN}_center"].min())
+    ymax = max(ymax, mesh.cell_data[f"{YVAR_IN}_center"].max())
 
 # Pass 2: accumulate histogram with fixed range
 hist2d_total = None
@@ -75,11 +92,11 @@ for f in mef_files:
         v = mesh.point_data[key]
         cell_values = v[faces].mean(axis=1)
         mesh.cell_data[key + "_center"] = cell_values
-    x = mesh.cell_data[f"{XVAR}_center"]
-    y = mesh.cell_data[f"{YVAR}_center"]
+    x = mesh.cell_data[f"{XVAR_IN}_center"]
+    y = mesh.cell_data[f"{YVAR_IN}_center"]
     hist2d, x_edges, y_edges = np.histogram2d(
         x, y,
-        bins=128,
+        bins=NBINS,
         range=[[xmin, xmax], [ymin, ymax]],
         weights=areas
     )
@@ -87,4 +104,20 @@ for f in mef_files:
         hist2d_total = hist2d
     else:
         hist2d_total += hist2d
-    hist2d_total /= hist2d_total.sum()
+
+hist2d_total /= hist2d_total.sum()
+x_centers = 0.5 * (x_edges[:-1] + x_edges[1:])
+y_centers = 0.5 * (y_edges[:-1] + y_edges[1:])
+
+dirname = f"MEF_JPDFAverage_{XVAR_OUT}_{YVAR_OUT}"
+os.makedirs(dirname, exist_ok=True)
+x_filename = f"{dirname}/Pdf_{XVAR_OUT}_x.dat"
+y_filename = f"{dirname}/Pdf_{YVAR_OUT}_x.dat"
+jpdf_filename = f"{dirname}/Pdf_{XVAR_OUT}_{YVAR_OUT}.dat"
+print(f"Saving {XVAR_OUT} to {x_filename}.")
+np.savetxt(x_filename, x_centers)
+print(f"Saving {YVAR_OUT} to {y_filename}.")
+np.savetxt(y_filename, y_centers)
+print(f"Saving jPDF to {jpdf_filename}.")
+np.savetxt(jpdf_filename, hist2d_total)
+print("Done.")
