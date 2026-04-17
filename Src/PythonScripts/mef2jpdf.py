@@ -8,19 +8,29 @@ import os
 import pyvista as pv
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--ndims", type=int, default=3, help="number of spatial dimensions", required=True)
+parser.add_argument("--ndims", type=int, default=3, help="number of spatial dimensions", required=False)
 parser.add_argument("--xvar_in", type=str, help="name of x-variable (as in mef-file)", required=True)
 parser.add_argument("--yvar_in", type=str, help="name of x-variable (as in mef-file)", required=True)
-parser.add_argument("--xvar_out", type=str, help="name of x-variable in out-jPDF", required=True)
-parser.add_argument("--yvar_out", type=str, help="name of x-variable in out-jPDF", required=True)
+parser.add_argument("--xvar_out", type=str, help="name of x-variable in out-jPDF", required=False)
+parser.add_argument("--yvar_out", type=str, help="name of x-variable in out-jPDF", required=False)
+parser.add_argument("--xmin", type=float, help="lower limit of x-axis", required=False)
+parser.add_argument("--xmax", type=float, help="upper limit of x-axis", required=False)
+parser.add_argument("--ymin", type=float, help="lower limit of y-axis", required=False)
+parser.add_argument("--ymax", type=float, help="upper limit of y-axis", required=False)
 parser.add_argument("-n", "--nbins", type=int, help="number of bins", required=True)
 parser.add_argument("-i", "--infiles", metavar="PATTERN", help="mef infile names pattern (remember quotes for patterns, e.g. --infiles \"plt*.mef)", required=True)
 args = parser.parse_args()
-NDIM = args.ndims
+NDIMS = args.ndims
 XVAR_IN = args.xvar_in
 YVAR_IN = args.yvar_in
 XVAR_OUT = args.xvar_out
 YVAR_OUT = args.yvar_out
+if XVAR_OUT is None: XVAR_OUT = XVAR_IN
+if YVAR_OUT is None: YVAR_OUT = YVAR_IN
+XMIN = args.xmin
+XMAX = args.xmax
+YMIN = args.ymin
+YMAX = args.ymax
 NBINS = args.nbins
 INFILES_PATTERN = args.infiles
 
@@ -68,17 +78,22 @@ def read_mef(filename):
 mef_files = glob.glob(INFILES_PATTERN)
 
 # Pass 1: find global min/max
-xmin, xmax = np.inf, -np.inf   # global x min/max
-ymin, ymax = np.inf, -np.inf   # global y min/max
+xmin_glob, xmax_glob = np.inf, -np.inf   # global x min/max
+ymin_glob, ymax_glob = np.inf, -np.inf   # global y min/max
 for f in mef_files:
     mesh, faces = read_mef(f)
     mesh = mesh.triangulate()
     for key in list(mesh.point_data.keys()):
         mesh.cell_data[key + "_center"] = mesh.point_data[key][faces].mean(axis=1)
-    xmin = min(xmin, mesh.cell_data[f"{XVAR_IN}_center"].min())
-    xmax = max(xmax, mesh.cell_data[f"{XVAR_IN}_center"].max())
-    ymin = min(ymin, mesh.cell_data[f"{YVAR_IN}_center"].min())
-    ymax = max(ymax, mesh.cell_data[f"{YVAR_IN}_center"].max())
+    xmin_glob = min(xmin_glob, mesh.cell_data[f"{XVAR_IN}_center"].min())
+    xmax_glob = max(xmax_glob, mesh.cell_data[f"{XVAR_IN}_center"].max())
+    ymin_glob = min(ymin_glob, mesh.cell_data[f"{YVAR_IN}_center"].min())
+    ymax_glob = max(ymax_glob, mesh.cell_data[f"{YVAR_IN}_center"].max())
+
+if XMIN is None: XMIN = xmin_glob
+if XMAX is None: XMAX = xmax_glob
+if YMIN is None: YMIN = ymin_glob
+if YMAX is None: YMAX = ymax_glob
 
 # Pass 2: accumulate histogram with fixed range
 hist2d_total = None
@@ -97,7 +112,7 @@ for f in mef_files:
     hist2d, x_edges, y_edges = np.histogram2d(
         x, y,
         bins=NBINS,
-        range=[[xmin, xmax], [ymin, ymax]],
+        range=[[XMIN, XMAX], [YMIN, YMAX]],
         weights=areas
     )
     if hist2d_total is None:
