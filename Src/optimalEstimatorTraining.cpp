@@ -116,7 +116,7 @@ main (int   argc,
     
 #ifdef AMREX_USE_CUDA
     torch::Device device0(torch::kCUDA);
-    model.to(device0);
+    model->to(device0);
     amrex::Print() << "Copying model to GPU." << std::endl;
     // set tensor options
     auto tensoropt = torch::TensorOptions().dtype(dtype0).device(device0);
