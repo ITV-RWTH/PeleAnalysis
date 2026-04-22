@@ -7,23 +7,26 @@ PELE_ANALYSIS_HOME = ..
 # to link PeleAnalysis to your versions of PELE_PHYSICS_HOME and AMREX_HOME used by 
 # PeleLMeX or PeleC, make the following lines to point to the respective directories.
 #
-# PELE_PHYSICS_HOME = ../../PeleLMeX/Submodules/PelePhysics
-# AMREX_HOME = ../../PeleLMeX/Submodules/PelePhysics/Submodules/amrex
+PELE_PHYSICS_HOME = ../../PelePhysics
+AMREX_HOME = ../../PelePhysics/Submodules/amrex
+
 
 # AMReX
 DEBUG	      = FALSE
-DIM	      = 3
+DIM	      = 2
 PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = FALSE
+USE_MPI       = TRUE
 USE_OMP       = FALSE
-USE_CUDA      = FALSE
+USE_CUDA      = TRUE
+
+BL_NO_FORT = TRUE
 
 # Executable
 # Uncomment the desired exec
-EBASE		= template
+#EBASE		= template
 #EBASE		= convert2hdf5
 #EBASE         = grad
 #EBASE		= jpdf
@@ -33,7 +36,7 @@ EBASE		= template
 #EBASE         = filterPlt
 #EBASE         = curvature
 #EBASE          = optimalEstimatorInfer
-#EBASE          = optimalEstimatorTraining
+EBASE          = optimalEstimatorTraining
 #EBASE         = surfMEFtoDAT
 #EBASE         = surfDATtoMEF
 #EBASE          = amrToFE
@@ -56,8 +59,13 @@ CEXE_sources += $(EBASE).cpp
 
 ifeq ($(EBASE),partStream)
   USE_PARTICLES = TRUE
-  CEXE_headers += StreamData.H    StreamPC.H
-  CEXE_sources += StreamData.cpp  StreamPC.cpp
+  CEXE_headers += StreamPC.H
+  CEXE_sources += StreamPC.cpp
+endif
+
+ifeq ($(EBASE),stream2plt)
+  CEXE_headers += StreamData.H
+  CEXE_sources += StreamData.cpp
 endif
 
 ifeq ($(EBASE), $(filter $(EBASE),optimalEstimatorTraining optimalEstimatorInfer)) #make pytorch first!
@@ -72,10 +80,10 @@ endif
 
 ifeq ($(EBASE),convert2hdf5)
    USE_HDF5 = TRUE
-   USE_HDF5_ZFP = TRUE
-   HDF5_HOME = /path/to/hdf5
-   ZFP_HOME = /path/to/zfp
-   H5Z_HOME = /path/to/h5z-zfp
+   USE_HDF5_ZFP = FALSE
+   HDF5_HOME = $(HDF5_DIR) # /path/to/hdf5
+   ZFP_HOME = $(ZFP_DIR)  # /path/to/zfp
+   H5Z_HOME = $(H5Z_DIR) # /path/to/h5z-zfp
 endif
 
 ifeq ($(EBASE),decimateMEF) #make qslim first!
