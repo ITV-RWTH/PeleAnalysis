@@ -44,6 +44,7 @@ USE_CUDA      = FALSE
 #EBASE   = isosurface
 #EBASE   = jpdf
 #EBASE   = makePlotfile
+EBASE   = mef2jpdf
 #EBASE   = partStream
 #EBASE   = qCriterion
 #EBASE   = regridPlt
