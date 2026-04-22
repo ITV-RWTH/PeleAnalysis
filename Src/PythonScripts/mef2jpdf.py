@@ -8,17 +8,18 @@ import os
 import pyvista as pv
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--ndims", type=int, default=3, help="number of spatial dimensions", required=False)
+parser = argparse.ArgumentParser(description="This script computes global jPDFs for one ore more .mef-files and stores them in the same format as the jpdf.cpp utility. Values are extracted from element centers and then weighted by element areas.")
+parser.add_argument("-i", "--infiles", metavar="PATTERN", help="mef infile names pattern (important: use quotes for glob patterns, e.g., --infiles \"plt*.mef\")", required=True)
+parser.add_argument("-n", "--nbins", type=int, help="number of bins", required=True)
 parser.add_argument("--xvar_in", type=str, help="name of x-variable (as in mef-file)", required=True)
-parser.add_argument("--yvar_in", type=str, help="name of x-variable (as in mef-file)", required=True)
-parser.add_argument("--xvar_out", type=str, help="name of x-variable in out-jPDF", required=False)
-parser.add_argument("--yvar_out", type=str, help="name of x-variable in out-jPDF", required=False)
+parser.add_argument("--yvar_in", type=str, help="name of y-variable (as in mef-file)", required=True)
+parser.add_argument("--xvar_out", type=str, help="name of x-variable in out-jPDF [DEF: xvar_in]", required=False)
+parser.add_argument("--yvar_out", type=str, help="name of y-variable in out-jPDF [DEF: yvar_in]", required=False)
 parser.add_argument("--xmin", type=float, help="lower limit of x-axis", required=False)
 parser.add_argument("--xmax", type=float, help="upper limit of x-axis", required=False)
 parser.add_argument("--ymin", type=float, help="lower limit of y-axis", required=False)
 parser.add_argument("--ymax", type=float, help="upper limit of y-axis", required=False)
-parser.add_argument("-n", "--nbins", type=int, help="number of bins", required=True)
-parser.add_argument("-i", "--infiles", metavar="PATTERN", help="mef infile names pattern (remember quotes for patterns, e.g. --infiles \"plt*.mef)", required=True)
+parser.add_argument("--ndims", type=int, default=3, help="number of spatial dimensions", required=False)
 args = parser.parse_args()
 NDIMS = args.ndims
 XVAR_IN = args.xvar_in
