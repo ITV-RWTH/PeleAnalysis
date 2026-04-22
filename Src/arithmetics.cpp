@@ -7,36 +7,41 @@
 #include <AMReX_DataServices.H>
 #include <AMReX_PlotFileUtil.H>
 
-#define ALGEBRA_OPERATION +
-// #define MATH_OPERATION -
-// #define MATH_OPERATION *
-// #define MATH_OPERATION /
+#define ARITHMETICS_OPERATION +
+// #define ARITHMETICS_OPERATION -
+// #define ARITHMETICS_OPERATION *
+// #define ARITHMETICS_OPERATION /
 
 using namespace amrex;
 
 static void
 print_usage(int, char* argv[])
 {
-    std::cerr << "This script applies a simple arithmetic operation to two field variables. The "
-              << "operator is specified before compilation, e.g., via \'#define ALGEBRA_OPERATION +\', "
-              << "in \'algebra.cpp\'.\n\n"
-              << "Usage:\n"
-              << "  " << argv[0] << " infile=FILE inVarAName=NAME inVarBName=NAME outVarName=NAME [OPTIONS]\n\n"
+  std::cerr
+    << "This script applies a simple arithmetic operation to two field "
+       "variables. The "
+    << "operator is specified before compilation, e.g., via \'#define "
+       "ARITHMETICS_OPERATION +\', "
+    << "in \'arithmetics.cpp\'.\n\n"
+    << "Usage:\n"
+    << "  " << argv[0]
+    << " infile=FILE inVarAName=NAME inVarBName=NAME outVarName=NAME "
+       "[OPTIONS]\n\n"
 
-              << "Required arguments:\n"
-              << "  infile=FILE                     AMReX plotfile\n\n"
-              << "  inVarAName=NAME                 operand A\n\n"
-              << "  inVarBName=NAME                 operand B\n\n"
-              << "  outVarName=NAME                 result\n\n"
+    << "Required arguments:\n"
+    << "  infile=FILE                     AMReX plotfile\n\n"
+    << "  inVarAName=NAME                 operand A\n\n"
+    << "  inVarBName=NAME                 operand B\n\n"
+    << "  outVarName=NAME                 result\n\n"
 
-              << "Options:\n"
-              << "  outfile=FILE                    AMReX plotfile [DEF=\%infile]\n\n"
-              << "  -h, --help                      Show this help message\n\n"
+    << "Options:\n"
+    << "  outfile=FILE                    AMReX plotfile [DEF=\%infile]\n\n"
+    << "  -h, --help                      Show this help message\n\n"
 
-              << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
-              << "the documentation.\n";
+    << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+    << "the documentation.\n";
 
-    std::exit(1);
+  std::exit(1);
 }
 
 std::string
@@ -106,19 +111,21 @@ main(int argc, char* argv[])
 
     Vector<std::string> inNames = amrData.PlotVarNames();
     auto id = std::find(inNames.begin(), inNames.end(), inVarAName);
-    int inVarA_id; 
+    int inVarA_id;
     if (id != inNames.end()) {
-	inVarA_id = std::distance(inNames.end(), id);
+      inVarA_id = std::distance(inNames.begin(), id);
     } else {
-	Abort("Variable " + inVarAName + " not found in file " + infileName + "!");
-    } 
+      Abort(
+        "Variable " + inVarAName + " not found in file " + infileName + "!");
+    }
     id = std::find(inNames.begin(), inNames.end(), inVarBName);
     int inVarB_id;
     if (id != inNames.end()) {
-	inVarB_id = std::distance(inNames.begin(), id);
+      inVarB_id = std::distance(inNames.begin(), id);
     } else {
-	Abort("Variable " + inVarBName + " not found in file " + infileName + "!");
-    } 
+      Abort(
+        "Variable " + inVarBName + " not found in file " + infileName + "!");
+    }
     Vector<std::string> outNames = amrData.PlotVarNames();
     outNames.push_back(outVarName);
 
@@ -149,12 +156,13 @@ main(int argc, char* argv[])
         const Box& bx = mfi.tilebox();
         auto const& out_a = outdata[lev].array(mfi);
         auto const& in_a = indata.array(mfi);
-	amrex::ParallelFor(
+        amrex::ParallelFor(
           bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-	    for (int n = 0; n < nCompIn; n++) {
+            for (int n = 0; n < nCompIn; n++) {
               out_a(i, j, k, n) = in_a(i, j, k, n);
             }
-            out_a(i, j, k, outVar_id) = in_a(i, j, k, inVarA_id) ALGEBRA_OPERATION in_a(i, j, k, inVarB_id);
+            out_a(i, j, k, outVar_id) = in_a(i, j, k, inVarA_id)
+              ARITHMETICS_OPERATION in_a(i, j, k, inVarB_id);
           });
       }
     }
@@ -163,8 +171,8 @@ main(int argc, char* argv[])
     Vector<int> isteps(Nlev, 0);
     Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});
     amrex::WriteMultiLevelPlotfile(
-      outfileName, Nlev, GetVecOfConstPtrs(outdata), outNames, geoms, 0.0, isteps,
-      refRatios);
+      outfileName, Nlev, GetVecOfConstPtrs(outdata), outNames, geoms, 0.0,
+      isteps, refRatios);
   }
   Finalize();
   return 0;

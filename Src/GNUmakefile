@@ -13,7 +13,7 @@ PELE_ANALYSIS_HOME = ..
 
 # AMReX
 DEBUG	      = FALSE
-DIM	      	  = 2
+DIM	      	  = 3
 PRECISION     = DOUBLE
 
 # Compilation
@@ -24,7 +24,7 @@ USE_CUDA      = FALSE
 
 # Executable
 # Uncomment the desired exec
-#EBASE   = template
+EBASE   = template
 #EBASE   = amrToFE
 #EBASE   = avgPlotfiles
 #EBASE   = avgToPlane
