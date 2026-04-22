@@ -12,41 +12,42 @@ PELE_ANALYSIS_HOME = ..
 
 # AMReX
 DEBUG	      = FALSE
-DIM	      = 3
+DIM			  = 3
 PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = FALSE
-USE_OMP       = FALSE
+USE_MPI       = TRUE
+USE_OMP       = TRUE
 USE_CUDA      = FALSE
 
 # Executable
 # Uncomment the desired exec
-EBASE		= template
+#EBASE		= template
 #EBASE		= convert2hdf5
-#EBASE         = grad
+EBASE		= favreAvgPlotfiles
+#EBASE      = grad
 #EBASE		= jpdf
-#EBASE         = combinePlts
-#EBASE         = isosurface
-#EBASE         = flattenAMRFile
-#EBASE         = filterPlt
-#EBASE         = curvature
-#EBASE         = surfMEFtoDAT
-#EBASE         = surfDATtoMEF
-#EBASE          = amrToFE
-#EBASE         = conditionalMean
+#EBASE      = combinePlts
+#EBASE      = isosurface
+#EBASE      = flattenAMRFile
+#EBASE      = filterPlt
+#EBASE      = curvature
+#EBASE      = surfMEFtoDAT
+#EBASE      = surfDATtoMEF
+#EBASE      = amrToFE
+#EBASE      = conditionalMean
 #EBASE		= isosurface
 #EBASE		= decimateMEF
-#EBASE         = subPlt
-#EBASE         = partStream
+#EBASE      = subPlt
+#EBASE      = partStream
 #EBASE		= stream2plt
 #EBASE		= makePlotfile
 #EBASE		= dumpFABslice
 #EBASE		= turbfile
 
 # tools that need review/combining/fixing/work
-#EBASE         = avgToPlane
+#EBASE      = avgToPlane
 
 
 CEXE_sources += $(EBASE).cpp
