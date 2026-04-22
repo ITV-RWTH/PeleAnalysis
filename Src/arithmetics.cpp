@@ -7,36 +7,28 @@
 #include <AMReX_DataServices.H>
 #include <AMReX_PlotFileUtil.H>
 
-#define ARITHMETICS_OPERATION +
-// #define ARITHMETICS_OPERATION -
-// #define ARITHMETICS_OPERATION *
-// #define ARITHMETICS_OPERATION /
-
 using namespace amrex;
 
 static void
 print_usage(int, char* argv[])
 {
   std::cerr
-    << "This script applies a simple arithmetic operation to two field "
-       "variables. The "
-    << "operator is specified before compilation, e.g., via \'#define "
-       "ARITHMETICS_OPERATION +\', "
-    << "in \'arithmetics.cpp\'.\n\n"
+    << "This tool applies a simple arithmetic operation to two field variables.\n\n"
     << "Usage:\n"
     << "  " << argv[0]
-    << " infile=FILE inVarAName=NAME inVarBName=NAME outVarName=NAME "
-       "[OPTIONS]\n\n"
+    << " infile=FILE inVarAName=NAME inVarBName=NAME outVarName=NAME"
+       " operator=OP [OPTIONS]\n\n"
 
     << "Required arguments:\n"
-    << "  infile=FILE                     AMReX plotfile\n\n"
-    << "  inVarAName=NAME                 operand A\n\n"
-    << "  inVarBName=NAME                 operand B\n\n"
-    << "  outVarName=NAME                 result\n\n"
+    << "  infile=FILE                     AMReX plotfile\n"
+    << "  inVarAName=NAME                 operand A\n"
+    << "  inVarBName=NAME                 operand B\n"
+    << "  outVarName=NAME                 result variable name\n"
+    << "  operator=OP                     operation: add, subtract, multiply, divide\n\n"
 
     << "Options:\n"
-    << "  outfile=FILE                    AMReX plotfile [DEF=\%infile]\n\n"
-    << "  -h, --help                      Show this help message\n\n"
+    << "  outfile=FILE                    output plotfile [DEF: infile_OP]\n"
+    << "  -h, --help                      show this help message\n\n"
 
     << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
     << "the documentation.\n";
@@ -70,21 +62,29 @@ main(int argc, char* argv[])
 
     std::string infileName;
     pp.get("infile", infileName);
-    std::string inVarAName;
-    std::string outfileName(getFileRoot(infileName) + "_multiply");
+
+    std::string oper;
+    pp.get("operator", oper);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+      oper == "add" || oper == "subtract" || oper == "multiply" || oper == "divide",
+      "operator must be one of: add, subtract, multiply, divide");
+
+    std::string outfileName(getFileRoot(infileName) + "_" + oper);
     pp.query("outfile", outfileName);
+
+    std::string inVarAName;
     pp.get("inVarAName", inVarAName);
     std::string inVarBName;
     pp.get("inVarBName", inVarBName);
     std::string outVarName;
     pp.get("outVarName", outVarName);
+
     DataServices::SetBatchMode();
     Amrvis::FileType fileType(Amrvis::NEWPLT);
 
     DataServices dataServices(infileName, fileType);
     if (!dataServices.AmrDataOk()) {
       DataServices::Dispatch(DataServices::ExitRequest, NULL);
-      // ^^^ this calls ParallelDescriptor::EndParallel() and exit()
     }
     AmrData& amrData = dataServices.AmrDataRef();
 
@@ -95,76 +95,56 @@ main(int argc, char* argv[])
     Vector<int> is_per(AMREX_SPACEDIM, 1);
     pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
     Print() << "Periodicity assumed for this case: ";
-    for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+    for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
       Print() << is_per[idim] << " ";
-    }
+    Print() << "\n";
 
     RealBox rb(&(amrData.ProbLo()[0]), &(amrData.ProbHi()[0]));
 
-    Vector<MultiFab> outdata(Nlev);
-    Vector<Geometry> geoms(Nlev);
-
-    int nGrow = 0;
     int nCompIn = amrData.NComp();
     int nCompOut = nCompIn + 1;
     int outVar_id = nCompOut - 1;
 
     Vector<std::string> inNames = amrData.PlotVarNames();
-    auto id = std::find(inNames.begin(), inNames.end(), inVarAName);
-    int inVarA_id;
-    if (id != inNames.end()) {
-      inVarA_id = std::distance(inNames.begin(), id);
-    } else {
-      Abort(
-        "Variable " + inVarAName + " not found in file " + infileName + "!");
-    }
-    id = std::find(inNames.begin(), inNames.end(), inVarBName);
-    int inVarB_id;
-    if (id != inNames.end()) {
-      inVarB_id = std::distance(inNames.begin(), id);
-    } else {
-      Abort(
-        "Variable " + inVarBName + " not found in file " + infileName + "!");
-    }
+
+    auto idA = std::find(inNames.begin(), inNames.end(), inVarAName);
+    if (idA == inNames.end())
+      Abort("Variable " + inVarAName + " not found in file " + infileName);
+    int inVarA_id = std::distance(inNames.begin(), idA);
+
+    auto idB = std::find(inNames.begin(), inNames.end(), inVarBName);
+    if (idB == inNames.end())
+      Abort("Variable " + inVarBName + " not found in file " + infileName);
+    int inVarB_id = std::distance(inNames.begin(), idB);
+
     Vector<std::string> outNames = amrData.PlotVarNames();
     outNames.push_back(outVarName);
 
-    Vector<int> destFillComps(nCompOut);
-    for (int i = 0; i < nCompOut; ++i)
-      destFillComps[i] = i;
+    Vector<MultiFab> outdata(Nlev);
+    Vector<Geometry> geoms(Nlev);
+    int coord = 0;
 
     for (int lev = 0; lev < Nlev; ++lev) {
-
       const BoxArray ba = amrData.boxArray(lev);
       const DistributionMapping dm(ba);
+      geoms[lev] = Geometry(amrData.ProbDomain()[lev], &rb, coord, &(is_per[0]));
 
-      outdata[lev] = MultiFab(ba, dm, nCompOut, nGrow);
-      MultiFab indata(ba, dm, nCompIn, nGrow);
-
-      int coord = 0;
-      geoms[lev] =
-        Geometry(amrData.ProbDomain()[lev], &rb, coord, &(is_per[0]));
+      outdata[lev].define(ba, dm, nCompOut, 0);
 
       Print() << "Reading data for level " << lev << std::endl;
-      amrData.FillVar(indata, lev, inNames, destFillComps);
+      for (int i = 0; i < nCompIn; ++i)
+        outdata[lev].ParallelCopy(amrData.GetGrids(lev, i), 0, i, 1);
       Print() << "Data has been read for level " << lev << std::endl;
 
-#ifdef AMREX_USE_OMP
-#pragma omp parallel if (Gpu::notInLaunchRegion())
-#endif
-      for (MFIter mfi(indata, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
-        const Box& bx = mfi.tilebox();
-        auto const& out_a = outdata[lev].array(mfi);
-        auto const& in_a = indata.array(mfi);
-        amrex::ParallelFor(
-          bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-            for (int n = 0; n < nCompIn; n++) {
-              out_a(i, j, k, n) = in_a(i, j, k, n);
-            }
-            out_a(i, j, k, outVar_id) = in_a(i, j, k, inVarA_id)
-              ARITHMETICS_OPERATION in_a(i, j, k, inVarB_id);
-          });
-      }
+      MultiFab::Copy(outdata[lev], outdata[lev], inVarA_id, outVar_id, 1, 0);
+      if (oper == "add")
+        MultiFab::Add(outdata[lev], outdata[lev], inVarB_id, outVar_id, 1, 0);
+      else if (oper == "subtract")
+        MultiFab::Subtract(outdata[lev], outdata[lev], inVarB_id, outVar_id, 1, 0);
+      else if (oper == "multiply")
+        MultiFab::Multiply(outdata[lev], outdata[lev], inVarB_id, outVar_id, 1, 0);
+      else if (oper == "divide")
+        MultiFab::Divide(outdata[lev], outdata[lev], inVarB_id, outVar_id, 1, 0);
     }
 
     Print() << "Writing new data to " << outfileName << std::endl;
