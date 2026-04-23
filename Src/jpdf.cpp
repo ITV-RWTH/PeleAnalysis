@@ -677,11 +677,19 @@ main(int argc, char* argv[])
               }
             }
 
-            // Now divide by volume to make pdf integral to unity (has to come
-            // second) Is this correct, if conditioning is applied? In that case
-            // sum(bin)!=domainVol
+            // Normalise so that sum(bin) = 1. When conditioning is active the
+            // total contributed volume is less than domainVol, so divide by the
+            // actual accumulated volume rather than the full domain volume.
+            Real normVol = domainVol;
+            if (do_conditioning > 0) {
+              Real totalVol = 0;
+              for (int i = 0; i < nBins * nBins; i++)
+                totalVol += bin[i];
+              if (totalVol > 0)
+                normVol = totalVol;
+            }
             for (int i = 0; i < nBins * nBins; i++)
-              bin[i] /= domainVol;
+              bin[i] /= normVol;
 
             // Let's write some files...
             std::string filename;
@@ -1075,10 +1083,18 @@ main(int argc, char* argv[])
               }
             }
 
-            // Now divide by volume to make pdf integral to unity (has to come
-            // second)
+            // Normalise so that sum(binAv) = 1. When conditioning is active,
+            // divide by the actual accumulated volume across all files.
+            Real normAvVol = domainVol * (Real)nPlotFiles;
+            if (do_conditioning > 0) {
+              Real totalAvVol = 0;
+              for (int i = 0; i < nBins * nBins; i++)
+                totalAvVol += binAv[i];
+              if (totalAvVol > 0)
+                normAvVol = totalAvVol;
+            }
             for (int i = 0; i < nBins * nBins; i++)
-              binAv[i] /= domainVol * (Real)nPlotFiles;
+              binAv[i] /= normAvVol;
 
             // Let's write some files...
             std::string filename;
