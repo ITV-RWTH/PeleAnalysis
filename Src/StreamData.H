@@ -1,5 +1,5 @@
-#ifndef BL_STREAMDATA_H
-#define BL_STREAMDATA_H
+#ifndef AMREX_STREAMDATA_H
+#define AMREX_STREAMDATA_H
 
 #include <AMReX_AmrData.H>
 

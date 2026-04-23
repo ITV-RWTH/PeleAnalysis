@@ -28,7 +28,7 @@ BL_NO_FORT = TRUE
 # Uncomment the desired exec
 #EBASE		= template
 #EBASE		= convert2hdf5
-#EBASE         = grad
+#EBASE      = grad
 #EBASE		= jpdf
 #EBASE         = combinePlts
 #EBASE         = isosurface
@@ -49,11 +49,6 @@ BL_NO_FORT = TRUE
 EBASE		= progVar
 
 # tools that need review/combining/fixing/work
-#EBASE         = partStream
-#EBASE         = stream2plt
-#EBASE         = streamScatter
-#EBASE         = streamSub
-#EBASE         = streamTubeStats
 #EBASE         = avgToPlane
 
 
