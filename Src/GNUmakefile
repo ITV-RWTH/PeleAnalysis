@@ -18,9 +18,9 @@ PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = TRUE
+USE_MPI       = FALSE
 USE_OMP       = FALSE
-USE_CUDA      = TRUE
+USE_CUDA      = FALSE
 
 BL_NO_FORT = TRUE
 
@@ -36,7 +36,7 @@ BL_NO_FORT = TRUE
 #EBASE         = filterPlt
 #EBASE         = curvature
 #EBASE          = optimalEstimatorInfer
-EBASE          = optimalEstimatorTraining
+#EBASE          = optimalEstimatorTraining
 #EBASE         = surfMEFtoDAT
 #EBASE         = surfDATtoMEF
 #EBASE          = amrToFE
@@ -45,6 +45,8 @@ EBASE          = optimalEstimatorTraining
 #EBASE		= decimateMEF
 #EBASE         = subPlt
 #EBASE         = partStream
+#EBASE	       = integral
+EBASE		= progVar
 
 # tools that need review/combining/fixing/work
 #EBASE         = partStream

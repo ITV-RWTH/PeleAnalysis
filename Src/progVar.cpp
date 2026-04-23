@@ -10,17 +10,18 @@
 using namespace amrex;
 
 static
-void 
+void
 print_usage (int,
              char* argv[])
 {
-  std::cerr << "Calculates a progress variable from a pltFile as C = (Sum(specNames) - unburntVal)/(burntVal - unburntVal)\n";
+  std::cerr << "Calculates a progress variable and its source term from a pltFile as C = (Sum(specNames) - unburntVal)/(burntVal - unburntVal)\n";
   std::cerr << "usage:\n";
   std::cerr << argv[0] << "inputs infile=<i> speciesNames=<s> unburntVal=<u> burntVal=<b> [options] \n\tOptions:\n";
   std::cerr << "\t     infile=<i> where <i> is a pltfile\n";
   std::cerr << "\t     speciesNames=<s> where <s> are all the species to be included in the progress variable\n";
   std::cerr << "\t     unburntVal=float This is the sum of the included species in the unburnt unburntVal[DEF->0]\n";
   std::cerr << "\t     burntVal=float This is the value of included species in the burnt comp[DEF->1]\n";
+  std::cerr << "\t     outsuffix=string This is the ending of the output pltfile[DEF->_prog]\n";
   exit(1);
 }
 
@@ -40,10 +41,6 @@ main (int   argc,
     if (argc < 2)
       print_usage(argc,argv);
 
-    // ---------------------------------------------------------------------
-    // ParmParse
-    // ---------------------------------------------------------------------
-
     ParmParse pp;
 
     if (pp.contains("help"))
@@ -55,27 +52,24 @@ main (int   argc,
     std::string plotFileName; pp.get("infile",plotFileName);
 
     Vector<std::string> species;
-    int nSpec = pp.countval("speciesNames"); 
+    int nSpec = pp.countval("speciesNames");
     species.resize(nSpec);
     pp.getarr("speciesNames",species,0,nSpec);
 
-    // Default values
     Real unburnt = 0; pp.get("unburntVal", unburnt);
     Real burnt = 1; pp.get("burntVal", burnt);
 
+    std::string outsuffix = "_prog"; pp.get("outsuffix", outsuffix);
 
-    // DataServices (Reads infile into amrData)
     DataServices::SetBatchMode();
     Amrvis::FileType fileType(Amrvis::NEWPLT);
 
     DataServices dataServices(plotFileName, fileType);
     if( ! dataServices.AmrDataOk()) {
       DataServices::Dispatch(DataServices::ExitRequest, NULL);
-      // ^^^ this calls ParallelDescriptor::EndParallel() and exit()
     }
     AmrData& amrData = dataServices.AmrDataRef();
 
-    // Get Plt File Info like number of levels, periodicity, 
     int finestLevel = amrData.FinestLevel();
     pp.query("finestLevel",finestLevel);
     int Nlev = finestLevel + 1;
@@ -86,18 +80,18 @@ main (int   argc,
     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
         Print() << is_per[idim] << " ";
     }
+    Print() << std::endl;
 
     RealBox rb(&(amrData.ProbLo()[0]),&(amrData.ProbHi()[0]));
 
     int nCompIn = amrData.NComp();
-   
     Vector<std::string> inNames = amrData.PlotVarNames();
 
-    // Get ids of relevant species
+    // Get ids of relevant species (mass fractions)
     Vector<int> idY(nSpec, -1);
     for (int j=0; j<nSpec; ++j)
     {
-      for (int i=0; i<inNames.size(); ++i)
+      for (int i=0; i<(int)inNames.size(); ++i)
       {
         if (inNames[i] == species[j]) idY[j] = i;
       }
@@ -106,72 +100,104 @@ main (int   argc,
       }
     }
 
-    Vector<MultiFab> outdata(Nlev); // same levels as indata
+   // Get ids of production rates I_R(<species>) for each species
+   Vector<int> idIR(nSpec, -1);
+   for (int j=0; j<nSpec; ++j)
+   {
+     // Strip "Y(" prefix and ")" suffix if present, e.g. "Y(H2)" -> "H2"
+     std::string specBase = species[j];
+     if (specBase.size() > 2 && specBase.substr(0,2) == "Y(" && specBase.back() == ')')
+     { 
+       specBase = specBase.substr(2, specBase.size() - 3);
+     }
+
+     std::string irName = "I_R(" + specBase + ")";
+     for (int i=0; i<(int)inNames.size(); ++i)
+     {
+       if (inNames[i] == irName) idIR[j] = i;
+     }
+     if (idIR[j]<0) {
+       amrex::Abort("Production rate " + irName + " not found in plotfile");
+     }
+   }
+
+    Vector<MultiFab> outdata(Nlev);
     Vector<Geometry> geoms(Nlev);
     int nGrow = 0;
-    Vector<std::string> outNames = {"specSum", "progVar"};
- 
-    // Read all comps of indata TODO Can you do this better? 
+    // Output: specSum, progVar, I_R(progVar)
+    Vector<std::string> outNames = {"specSum", "progVar", "I_R(progVar)"};
+
     Vector<int> destFillComps(nCompIn);
     for (int i=0; i<nCompIn; ++i) destFillComps[i] = i;
 
     for (int lev = 0; lev < Nlev; ++lev) {
-      
+
       const BoxArray ba = amrData.boxArray(lev);
       const DistributionMapping dm(ba);
 
       outdata[lev] = MultiFab(ba,dm,outNames.size(),nGrow);
-      MultiFab indata(ba,dm,nCompIn,nGrow); //important: indata needs to have space for all variables from plt files! -> initialisation with nCompIn
+      MultiFab indata(ba,dm,nCompIn,nGrow);
 
       int coord = 0;
-      geoms[lev] = Geometry(amrData.ProbDomain()[lev],&rb, coord, &(is_per[0]));      
- 
+      geoms[lev] = Geometry(amrData.ProbDomain()[lev],&rb, coord, &(is_per[0]));
+
       Print() << "Reading data for level " << lev << std::endl;
       amrData.FillVar(indata,lev,inNames,destFillComps);
-
       Print() << "Data has been read for level " << lev << std::endl;
-      
-      // Prepare efficient kernel work
-      amrex::Gpu::DeviceVector<int> d_idY(idY.size());
-      // 2. Copy host to device
-      amrex::Gpu::copy(amrex::Gpu::hostToDevice,idY.begin(), idY.end(),d_idY.begin());
 
-      // 3. Get raw device pointer
+      // Copy species index arrays to device
+      amrex::Gpu::DeviceVector<int> d_idY(idY.size());
+      amrex::Gpu::copy(amrex::Gpu::hostToDevice, idY.begin(), idY.end(), d_idY.begin());
       int const* idY_d = d_idY.data();
+
+      // Copy production rate index arrays to device
+      amrex::Gpu::DeviceVector<int> d_idIR(idIR.size());
+      amrex::Gpu::copy(amrex::Gpu::hostToDevice, idIR.begin(), idIR.end(), d_idIR.begin());
+      int const* idIR_d = d_idIR.data();
+
       Real denom = burnt - unburnt;
-      
+
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
       for (MFIter mfi(indata,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-	{
-	  const Box& bx = mfi.tilebox();
-	  auto const& out_a = outdata[lev].array(mfi);
-	  auto const& in_a = indata.array(mfi);
-	  amrex::ParallelFor(bx, [=]
-			     AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-				 {
-				   // calculate the sum of species
-				   Real sum = 0.0_rt;
-				   for (int s=0; s<nSpec; ++s)
- 				   {
-				     sum += in_a(i,j,k,idY_d[s]);
-				   }
-				   // calculate the progress variable
-				   out_a(i,j,k, 0) = sum;
-				   out_a(i,j,k,1) = (out_a(i,j,k,0) - unburnt)/denom;
-				 });
-	}
+      {
+        const Box& bx = mfi.tilebox();
+        auto const& out_a = outdata[lev].array(mfi);
+        auto const& in_a  = indata.array(mfi);
+        amrex::ParallelFor(bx, [=]
+            AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+              // Sum of species mass fractions
+              Real sum = 0.0_rt;
+              for (int s=0; s<nSpec; ++s)
+              {
+                sum += in_a(i,j,k, idY_d[s]);
+              }
+              out_a(i,j,k,0) = sum;
+
+              // Progress variable: C = (sum - unburnt) / (burnt - unburnt)
+              out_a(i,j,k,1) = (sum - unburnt) / denom;
+
+              // Production rate of progress variable:
+              // I_R(C) = Sum( I_R(species) ) / (burnt - unburnt)
+              Real irSum = 0.0_rt;
+              for (int s=0; s<nSpec; ++s)
+              {
+                irSum += in_a(i,j,k, idIR_d[s]);
+              }
+              out_a(i,j,k,2) = irSum / denom;
+            });
+      }
 
     }
-    
-    std::string outfile(getFileRoot(plotFileName) + "_prog");
+
+    std::string outfile(getFileRoot(plotFileName) + outsuffix);
     Print() << "Writing new data to " << outfile << std::endl;
     Vector<int> isteps(Nlev, 0);
     Vector<IntVect> refRatios(Nlev-1,{AMREX_D_DECL(2, 2, 2)});
     amrex::WriteMultiLevelPlotfile(outfile, Nlev, GetVecOfConstPtrs(outdata), outNames,
                                    geoms, 0.0, isteps, refRatios);
-
   }
   Finalize();
   return 0;
