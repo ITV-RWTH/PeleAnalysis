@@ -67,3 +67,5 @@ chk*
 # Visual Studio Code settings
 .vscode/
 ._*
+
+.claude
