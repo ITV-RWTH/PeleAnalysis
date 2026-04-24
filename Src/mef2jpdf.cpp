@@ -4,6 +4,7 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <limits>
 
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
@@ -66,30 +67,40 @@ read_iso(
   ifs.open(infile.c_str(), std::ios::in | std::ios::binary);
   if (!ifs.good())
     amrex::Abort("Cannot open MEF file: " + infile);
+
   label = parseTitle(ifs);
   names = parseVarNames(ifs);
   const int nCompSurf = names.size();
+
   int nodesPerElt;
   ifs >> nElts;
   ifs >> nodesPerElt;
-  ifs.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // consume newline after nodesPerElt
+  ifs.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-  FArrayBox tnodes;
-  tnodes.readFrom(ifs);
-  const int nNodes = tnodes.box().numPts();
-  nodes.resize(tnodes.box(), nCompSurf);
+  std::string header;
+  std::getline(ifs, header);
 
-  Real** np = new Real*[nCompSurf];
-  for (int j = 0; j < nCompSurf; ++j)
-    np[j] = nodes.dataPtr(j);
-  Real* ndat = tnodes.dataPtr();
-  for (int i = 0; i < nNodes; ++i) {
-    for (int j = 0; j < nCompSurf; ++j)
-      np[j][i] = ndat[j];
-    ndat += nCompSurf;
+  auto p1 = header.rfind("((");
+  auto p2 = header.find("))", p1);
+  std::string box_str = header.substr(p1, p2 - p1 + 2);
+  auto first_close = box_str.find(')');
+  auto second_open = box_str.find('(', first_close);
+  auto second_close = box_str.find(')', second_open);
+  std::string stop_tuple = box_str.substr(second_open + 1, second_close - second_open - 1);
+  int stop0 = std::stoi(stop_tuple.substr(0, stop_tuple.find(',')));
+  const int nNodes = stop0 + 1;
+
+  std::vector<Real> raw(nNodes * nCompSurf);
+  ifs.read((char*)raw.data(), sizeof(Real) * raw.size());
+
+  nodes.resize(Box(IntVect::TheZeroVector(),
+                   IntVect(AMREX_D_DECL(nNodes - 1, 0, 0))),
+               nCompSurf);
+  for (int j = 0; j < nCompSurf; ++j) {
+    Real* dst = nodes.dataPtr(j);
+    for (int i = 0; i < nNodes; ++i)
+      dst[i] = raw[i * nCompSurf + j];
   }
-  delete[] np;
-  tnodes.clear();
 
   faceData.resize(nElts * nodesPerElt, 0);
   ifs.read((char*)faceData.dataPtr(), sizeof(int) * faceData.size());
@@ -107,8 +118,6 @@ find_comp(const std::vector<std::string>& names, const std::string& comp)
   return -1;
 }
 
-// Returns the element-center value for element k, component comp.
-// faceData uses 1-based node indices (Fortran convention).
 static Real
 elt_center_val(
   const FArrayBox& nodes,
@@ -124,7 +133,6 @@ elt_center_val(
   return val / nodesPerElt;
 }
 
-// Returns the area of triangle k using the cross-product formula.
 static Real
 triangle_area(
   const FArrayBox& nodes, const Vector<int>& faceData, int k, int nodesPerElt)
@@ -199,7 +207,6 @@ main(int argc, char* argv[])
 
     const bool need_pass1 = !have_xmin || !have_xmax || !have_ymin || !have_ymax;
 
-    // Pass 1: find global min/max over element centers
     if (need_pass1) {
       std::cout << "Pass 1: scanning " << infiles.size()
                 << " file(s) for variable bounds..." << std::endl;
@@ -229,7 +236,6 @@ main(int argc, char* argv[])
     const Real dx = (xmax - xmin) / nBins;
     const Real dy = (ymax - ymin) / nBins;
 
-    // Pass 2: accumulate area-weighted histogram
     Vector<Real> hist(nBins * nBins, 0.0);
 
     std::cout << "Pass 2: accumulating histogram..." << std::endl;
@@ -256,7 +262,6 @@ main(int argc, char* argv[])
       }
     }
 
-    // Normalize to obtain a probability distribution
     Real total = 0;
     for (int i = 0; i < nBins * nBins; ++i)
       total += hist[i];
@@ -265,13 +270,11 @@ main(int argc, char* argv[])
     for (int i = 0; i < nBins * nBins; ++i)
       hist[i] /= total;
 
-    // Write output files
     const std::string outdir =
       "MEF_JPDFAverage_" + xvar_out + "_" + yvar_out;
     if (!amrex::UtilCreateDirectory(outdir, 0755))
       amrex::Abort("Could not create output directory: " + outdir);
 
-    // x bin centers
     {
       const std::string fname = outdir + "/Pdf_" + xvar_out + "_x.dat";
       std::cout << "Saving " << xvar_out << " bin centers to " << fname << std::endl;
@@ -281,7 +284,6 @@ main(int argc, char* argv[])
       fclose(fp);
     }
 
-    // y bin centers
     {
       const std::string fname = outdir + "/Pdf_" + yvar_out + "_x.dat";
       std::cout << "Saving " << yvar_out << " bin centers to " << fname << std::endl;
@@ -291,7 +293,6 @@ main(int argc, char* argv[])
       fclose(fp);
     }
 
-    // 2D PDF matrix
     {
       const std::string fname =
         outdir + "/Pdf_" + xvar_out + "_" + yvar_out + ".dat";

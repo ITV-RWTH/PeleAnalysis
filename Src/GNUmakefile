@@ -18,13 +18,13 @@ PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = TRUE
-USE_OMP       = TRUE
+USE_MPI       = FALSE
+USE_OMP       = FALSE
 USE_CUDA      = FALSE
 
 # Executable
 # Uncomment the desired exec
-#EBASE   = template
+EBASE   = template
 #EBASE   = amrToFE
 #EBASE   = avgPlotfiles
 #EBASE   = avgToPlane
@@ -44,7 +44,7 @@ USE_CUDA      = FALSE
 #EBASE   = isosurface
 #EBASE   = jpdf
 #EBASE   = makePlotfile
-EBASE   = mef2jpdf
+#EBASE   = mef2jpdf
 #EBASE   = partStream
 #EBASE   = qCriterion
 #EBASE   = regridPlt
