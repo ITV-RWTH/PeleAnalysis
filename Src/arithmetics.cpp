@@ -33,7 +33,7 @@ print_usage(int, char* argv[])
     << "Options:\n"
     << "  outfile=FILE                    output plotfile [DEF: infile_OP]\n"
     << "  coord=INT                       coordinate system (0=Cartesian) [DEF: 0]\n"
-    << "  checkDivByZero=0                disable divide-by-zero check [DEF: 1]\n"
+    << "  checkDivByZero=1|0              enable/disable divide-by-zero check [DEF: 1]\n"
     << "  -h, --help                      show this help message\n\n"
 
     << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
@@ -63,8 +63,9 @@ main(int argc, char* argv[])
     }
     ParmParse pp;
 
-    if (pp.contains("verbose"))
+    if (pp.contains("verbose")) {
       AmrData::SetVerbose(true);
+    }
 
     std::string infileName;
     pp.get("infile", infileName);
@@ -80,7 +81,9 @@ main(int argc, char* argv[])
     pp.query("outfile", outfileName);
 
     int checkDivByZero = 1;
-    pp.query("checkDivByZero", checkDivByZero);
+    if (oper == "divide") {
+      pp.query("checkDivByZero", checkDivByZero);
+    }
 
     std::string inVarAName;
     pp.get("inVarAName", inVarAName);
@@ -94,7 +97,7 @@ main(int argc, char* argv[])
 
     DataServices dataServices(infileName, fileType);
     if (!dataServices.AmrDataOk()) {
-      DataServices::Dispatch(DataServices::ExitRequest, NULL);
+      DataServices::Dispatch(DataServices::ExitRequest, NULL); // does not return
     }
     AmrData& amrData = dataServices.AmrDataRef();
 
@@ -105,8 +108,9 @@ main(int argc, char* argv[])
     Vector<int> is_per(AMREX_SPACEDIM, 1);
     pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
     Print() << "Periodicity assumed for this case: ";
-    for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
+    for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
       Print() << is_per[idim] << " ";
+    }
     Print() << "\n";
 
     RealBox rb(&(amrData.ProbLo()[0]), &(amrData.ProbHi()[0]));
@@ -118,13 +122,15 @@ main(int argc, char* argv[])
     Vector<std::string> inNames = amrData.PlotVarNames();
 
     auto idA = std::find(inNames.begin(), inNames.end(), inVarAName);
-    if (idA == inNames.end())
+    if (idA == inNames.end()) {
       Abort("Variable " + inVarAName + " not found in file " + infileName);
+    }
     int inVarA_id = std::distance(inNames.begin(), idA);
 
     auto idB = std::find(inNames.begin(), inNames.end(), inVarBName);
-    if (idB == inNames.end())
+    if (idB == inNames.end()) {
       Abort("Variable " + inVarBName + " not found in file " + infileName);
+    }
     int inVarB_id = std::distance(inNames.begin(), idB);
 
     Vector<std::string> outNames = amrData.PlotVarNames();
@@ -144,19 +150,21 @@ main(int argc, char* argv[])
       outdata[lev].define(ba, dm, nCompOut, 0);
 
       Print() << "Reading data for level " << lev << std::endl;
-      for (int i = 0; i < nCompIn; ++i)
+      for (int i = 0; i < nCompIn; ++i) {
         outdata[lev].ParallelCopy(amrData.GetGrids(lev, i), 0, i, 1);
+      }
       Print() << "Data has been read for level " << lev << std::endl;
 
       MultiFab::Copy(outdata[lev], outdata[lev], inVarA_id, outVar_id, 1, 0);
-      if (oper == "add")
+      if (oper == "add") {
         MultiFab::Add(outdata[lev], outdata[lev], inVarB_id, outVar_id, 1, 0);
-      else if (oper == "subtract")
+      } else if (oper == "subtract") {
         MultiFab::Subtract(
           outdata[lev], outdata[lev], inVarB_id, outVar_id, 1, 0);
-      else if (oper == "multiply")
+      } else if (oper == "multiply") {
         MultiFab::Multiply(
           outdata[lev], outdata[lev], inVarB_id, outVar_id, 1, 0);
+      }
       else if (oper == "divide") {
         if (checkDivByZero) {
           ReduceOps<ReduceOpLogicalOr> reduce_op;
