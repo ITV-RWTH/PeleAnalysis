@@ -19,8 +19,12 @@ Using this command will automatically like your PeleAnalysis Repository to the r
 Testing
 -------
 Functional regression tests live in the ``Tests/`` directory.
-Run ``Tests/jpdf/run_tests.sh`` to validate the jpdf tool.
-See the `Testing documentation <https://itv-rwth.github.io/PeleAnalysis/testing.html>`_ for the full test matrix.
+Each subdirectory provides a self-contained ``run_tests.sh`` for one tool (not complete yet)::
+
+   cd Tests/<toolname>
+   ./run_tests.sh
+
+See the `Testing documentation <https://itv-rwth.github.io/PeleAnalysis/testing.html>`_ for the full list of available suites and expected outputs.
 
 Documentation
 -------------
