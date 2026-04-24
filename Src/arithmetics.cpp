@@ -181,7 +181,11 @@ main(int argc, char* argv[])
 
     Print() << "Writing new data to " << outfileName << std::endl;
     Vector<int> isteps(Nlev, 0);
-    Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});
+    Vector<IntVect> refRatios(Nlev - 1);
+    for (int lev = 0; lev < Nlev - 1; ++lev) {
+      int r = amrData.RefRatio()[lev];
+      refRatios[lev] = IntVect(AMREX_D_DECL(r, r, r));
+    }
     amrex::WriteMultiLevelPlotfile(
       outfileName, Nlev, GetVecOfConstPtrs(outdata), outNames, geoms, 0.0,
       isteps, refRatios);
