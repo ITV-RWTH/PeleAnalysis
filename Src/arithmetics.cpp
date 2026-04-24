@@ -32,8 +32,10 @@ print_usage(int, char* argv[])
 
     << "Options:\n"
     << "  outfile=FILE                    output plotfile [DEF: infile_OP]\n"
-    << "  coord=INT                       coordinate system (0=Cartesian) [DEF: 0]\n"
-    << "  checkDivByZero=1|0              enable/disable divide-by-zero check [DEF: 1]\n"
+    << "  coord=INT                       coordinate system (0=Cartesian) "
+       "[DEF: 0]\n"
+    << "  checkDivByZero=1|0              enable/disable divide-by-zero check "
+       "[DEF: 1]\n"
     << "  -h, --help                      show this help message\n\n"
 
     << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
@@ -97,7 +99,8 @@ main(int argc, char* argv[])
 
     DataServices dataServices(infileName, fileType);
     if (!dataServices.AmrDataOk()) {
-      DataServices::Dispatch(DataServices::ExitRequest, NULL); // does not return
+      DataServices::Dispatch(
+        DataServices::ExitRequest, NULL); // does not return
     }
     AmrData& amrData = dataServices.AmrDataRef();
 
@@ -164,13 +167,13 @@ main(int argc, char* argv[])
       } else if (oper == "multiply") {
         MultiFab::Multiply(
           outdata[lev], outdata[lev], inVarB_id, outVar_id, 1, 0);
-      }
-      else if (oper == "divide") {
+      } else if (oper == "divide") {
         if (checkDivByZero) {
           ReduceOps<ReduceOpLogicalOr> reduce_op;
           ReduceData<int> reduce_data(reduce_op);
           using ReduceTuple = typename decltype(reduce_data)::Type;
-          for (MFIter mfi(outdata[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+          for (MFIter mfi(outdata[lev], TilingIfNotGPU()); mfi.isValid();
+               ++mfi) {
             const Box& bx = mfi.tilebox();
             Array4<Real const> const arr = outdata[lev].const_array(mfi);
             reduce_op.eval(
@@ -182,7 +185,8 @@ main(int argc, char* argv[])
           ParallelDescriptor::ReduceIntMax(hasZero);
           AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
             !hasZero, "Division by zero: " + inVarBName +
-                        " contains zero values at level " + std::to_string(lev));
+                        " contains zero values at level " +
+                        std::to_string(lev));
         }
         MultiFab::Divide(
           outdata[lev], outdata[lev], inVarB_id, outVar_id, 1, 0);
