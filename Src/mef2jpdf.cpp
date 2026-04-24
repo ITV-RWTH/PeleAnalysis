@@ -66,24 +66,22 @@ read_iso(
   ifs.open(infile.c_str(), std::ios::in | std::ios::binary);
   if (!ifs.good())
     amrex::Abort("Cannot open MEF file: " + infile);
-
   label = parseTitle(ifs);
   names = parseVarNames(ifs);
   const int nCompSurf = names.size();
-
   int nodesPerElt;
   ifs >> nElts;
   ifs >> nodesPerElt;
+  ifs.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // consume newline after nodesPerElt
 
   FArrayBox tnodes;
   tnodes.readFrom(ifs);
   const int nNodes = tnodes.box().numPts();
-
   nodes.resize(tnodes.box(), nCompSurf);
+
   Real** np = new Real*[nCompSurf];
   for (int j = 0; j < nCompSurf; ++j)
     np[j] = nodes.dataPtr(j);
-
   Real* ndat = tnodes.dataPtr();
   for (int i = 0; i < nNodes; ++i) {
     for (int j = 0; j < nCompSurf; ++j)

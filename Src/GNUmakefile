@@ -13,13 +13,13 @@ PELE_ANALYSIS_HOME = ..
 
 # AMReX
 DEBUG	      = FALSE
-DIM	      = 2
+DIM	      	  = 3
 PRECISION     = DOUBLE
 
 # Compilation
 COMP          = gnu
-USE_MPI       = FALSE
-USE_OMP       = FALSE
+USE_MPI       = TRUE
+USE_OMP       = TRUE
 USE_CUDA      = FALSE
 
 # Executable
