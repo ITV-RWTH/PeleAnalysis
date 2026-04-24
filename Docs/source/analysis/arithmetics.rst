@@ -64,4 +64,4 @@ Notes
 -----
 Both ``inVarAName`` and ``inVarBName`` must exist in the plotfile — the tool
 will abort with an error message if either is not found. The tool is compatible
-with MPI and OpenMP parallelism.
+with MPI and OpenMP parallelism. The ``divide`` operation will throw an error if operand B contains any zeros.

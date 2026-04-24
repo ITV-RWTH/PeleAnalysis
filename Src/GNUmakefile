@@ -26,6 +26,7 @@ USE_CUDA      = FALSE
 # Uncomment the desired exec
 EBASE   = template
 #EBASE   = amrToFE
+#EBASE   = arithmetics
 #EBASE   = avgPlotfiles
 #EBASE   = avgToPlane
 #EBASE   = checkIso
@@ -44,7 +45,6 @@ EBASE   = template
 #EBASE   = isosurface
 #EBASE   = jpdf
 #EBASE   = makePlotfile
-#EBASE   = arithmetics
 #EBASE   = partStream
 #EBASE   = qCriterion
 #EBASE   = regridPlt
