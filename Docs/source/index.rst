@@ -43,11 +43,6 @@ PeleAnalysis documentation
    analysis/trimMEFgen
    analysis/turbfile
 
-.. toctree::
-   :maxdepth: 1
-   :caption: Testing:
-
-   testing
 
 .. toctree::
    :maxdepth: 2
@@ -60,7 +55,13 @@ PeleAnalysis documentation
    modelSpecific/plotYtoX
    modelSpecific/testQPDtools
    modelSpecific/testTsolve
-   
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Testing:
+
+   testing
 
 README.rst:
 ^^^^^^^^^^^
