@@ -145,4 +145,4 @@ averaging, and MPI correctness in both 2D and 3D. Run with::
    cd Tests/jpdf
    ./run_tests.sh
 
-See :doc:`/testing` for the full test matrix and expected outputs.
+See :doc:`/testing/jpdf` for the full test matrix and expected outputs.
