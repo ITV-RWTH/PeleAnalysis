@@ -32,6 +32,7 @@ print_usage(int, char* argv[])
 
     << "Options:\n"
     << "  outfile=FILE                    output plotfile [DEF: infile_OP]\n"
+    << "  coord=INT                       coordinate system (0=Cartesian) [DEF: 0]\n"
     << "  checkDivByZero=0                disable divide-by-zero check [DEF: 1]\n"
     << "  -h, --help                      show this help message\n\n"
 
@@ -132,6 +133,7 @@ main(int argc, char* argv[])
     Vector<MultiFab> outdata(Nlev);
     Vector<Geometry> geoms(Nlev);
     int coord = 0;
+    pp.query("coord", coord);
 
     for (int lev = 0; lev < Nlev; ++lev) {
       const BoxArray ba = amrData.boxArray(lev);
