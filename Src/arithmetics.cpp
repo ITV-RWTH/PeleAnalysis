@@ -6,6 +6,8 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_DataServices.H>
 #include <AMReX_PlotFileUtil.H>
+#include <AMReX_Reduce.H>
+#include <AMReX_ParallelDescriptor.H>
 
 using namespace amrex;
 
@@ -30,6 +32,7 @@ print_usage(int, char* argv[])
 
     << "Options:\n"
     << "  outfile=FILE                    output plotfile [DEF: infile_OP]\n"
+    << "  checkDivByZero=0                disable divide-by-zero check [DEF: 1]\n"
     << "  -h, --help                      show this help message\n\n"
 
     << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
@@ -74,6 +77,9 @@ main(int argc, char* argv[])
 
     std::string outfileName(getFileRoot(infileName) + "_" + oper);
     pp.query("outfile", outfileName);
+
+    int checkDivByZero = 1;
+    pp.query("checkDivByZero", checkDivByZero);
 
     std::string inVarAName;
     pp.get("inVarAName", inVarAName);
@@ -150,18 +156,24 @@ main(int argc, char* argv[])
         MultiFab::Multiply(
           outdata[lev], outdata[lev], inVarB_id, outVar_id, 1, 0);
       else if (oper == "divide") {
-        bool hasZero = false; // check for divide by zero
-        for (MFIter mfi(outdata[lev]); mfi.isValid(); ++mfi) {
-          const auto& arr = outdata[lev][mfi].array();
-          const Box& box = mfi.validbox();
-          amrex::LoopOnCpu(box, [&](int i, int j, int k) {
-            if (arr(i, j, k, inVarB_id) == 0.0)
-              hasZero = true;
-          });
+        if (checkDivByZero) {
+          ReduceOps<ReduceOpLogicalOr> reduce_op;
+          ReduceData<int> reduce_data(reduce_op);
+          using ReduceTuple = typename decltype(reduce_data)::Type;
+          for (MFIter mfi(outdata[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+            const Box& bx = mfi.tilebox();
+            Array4<Real const> const arr = outdata[lev].const_array(mfi);
+            reduce_op.eval(
+              bx, reduce_data,
+              [arr, inVarB_id] AMREX_GPU_HOST_DEVICE(int i, int j, int k)
+                -> ReduceTuple { return {arr(i, j, k, inVarB_id) == 0.0}; });
+          }
+          int hasZero = amrex::get<0>(reduce_data.value());
+          ParallelDescriptor::ReduceIntMax(hasZero);
+          AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            !hasZero, "Division by zero: " + inVarBName +
+                        " contains zero values at level " + std::to_string(lev));
         }
-        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
-          !hasZero, "Division by zero: " + inVarBName +
-                      " contains zero values at level " + std::to_string(lev));
         MultiFab::Divide(
           outdata[lev], outdata[lev], inVarB_id, outVar_id, 1, 0);
       }
