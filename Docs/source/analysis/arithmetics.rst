@@ -48,20 +48,47 @@ Parameters
 ``verbose``
    Enable verbose AMReX output if present.
 
+``checkDivByZero``
+   When ``operator=divide``, check whether operand B contains any zero values
+   before performing the division.  Set to ``0`` to skip the check.
+   Default: ``1`` (check enabled).
+
+``coord``
+   Coordinate system identifier passed to the output ``Geometry``.
+   ``0`` = Cartesian (default).  Other values follow the AMReX convention.
+
 Output
 ------
 A new AMReX plotfile containing:
 
-- all original input variables (copied unchanged)
-- the derived field ``outVarName = A OP B``
+- all original input variables (copied unchanged from ``infile``)
+- the derived field ``outVarName = A OP B`` appended as the last component
+
+The refinement ratios are read from the input plotfile (``amrData.RefRatio()``)
+so that multi-level AMR data is written correctly even when the refinement
+ratio is not 2.
 
 Typical Applications
 --------------------
-- Computing dimensionless quantities
-- Weighting a quantity by another quantity
+- Computing dimensionless quantities (e.g. mixture fraction from species mass
+  fractions)
+- Weighting a scalar by a density or volume fraction
+- Differencing two plotfiles of the same field at different times
 
 Notes
 -----
 Both ``inVarAName`` and ``inVarBName`` must exist in the plotfile — the tool
-will abort with an error message if either is not found. The tool is compatible
-with MPI and OpenMP parallelism. The ``divide`` operation will throw an error if operand B contains any zeros.
+aborts with an informative message if either is missing.
+
+For ``operator=divide``, operand B is checked for zeros before the division
+using a GPU-compatible ``ReduceOps<ReduceOpLogicalOr>`` reduction across all
+AMR levels and MPI ranks.  Setting ``checkDivByZero=0`` skips this check; the
+division then follows IEEE 754 semantics (producing ``Inf`` or ``NaN`` for
+zero denominator cells without aborting).
+
+The tool is compatible with MPI and GPU (CUDA/HIP/SYCL) builds.
+
+Testing
+-------
+A self-contained test suite is provided in ``Tests/arithmetics/``.  See
+:doc:`/testing/arithmetics` for the full test matrix.
