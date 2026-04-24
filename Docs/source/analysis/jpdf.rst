@@ -134,3 +134,15 @@ All formats write one file per variable pair per plotfile. In MATLAB mode an add
 file per conditional-mean variable is written. The AMReX plotfile format stores both the
 PDF and its natural logarithm as separate components and encodes the bin axis ranges in
 the plotfile header.
+
+Testing
+#######
+
+A functional test suite for this tool lives in ``Tests/jpdf/``. It covers
+all output formats, 2D conditional means, conditioning modes, temporal
+averaging, and MPI correctness in both 2D and 3D. Run with::
+
+   cd Tests/jpdf
+   ./run_tests.sh
+
+See :doc:`/testing` for the full test matrix and expected outputs.

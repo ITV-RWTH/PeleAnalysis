@@ -44,6 +44,12 @@ PeleAnalysis documentation
    analysis/turbfile
 
 .. toctree::
+   :maxdepth: 1
+   :caption: Testing:
+
+   testing
+
+.. toctree::
    :maxdepth: 2
    :caption: Model Specific:
 

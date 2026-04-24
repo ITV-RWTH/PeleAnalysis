@@ -5,7 +5,7 @@
 #
 #   --no-compile   Skip the build step; assume executables already exist in Src/
 #
-# All test artefacts are written to TestFiles/testrun/ so the source tree stays
+# All test artefacts are written to Tests/jpdf/testrun/ so the source tree stays
 # clean. MPI tests require mpirun/mpiexec; they are skipped if neither is found.
 
 set -euo pipefail
@@ -14,7 +14,7 @@ set -euo pipefail
 # Paths
 # ---------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC_DIR="$SCRIPT_DIR/.."
+SRC_DIR="$SCRIPT_DIR/../../Src"
 RUN_DIR="$SCRIPT_DIR/testrun"
 NPROC=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
