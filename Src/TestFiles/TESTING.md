@@ -4,17 +4,37 @@ Tests for `jpdf.cpp` using synthetic plotfiles generated with `generateTestPlt`.
 
 ---
 
-## Setup
+## Running the test suite
+
+The fastest way to run everything is with the automated script:
+
+```bash
+cd Src/TestFiles
+./run_tests.sh            # compile then run all tests
+./run_tests.sh --no-compile  # skip build, use existing executables
+```
+
+The script compiles 2D/3D serial and 3D MPI executables, generates synthetic
+plotfiles, runs all tests, and prints a PASS/FAIL summary. All output artefacts
+are written to `TestFiles/testrun/` so the source tree stays clean. MPI tests
+require `mpirun` or `mpiexec` and are skipped automatically if neither is found.
+
+---
+
+## Manual setup
 
 ### 1. Compile tools
 
-```bash
-cd /path/to/PeleAnalysis/Src
-make EBASE=generateTestPlt
-make EBASE=jpdf2d
-```
+Executables are named `<EBASE><DIM>d.<COMP>[.MPI].ex` by AMReX.
 
-The executables will be named `generateTestPlt<dim>.<comp>.ex` and `jpdf2d<dim>.<comp>.ex` based on dimension and compiler.
+```bash
+cd Src/
+make EBASE=generateTestPlt DIM=2 DEBUG=FALSE USE_MPI=FALSE COMP=gnu   # generateTestPlt2d.gnu.ex
+make EBASE=generateTestPlt DIM=3 DEBUG=FALSE USE_MPI=FALSE COMP=gnu   # generateTestPlt3d.gnu.ex
+make EBASE=jpdf            DIM=2 DEBUG=FALSE USE_MPI=FALSE COMP=gnu   # jpdf2d.gnu.ex
+make EBASE=jpdf            DIM=3 DEBUG=FALSE USE_MPI=FALSE COMP=gnu   # jpdf3d.gnu.ex
+make EBASE=jpdf            DIM=3 DEBUG=FALSE USE_MPI=TRUE  COMP=gnu   # jpdf3d.gnu.MPI.ex
+```
 
 ### 2. Generate test plotfiles
 
@@ -124,7 +144,7 @@ Output directory: `plt_jpdf_A_test5/`
 
 Output directory: `plt_jpdf_A_test6/`
 
-- cVar=1 (var_sine), cNormMax=0.25, cMin=0.5: cells excluded where var_sine < ~0.15 or var_sine > ~0.85.
+- cVar=1 (var_sine). The code normalises first, then applies c(1−c): with cNormMax=1.0, var_sine maps to [0,1]; c(1−c) then gives [0, 0.25]. cMin=0.1 keeps cells where c(1−c) ≥ 0.1, i.e., var_sine ∈ [~0.13, ~0.87].
 - JPDF matrix: zero (or near-zero) in the bins corresponding to the extreme tails of var_sine.
 - `sum(PDF matrix) = 1.0`.
 
