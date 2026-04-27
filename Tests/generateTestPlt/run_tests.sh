@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_tests.sh — build and run all generateTestPlt tests (3D serial)
+# run_tests.sh — build and run all generateTestPlt tests (3D serial + MPI)
 #
 # Usage:  ./run_tests.sh [--no-compile]
 #
@@ -157,23 +157,41 @@ section "Phase 1: Build"
 BUILD_OPTS="DEBUG=FALSE PRECISION=DOUBLE COMP=gnu -j$NPROC"
 
 if $COMPILE; then
-    echo "  Building generateTestPlt 3D..."
+    echo "  Building generateTestPlt 3D serial..."
     if make -C "$SRC_DIR" $BUILD_OPTS EBASE=generateTestPlt DIM=3 USE_MPI=FALSE \
             > "$SCRIPT_DIR/build_genPlt3d.log" 2>&1; then
-        pass "generateTestPlt 3D built"
+        pass "generateTestPlt 3D serial built"
     else
-        fail "generateTestPlt 3D build failed — see build_genPlt3d.log"
+        fail "generateTestPlt 3D serial build failed — see build_genPlt3d.log"
+    fi
+    echo "  Building generateTestPlt 3D MPI..."
+    if make -C "$SRC_DIR" $BUILD_OPTS EBASE=generateTestPlt DIM=3 USE_MPI=TRUE \
+            > "$SCRIPT_DIR/build_genPlt3dmpi.log" 2>&1; then
+        pass "generateTestPlt 3D MPI built"
+    else
+        fail "generateTestPlt 3D MPI build failed — see build_genPlt3dmpi.log"
     fi
 else
     skip "Build skipped (--no-compile)"
 fi
 
 GEN3D=$(find_exe "generateTestPlt3d.gnu.ex")
-check_file "generateTestPlt 3D executable" "$GEN3D"
+GEN3D_MPI=$(find_exe "generateTestPlt3d.gnu.MPI.ex")
+check_file "generateTestPlt 3D serial executable" "$GEN3D"
+check_file "generateTestPlt 3D MPI executable"    "$GEN3D_MPI"
 
 if [[ -z "$GEN3D" ]]; then
-    echo -e "${RED}Cannot find executable — aborting test run.${NC}"
+    echo -e "${RED}Cannot find serial executable — aborting test run.${NC}"
     exit 1
+fi
+
+if command -v mpirun &>/dev/null; then
+    MPI_AVAILABLE=true; MPI_CMD=mpirun
+elif command -v mpiexec &>/dev/null; then
+    MPI_AVAILABLE=true; MPI_CMD=mpiexec
+else
+    MPI_AVAILABLE=false
+    skip "mpirun/mpiexec not found — MPI tests will be skipped"
 fi
 
 # ---------------------------------------------------------------------------
@@ -307,6 +325,98 @@ if "$GEN3D" "$SCRIPT_DIR/gen_err4_no_criterion.inp" > /dev/null 2>&1; then
     fail "err4 no criterion — expected abort, tool exited 0"
 else
     pass "err4 no criterion — aborted correctly"
+fi
+
+# ---------------------------------------------------------------------------
+# Phase 8 — MPI tests
+# ---------------------------------------------------------------------------
+section "Phase 8: MPI tests"
+
+if ! $MPI_AVAILABLE; then
+    skip "All MPI tests (mpirun/mpiexec not found)"
+elif [[ -z "$GEN3D_MPI" ]]; then
+    skip "All MPI tests (generateTestPlt MPI executable not found)"
+else
+    # amr.max_grid_size=4 ensures ≥8 boxes on every grid size used here,
+    # so all 4 ranks receive work and no MPI collective deadlocks.
+    MPI_GS="amr.max_grid_size=4"
+
+    # constant field: every cell must equal 7.0 regardless of rank count
+    for NP in 2 4; do
+        echo "  MPI-${NP}a — constant field, ${NP} ranks..."
+        $MPI_CMD -np $NP "$GEN3D_MPI" \
+            "$SCRIPT_DIR/gen_t2_const.inp" \
+            plotfile_name=plt_mpi${NP}_const $MPI_GS \
+            > /dev/null 2>&1 || true
+        check_plt_value "MPI-${NP}a constant = 7.0" "plt_mpi${NP}_const" "myfield" 7.0
+    done
+
+    # InBox AMR: 2 levels must appear on all rank counts
+    for NP in 2 4; do
+        echo "  MPI-${NP}b — InBox AMR, ${NP} ranks..."
+        $MPI_CMD -np $NP "$GEN3D_MPI" \
+            "$SCRIPT_DIR/gen_t5_amr_inbox.inp" \
+            plotfile_name=plt_mpi${NP}_inbox $MPI_GS \
+            > /dev/null 2>&1 || true
+        check_plt_nlevels "MPI-${NP}b nlevels = 2" "plt_mpi${NP}_inbox" 2
+    done
+
+    # InBox AMR: fewer boxes than ranks (max_grid_size default=16 → 1 box at level 0, 4 ranks)
+    echo "  MPI-4b2 — InBox AMR, 4 ranks, fewer boxes than ranks..."
+    $MPI_CMD -np 4 "$GEN3D_MPI" \
+        "$SCRIPT_DIR/gen_t5_amr_inbox.inp" \
+        plotfile_name=plt_mpi4_inbox_fewbox \
+        > /dev/null 2>&1 || true
+    check_plt_nlevels "MPI-4b2 nlevels = 2 (fewer boxes than ranks)" "plt_mpi4_inbox_fewbox" 2
+
+
+    # value_greater AMR: 2 levels, 4 ranks
+    echo "  MPI-4c — value_greater AMR, 4 ranks..."
+    $MPI_CMD -np 4 "$GEN3D_MPI" \
+        "$SCRIPT_DIR/gen_t6_amr_vgt.inp" \
+        plotfile_name=plt_mpi4_vgt $MPI_GS \
+        > /dev/null 2>&1 || true
+    check_plt_nlevels "MPI-4c vgt nlevels = 2" "plt_mpi4_vgt" 2
+
+    # value_less AMR: the boundary-cell fix must hold under MPI decomposition
+    echo "  MPI-4d — value_less AMR (boundary-cell fix), 4 ranks..."
+    $MPI_CMD -np 4 "$GEN3D_MPI" \
+        "$SCRIPT_DIR/gen_t7_amr_vlt.inp" \
+        plotfile_name=plt_mpi4_vlt $MPI_GS \
+        > /dev/null 2>&1 || true
+    check_plt_nlevels "MPI-4d vlt nlevels = 2" "plt_mpi4_vlt" 2
+
+    # adjacent_difference_greater AMR: 2 levels, 4 ranks
+    echo "  MPI-4e — adjacent_diff AMR, 4 ranks..."
+    $MPI_CMD -np 4 "$GEN3D_MPI" \
+        "$SCRIPT_DIR/gen_t8_amr_adj.inp" \
+        plotfile_name=plt_mpi4_adj $MPI_GS \
+        > /dev/null 2>&1 || true
+    check_plt_nlevels "MPI-4e adj nlevels = 2" "plt_mpi4_adj" 2
+
+    # 3-level AMR: all 3 levels present with 4 ranks
+    echo "  MPI-4f — 3-level InBox AMR, 4 ranks..."
+    $MPI_CMD -np 4 "$GEN3D_MPI" \
+        "$SCRIPT_DIR/gen_t9_amr_3level.inp" \
+        plotfile_name=plt_mpi4_3level $MPI_GS \
+        > /dev/null 2>&1 || true
+    check_plt_nlevels "MPI-4f 3-level nlevels = 3" "plt_mpi4_3level" 3
+
+    # constant field at all AMR levels, 4 ranks
+    echo "  MPI-4g — constant field value across AMR levels, 4 ranks..."
+    $MPI_CMD -np 4 "$GEN3D_MPI" \
+        "$SCRIPT_DIR/gen_t12_amr_const.inp" \
+        plotfile_name=plt_mpi4_amr_const $MPI_GS \
+        > /dev/null 2>&1 || true
+    check_plt_value "MPI-4g constant = 3.14 (all levels)" "plt_mpi4_amr_const" "cfield" 3.14
+
+    # output_name: header must contain Y(OH) on 2 ranks
+    echo "  MPI-2h — output_name Y(OH), 2 ranks..."
+    $MPI_CMD -np 2 "$GEN3D_MPI" \
+        "$SCRIPT_DIR/gen_t13_output_name.inp" \
+        plotfile_name=plt_mpi2_output_name $MPI_GS \
+        > /dev/null 2>&1 || true
+    header_has_var "MPI-2h header contains 'Y(OH)'" "plt_mpi2_output_name" "Y(OH)"
 fi
 
 # ---------------------------------------------------------------------------

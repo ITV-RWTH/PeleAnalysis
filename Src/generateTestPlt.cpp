@@ -480,26 +480,37 @@ buildFineBoxArray(
   // Expand tagged cells by n_error_buf cells at coarse level
   tba.buffer(IntVect(n_error_buf));
 
-  // Collect tagged cell positions
+  // Gather tagged cell positions to IO proc (collate is gather-to-root, not allgather).
+  // Pattern mirrors AMReX AmrMesh::regrid (AMReX_AmrMesh.cpp ~line 736-775).
   Gpu::PinnedVector<IntVect> pts;
   tba.collate(pts);
+  // collate uses ReduceLongSum internally: if numtags==0 it calls clear() on ALL
+  // ranks, so pts.empty() is a safe all-rank test for "nothing to refine".
   if (pts.empty()) {
     return BoxArray{};
   }
 
-  // Cluster tagged cells into coarse-level boxes
-  ClusterList clist(pts.data(), static_cast<Long>(pts.size()));
-  clist.chop(grid_eff);
-  BoxList coarse_bl = clist.boxList();
-  coarse_bl.intersect(coarse_domain);
-  coarse_bl.simplify();
-
-  // Refine coarse-level boxes to fine-level index space
+  // Cluster on IO proc only (non-IO procs have a single-element placeholder in pts).
   BoxList fine_bl;
-  for (Box b : coarse_bl) {
-    fine_bl.push_back(b.refine(ref_ratio_lev));
+  if (ParallelDescriptor::IOProcessor()) {
+    ClusterList clist(pts.data(), static_cast<Long>(pts.size()));
+    clist.chop(grid_eff);
+    BoxList coarse_bl = clist.boxList();
+    coarse_bl.intersect(coarse_domain);
+    coarse_bl.simplify();
+    for (Box b : coarse_bl) {
+      fine_bl.push_back(b.refine(ref_ratio_lev));
+    }
+    fine_bl.simplify();
   }
-  fine_bl.simplify();
+
+  // Broadcast the BoxList from IO proc to all ranks so every rank builds the
+  // same BoxArray and DistributionMapping (required for MPI collectives).
+  fine_bl.Bcast();
+
+  if (fine_bl.isEmpty()) {
+    return BoxArray{};
+  }
 
   BoxArray ba(fine_bl);
   ba.maxSize(max_grid_size);
