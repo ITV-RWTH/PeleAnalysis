@@ -28,6 +28,28 @@ print_usage(int, char* argv[])
     << "                               (default: same as field name; use to embed\n"
     << "                                '/' or other ParmParse-reserved characters)\n\n"
 
+    << "Geometry options:\n"
+    << "  geometry.coord_sys=N         0 = Cartesian (default), 1 = cylindrical/RZ\n\n"
+
+    << "Field types (for <name>.type):\n"
+    << "  constant                     Uniform value everywhere\n"
+    << "  plane_step / plane_smooth    Step/smooth transition at a coordinate plane\n"
+    << "                               axis=0|1|2  position=F  [smooth_width=F]\n"
+    << "  double_plane_step/smooth     Slab between two parallel planes\n"
+    << "                               axis=0|1|2  position=F  position_second=F\n"
+    << "  sphere_step / sphere_smooth  Step/smooth sphere (3D) or circle (2D)\n"
+    << "                               center=X [Y Z]  radius=F  [smooth_width=F]\n"
+    << "  ring_step / ring_smooth      Spherical shell (annulus in 2D)\n"
+    << "                               center=X [Y Z]  radius_inner=F  radius_outer=F\n"
+    << "  cylinder_step / cylinder_smooth  Step/smooth infinite cylinder\n"
+    << "                               axis=0|1|2 (default 2)  center=X [Y Z]\n"
+    << "                               radius=F  [smooth_width=F]\n"
+    << "                               Radial distance is measured from the named\n"
+    << "                               axis line, not from a point.\n"
+    << "  sine                         Separable sin*cos*sin wave\n"
+    << "                               frequency=Fx [Fy Fz]  phase=Px [Py Pz]\n"
+    << "                               amplitude=A  offset=B\n\n"
+
     << "AMR options (multilevel):\n"
     << "  amr.max_level=N              Maximum refinement level (default 0)\n"
     << "  amr.ref_ratio=N [N ...]      Refinement ratio per level (default 2)\n"
@@ -64,6 +86,8 @@ enum class FieldType {
   CircleSmooth,
   RingStep,
   RingSmooth,
+  CylinderStep,
+  CylinderSmooth,
   Sine
 };
 
@@ -130,12 +154,14 @@ parseFieldType(const std::string& type_str)
     {"double_plane_smooth", FieldType::DoublePlaneSmooth},
     {"circle_step", FieldType::CircleStep},
     {"circle_smooth", FieldType::CircleSmooth},
-    {"sphere_step", FieldType::CircleStep}, // Same as circle in code
+    {"sphere_step", FieldType::CircleStep},
     {"sphere_smooth", FieldType::CircleSmooth},
     {"ring_step", FieldType::RingStep},
     {"ring_smooth", FieldType::RingSmooth},
-    {"spherical_shell_step", FieldType::RingStep}, // Same as ring in code
+    {"spherical_shell_step", FieldType::RingStep},
     {"spherical_shell_smooth", FieldType::RingSmooth},
+    {"cylinder_step", FieldType::CylinderStep},
+    {"cylinder_smooth", FieldType::CylinderSmooth},
     {"sine", FieldType::Sine}};
 
   auto it = type_map.find(type_str);
@@ -333,6 +359,63 @@ evaluateField(
     Real blend = blend_inner * (1.0 - blend_outer);
 
     result = config.value_inside * blend + config.value_outside * (1.0 - blend);
+    break;
+  }
+
+  case FieldType::CylinderStep: {
+    Real r;
+    if (config.plane_axis == 0) {         // cylinder axis along x; transverse = y,z
+#if AMREX_SPACEDIM == 3
+      Real dy = y - config.center[1];
+      Real dz = z - config.center[2];
+      r = std::sqrt(dy * dy + dz * dz);
+#else
+      r = std::abs(y - config.center[1]); // 2D: only one transverse direction
+#endif
+    } else if (config.plane_axis == 1) {  // cylinder axis along y; transverse = x,z
+#if AMREX_SPACEDIM == 3
+      Real dx = x - config.center[0];
+      Real dz = z - config.center[2];
+      r = std::sqrt(dx * dx + dz * dz);
+#else
+      r = std::abs(x - config.center[0]); // 2D: only one transverse direction
+#endif
+    } else {                               // cylinder axis along z; transverse = x,y
+      Real dx = x - config.center[0];
+      Real dy = y - config.center[1];
+      r = std::sqrt(dx * dx + dy * dy);
+    }
+    result = (r < config.radius) ? config.value_inside : config.value_outside;
+    break;
+  }
+
+  case FieldType::CylinderSmooth: {
+    Real r;
+    if (config.plane_axis == 0) {
+#if AMREX_SPACEDIM == 3
+      Real dy = y - config.center[1];
+      Real dz = z - config.center[2];
+      r = std::sqrt(dy * dy + dz * dz);
+#else
+      r = std::abs(y - config.center[1]);
+#endif
+    } else if (config.plane_axis == 1) {
+#if AMREX_SPACEDIM == 3
+      Real dx = x - config.center[0];
+      Real dz = z - config.center[2];
+      r = std::sqrt(dx * dx + dz * dz);
+#else
+      r = std::abs(x - config.center[0]);
+#endif
+    } else {
+      Real dx = x - config.center[0];
+      Real dy = y - config.center[1];
+      r = std::sqrt(dx * dx + dy * dy);
+    }
+    Real edge0 = config.radius - config.smooth_width / 2.0;
+    Real edge1 = config.radius + config.smooth_width / 2.0;
+    Real blend = smoothstep(edge0, edge1, r);
+    result = config.value_inside * (1.0 - blend) + config.value_outside * blend;
     break;
   }
 
@@ -559,10 +642,12 @@ main(int argc, char* argv[])
     Array<int, AMREX_SPACEDIM> is_per = {
       AMREX_D_DECL(pp_is_per[0], pp_is_per[1], pp_is_per[2])};
 
-    // Coordinate system (only Cartesian supported)
+    // Coordinate system: 0 = Cartesian, 1 = cylindrical/RZ
     int coord = 0;
     ppgeom.query("coord_sys", coord);
-    AMREX_ALWAYS_ASSERT(coord == 0);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+      coord == 0 || coord == 1,
+      "geometry.coord_sys must be 0 (Cartesian) or 1 (cylindrical/RZ)");
 
     // Level-0 geometry
     IntVect domain_lo(AMREX_D_DECL(0, 0, 0));
@@ -736,6 +821,24 @@ main(int argc, char* argv[])
           ppf.query("value_inside", config.value_inside);
           ppf.query("value_outside", config.value_outside);
           if (config.type == FieldType::RingSmooth) {
+            ppf.query("smooth_width", config.smooth_width);
+          }
+          break;
+        }
+
+        case FieldType::CylinderStep:
+        case FieldType::CylinderSmooth: {
+          config.plane_axis = 2; // default: cylinder axis along z
+          ppf.query("axis", config.plane_axis);
+          Vector<Real> pp_center(AMREX_SPACEDIM, 0.5);
+          ppf.queryarr("center", pp_center);
+          for (int dim = 0; dim < static_cast<int>(pp_center.size()); ++dim) {
+            config.center[dim] = pp_center[dim];
+          }
+          ppf.query("radius", config.radius);
+          ppf.query("value_inside", config.value_inside);
+          ppf.query("value_outside", config.value_outside);
+          if (config.type == FieldType::CylinderSmooth) {
             ppf.query("smooth_width", config.smooth_width);
           }
           break;

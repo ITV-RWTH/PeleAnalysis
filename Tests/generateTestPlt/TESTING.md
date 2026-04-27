@@ -63,6 +63,15 @@ This addresses the second gap reported in issue #57: variable names containing `
 | err3 | `gen_err3_bad_refname.inp`  | Tool aborts when a refinement indicator references a non-existent field |
 | err4 | `gen_err4_no_criterion.inp` | Tool aborts when a refinement indicator has no recognised criterion key |
 
+### Phase 8 — Cylindrical coordinate system
+
+| Test | Input | What is checked |
+|------|-------|-----------------|
+| T14 | `gen_t14_cylinder.inp` | `cylinder_step` on all three axes and `cylinder_smooth` each produce range [0, 1] (3D serial) |
+| T15 | `gen_t15_rz.inp` | `geometry.coord_sys = 1` accepted; Header records `spacedim=2` and `coord_sys=1`, matching PeleLMeX 2D RZ output (**2D serial** binary required) |
+
+T14 uses 3D Cartesian coordinates and exercises `cylinder_step`/`cylinder_smooth` (infinite cylinder defined by radial distance from an axis line).  T15 requires the 2D binary (`generateTestPlt2d.gnu.ex`) and is skipped if that executable is absent.
+
 ## Python helpers
 
 | Script | Purpose |
@@ -70,3 +79,4 @@ This addresses the second gap reported in issue #57: variable names containing `
 | `check_plt_value.py`   | Assert every cell of a named variable equals an expected value (within tolerance) across all AMR levels |
 | `check_plt_range.py`   | Assert the observed min and max of a variable are within tolerance of expected values across all AMR levels |
 | `check_plt_nlevels.py` | Assert the number of `Level_N/` directories in a plotfile equals an expected count |
+| `check_plt_coord.py`   | Assert the `coord_sys` integer in the plotfile Header equals an expected value (0 = Cartesian, 1 = cylindrical/RZ) |

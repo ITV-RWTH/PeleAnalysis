@@ -124,6 +124,24 @@ check_plt_range() {
     fi
 }
 
+# check_plt_coord <desc> <plt_dir> <expected_coord_sys>
+check_plt_coord() {
+    local desc="$1" plt_dir="$2" expected="$3"
+    if [[ ! -d "$plt_dir" ]]; then
+        fail "$desc — plotfile dir missing: $plt_dir"; return
+    fi
+    if ! command -v python3 &>/dev/null; then
+        skip "$desc — python3 not available"; return
+    fi
+    local out
+    if out=$(python3 "$SCRIPT_DIR/check_plt_coord.py" \
+                "$plt_dir" "$expected" 2>&1); then
+        pass "$desc  ($out)"
+    else
+        fail "$desc — $out"
+    fi
+}
+
 # check_plt_nlevels <desc> <plt_dir> <expected_nlevels>
 check_plt_nlevels() {
     local desc="$1" plt_dir="$2" expected="$3"
@@ -171,14 +189,23 @@ if $COMPILE; then
     else
         fail "generateTestPlt 3D MPI build failed — see build_genPlt3dmpi.log"
     fi
+    echo "  Building generateTestPlt 2D serial..."
+    if make -C "$SRC_DIR" $BUILD_OPTS EBASE=generateTestPlt DIM=2 USE_MPI=FALSE \
+            > "$SCRIPT_DIR/build_genPlt2d.log" 2>&1; then
+        pass "generateTestPlt 2D serial built"
+    else
+        fail "generateTestPlt 2D serial build failed — see build_genPlt2d.log"
+    fi
 else
     skip "Build skipped (--no-compile)"
 fi
 
 GEN3D=$(find_exe "generateTestPlt3d.gnu.ex")
 GEN3D_MPI=$(find_exe "generateTestPlt3d.gnu.MPI.ex")
+GEN2D=$(find_exe "generateTestPlt2d.gnu.ex")
 check_file "generateTestPlt 3D serial executable" "$GEN3D"
 check_file "generateTestPlt 3D MPI executable"    "$GEN3D_MPI"
+check_file "generateTestPlt 2D serial executable" "$GEN2D"
 
 if [[ -z "$GEN3D" ]]; then
     echo -e "${RED}Cannot find serial executable — aborting test run.${NC}"
@@ -328,9 +355,30 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Phase 8 — MPI tests
+# Phase 8 — Cylindrical coordinate system support
 # ---------------------------------------------------------------------------
-section "Phase 8: MPI tests"
+section "Phase 8: Cylindrical coordinate system"
+
+echo "  T14 — cylinder_step and cylinder_smooth on all three axes..."
+"$GEN3D" "$SCRIPT_DIR/gen_t14_cylinder.inp" > /dev/null 2>&1
+check_plt_range "T14 cyl_z range [0,1]"   "plt_t14_cylinder" "cyl_z"    0.0 1.0
+check_plt_range "T14 cyl_y range [0,1]"   "plt_t14_cylinder" "cyl_y"    0.0 1.0
+check_plt_range "T14 cyl_x range [0,1]"   "plt_t14_cylinder" "cyl_x"    0.0 1.0
+check_plt_range "T14 cyl_z_sm range (0,1)" "plt_t14_cylinder" "cyl_z_sm" 0.0 1.0
+
+echo "  T15 — coord_sys=1 (cylindrical/RZ), 2D build..."
+if [[ -z "$GEN2D" ]]; then
+    skip "T15 RZ coord_sys=1 (2D executable not found)"
+else
+    "$GEN2D" "$SCRIPT_DIR/gen_t15_rz.inp" > /dev/null 2>&1
+    check_plt_coord  "T15 Header coord_sys = 1" "plt_t15_rz" 1
+    check_plt_value  "T15 RZ constant = 2.71828" "plt_t15_rz" "cfield" 2.71828 1e-5
+fi
+
+# ---------------------------------------------------------------------------
+# Phase 9 — MPI tests
+# ---------------------------------------------------------------------------
+section "Phase 9: MPI tests"
 
 if ! $MPI_AVAILABLE; then
     skip "All MPI tests (mpirun/mpiexec not found)"
