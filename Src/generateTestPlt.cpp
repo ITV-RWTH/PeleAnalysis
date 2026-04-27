@@ -18,33 +18,44 @@ print_usage(int, char* argv[])
     << "  " << argv[0] << " [OPTIONS]\n\n"
 
     << "Required arguments:\n"
-    << "  amr.n_cell=N [N N]           Number of cells per dimension (level 0)\n"
+    << "  amr.n_cell=N [N N]           Number of cells per dimension (level "
+       "0)\n"
     << "  geometry.prob_lo=X [Y Z]     Physical lower bound of the domain\n"
     << "  geometry.prob_hi=X [Y Z]     Physical upper bound of the domain\n"
     << "  geometry.is_periodic=N [N N] Periodicity flags per dimension\n"
     << "  field.names=NAME [NAME ...]  Space-separated list of field names\n"
     << "  <name>.type=TYPE             Field type for each named field\n"
-    << "  <name>.output_name=S         Variable name written to plotfile header\n"
-    << "                               (default: same as field name; use to embed\n"
-    << "                                '/' or other ParmParse-reserved characters)\n\n"
+    << "  <name>.output_name=S         Variable name written to plotfile "
+       "header\n"
+    << "                               (default: same as field name; use to "
+       "embed\n"
+    << "                                '/' or other ParmParse-reserved "
+       "characters)\n\n"
 
     << "Geometry options:\n"
-    << "  geometry.coord_sys=N         0 = Cartesian (default), 1 = cylindrical/RZ\n\n"
+    << "  geometry.coord_sys=N         0 = Cartesian (default), 1 = "
+       "cylindrical/RZ\n\n"
 
     << "Field types (for <name>.type):\n"
     << "  constant                     Uniform value everywhere\n"
-    << "  plane_step / plane_smooth    Step/smooth transition at a coordinate plane\n"
-    << "                               axis=0|1|2  position=F  [smooth_width=F]\n"
+    << "  plane_step / plane_smooth    Step/smooth transition at a coordinate "
+       "plane\n"
+    << "                               axis=0|1|2  position=F  "
+       "[smooth_width=F]\n"
     << "  double_plane_step/smooth     Slab between two parallel planes\n"
-    << "                               axis=0|1|2  position=F  position_second=F\n"
+    << "                               axis=0|1|2  position=F  "
+       "position_second=F\n"
     << "  sphere_step / sphere_smooth  Step/smooth sphere (3D) or circle (2D)\n"
-    << "                               center=X [Y Z]  radius=F  [smooth_width=F]\n"
+    << "                               center=X [Y Z]  radius=F  "
+       "[smooth_width=F]\n"
     << "  ring_step / ring_smooth      Spherical shell (annulus in 2D)\n"
-    << "                               center=X [Y Z]  radius_inner=F  radius_outer=F\n"
+    << "                               center=X [Y Z]  radius_inner=F  "
+       "radius_outer=F\n"
     << "  cylinder_step / cylinder_smooth  Step/smooth infinite cylinder\n"
     << "                               axis=0|1|2 (default 2)  center=X [Y Z]\n"
     << "                               radius=F  [smooth_width=F]\n"
-    << "                               Radial distance is measured from the named\n"
+    << "                               Radial distance is measured from the "
+       "named\n"
     << "                               axis line, not from a point.\n"
     << "  sine                         Separable sin*cos*sin wave\n"
     << "                               frequency=Fx [Fy Fz]  phase=Px [Py Pz]\n"
@@ -53,19 +64,27 @@ print_usage(int, char* argv[])
     << "AMR options (multilevel):\n"
     << "  amr.max_level=N              Maximum refinement level (default 0)\n"
     << "  amr.ref_ratio=N [N ...]      Refinement ratio per level (default 2)\n"
-    << "  amr.grid_eff=F               Clustering efficiency threshold (default 0.7)\n"
+    << "  amr.grid_eff=F               Clustering efficiency threshold "
+       "(default 0.7)\n"
     << "  amr.blocking_factor=N        Minimum box size (default 8)\n"
-    << "  amr.n_error_buf=N [N ...]    Buffer cells around tagged region (default 1)\n"
+    << "  amr.n_error_buf=N [N ...]    Buffer cells around tagged region "
+       "(default 1)\n"
     << "  amr.max_grid_size=N          Maximum box size (default 32)\n"
     << "  amr.refinement_indicators=NAME [NAME ...]\n"
-    << "                               Space-separated list of refinement criteria\n"
-    << "  amr.<name>.in_box_lo=X [Y Z] Physical lower bound of refinement region\n"
-    << "  amr.<name>.in_box_hi=X [Y Z] Physical upper bound of refinement region\n"
+    << "                               Space-separated list of refinement "
+       "criteria\n"
+    << "  amr.<name>.in_box_lo=X [Y Z] Physical lower bound of refinement "
+       "region\n"
+    << "  amr.<name>.in_box_hi=X [Y Z] Physical upper bound of refinement "
+       "region\n"
     << "  amr.<name>.value_greater=F   Refine where field > F\n"
     << "  amr.<name>.value_less=F      Refine where field < F\n"
-    << "  amr.<name>.adjacent_difference_greater=F  Refine where max neighbor diff > F\n"
-    << "  amr.<name>.field_name=NAME   Field to evaluate (value-based criteria)\n"
-    << "  amr.<name>.max_level=N       Max level for this indicator (default: amr.max_level)\n\n"
+    << "  amr.<name>.adjacent_difference_greater=F  Refine where max neighbor "
+       "diff > F\n"
+    << "  amr.<name>.field_name=NAME   Field to evaluate (value-based "
+       "criteria)\n"
+    << "  amr.<name>.max_level=N       Max level for this indicator (default: "
+       "amr.max_level)\n\n"
 
     << "  -h, --help                   Show this help message\n\n"
 
@@ -123,7 +142,12 @@ struct FieldConfig
 };
 
 // Enum for refinement criterion types
-enum class RefinementType { InBox, ValueGreater, ValueLess, AdjacentDiffGreater };
+enum class RefinementType {
+  InBox,
+  ValueGreater,
+  ValueLess,
+  AdjacentDiffGreater
+};
 
 // Structure to hold refinement indicator configuration
 struct RefinementRegion
@@ -364,7 +388,7 @@ evaluateField(
 
   case FieldType::CylinderStep: {
     Real r;
-    if (config.plane_axis == 0) {         // cylinder axis along x; transverse = y,z
+    if (config.plane_axis == 0) { // cylinder axis along x; transverse = y,z
 #if AMREX_SPACEDIM == 3
       Real dy = y - config.center[1];
       Real dz = z - config.center[2];
@@ -372,7 +396,8 @@ evaluateField(
 #else
       r = std::abs(y - config.center[1]); // 2D: only one transverse direction
 #endif
-    } else if (config.plane_axis == 1) {  // cylinder axis along y; transverse = x,z
+    } else if (config.plane_axis == 1) { // cylinder axis along y; transverse =
+                                         // x,z
 #if AMREX_SPACEDIM == 3
       Real dx = x - config.center[0];
       Real dz = z - config.center[2];
@@ -380,7 +405,7 @@ evaluateField(
 #else
       r = std::abs(x - config.center[0]); // 2D: only one transverse direction
 #endif
-    } else {                               // cylinder axis along z; transverse = x,y
+    } else { // cylinder axis along z; transverse = x,y
       Real dx = x - config.center[0];
       Real dy = y - config.center[1];
       r = std::sqrt(dx * dx + dy * dy);
@@ -438,7 +463,8 @@ evaluateField(
 }
 
 // Build the BoxArray for refinement level `lev` (lev >= 1).
-// Tags coarse cells analytically, buffers, clusters, and refines to fine index space.
+// Tags coarse cells analytically, buffers, clusters, and refines to fine index
+// space.
 BoxArray
 buildFineBoxArray(
   int lev,
@@ -453,8 +479,8 @@ buildFineBoxArray(
   int /*blocking_factor*/,
   int max_grid_size)
 {
-  const auto coarse_dx   = coarse_geom.CellSizeArray();
-  const auto prob_lo     = coarse_geom.ProbLoArray();
+  const auto coarse_dx = coarse_geom.CellSizeArray();
+  const auto prob_lo = coarse_geom.ProbLoArray();
   const Box coarse_domain = coarse_geom.Domain();
 
   TagBoxArray tba(coarse_ba, coarse_dm, n_error_buf);
@@ -480,9 +506,9 @@ buildFineBoxArray(
 #else
           Real z = 0.0;
 #endif
-          if (AMREX_D_TERM(x >= rlo[0] && x <= rhi[0],
-                            &&y >= rlo[1] && y <= rhi[1],
-                            &&z >= rlo[2] && z <= rhi[2])) {
+          if (AMREX_D_TERM(
+                x >= rlo[0] && x <= rhi[0], &&y >= rlo[1] && y <= rhi[1],
+                &&z >= rlo[2] && z <= rhi[2])) {
             tag(i, j, k) = TagBox::SET;
           }
         });
@@ -533,21 +559,27 @@ buildFineBoxArray(
           Real val = evaluateField(cfg, x, y, z, coarse_dx, prob_lo);
           Real max_diff = 0.0;
 
-          Real vxp = evaluateField(cfg, x + coarse_dx[0], y, z, coarse_dx, prob_lo);
-          Real vxm = evaluateField(cfg, x - coarse_dx[0], y, z, coarse_dx, prob_lo);
+          Real vxp =
+            evaluateField(cfg, x + coarse_dx[0], y, z, coarse_dx, prob_lo);
+          Real vxm =
+            evaluateField(cfg, x - coarse_dx[0], y, z, coarse_dx, prob_lo);
           max_diff = std::max(max_diff, std::abs(vxp - val));
           max_diff = std::max(max_diff, std::abs(vxm - val));
 
 #if AMREX_SPACEDIM >= 2
-          Real vyp = evaluateField(cfg, x, y + coarse_dx[1], z, coarse_dx, prob_lo);
-          Real vym = evaluateField(cfg, x, y - coarse_dx[1], z, coarse_dx, prob_lo);
+          Real vyp =
+            evaluateField(cfg, x, y + coarse_dx[1], z, coarse_dx, prob_lo);
+          Real vym =
+            evaluateField(cfg, x, y - coarse_dx[1], z, coarse_dx, prob_lo);
           max_diff = std::max(max_diff, std::abs(vyp - val));
           max_diff = std::max(max_diff, std::abs(vym - val));
 #endif
 
 #if AMREX_SPACEDIM == 3
-          Real vzp = evaluateField(cfg, x, y, z + coarse_dx[2], coarse_dx, prob_lo);
-          Real vzm = evaluateField(cfg, x, y, z - coarse_dx[2], coarse_dx, prob_lo);
+          Real vzp =
+            evaluateField(cfg, x, y, z + coarse_dx[2], coarse_dx, prob_lo);
+          Real vzm =
+            evaluateField(cfg, x, y, z - coarse_dx[2], coarse_dx, prob_lo);
           max_diff = std::max(max_diff, std::abs(vzp - val));
           max_diff = std::max(max_diff, std::abs(vzm - val));
 #endif
@@ -563,17 +595,19 @@ buildFineBoxArray(
   // Expand tagged cells by n_error_buf cells at coarse level
   tba.buffer(IntVect(n_error_buf));
 
-  // Gather tagged cell positions to IO proc (collate is gather-to-root, not allgather).
-  // Pattern mirrors AMReX AmrMesh::regrid (AMReX_AmrMesh.cpp ~line 736-775).
+  // Gather tagged cell positions to IO proc (collate is gather-to-root, not
+  // allgather). Pattern mirrors AMReX AmrMesh::regrid (AMReX_AmrMesh.cpp ~line
+  // 736-775).
   Gpu::PinnedVector<IntVect> pts;
   tba.collate(pts);
-  // collate uses ReduceLongSum internally: if numtags==0 it calls clear() on ALL
-  // ranks, so pts.empty() is a safe all-rank test for "nothing to refine".
+  // collate uses ReduceLongSum internally: if numtags==0 it calls clear() on
+  // ALL ranks, so pts.empty() is a safe all-rank test for "nothing to refine".
   if (pts.empty()) {
     return BoxArray{};
   }
 
-  // Cluster on IO proc only (non-IO procs have a single-element placeholder in pts).
+  // Cluster on IO proc only (non-IO procs have a single-element placeholder in
+  // pts).
   BoxList fine_bl;
   if (ParallelDescriptor::IOProcessor()) {
     ClusterList clist(pts.data(), static_cast<Long>(pts.size()));
@@ -666,7 +700,8 @@ main(int argc, char* argv[])
       Vector<int> rr;
       ppamr.getarr("ref_ratio", rr);
       for (int lev = 0; lev < max_level; ++lev) {
-        ref_ratio[lev] = (lev < static_cast<int>(rr.size())) ? rr[lev] : rr.back();
+        ref_ratio[lev] =
+          (lev < static_cast<int>(rr.size())) ? rr[lev] : rr.back();
       }
     }
 
@@ -847,7 +882,8 @@ main(int argc, char* argv[])
         case FieldType::Sine: {
           Vector<Real> pp_frequency(AMREX_SPACEDIM, 0.0);
           ppf.queryarr("frequency", pp_frequency);
-          for (int dim = 0; dim < static_cast<int>(pp_frequency.size()); ++dim) {
+          for (int dim = 0; dim < static_cast<int>(pp_frequency.size());
+               ++dim) {
             config.frequency[dim] = pp_frequency[dim];
           }
           Vector<Real> pp_phase(AMREX_SPACEDIM, 0.0);
@@ -893,7 +929,7 @@ main(int argc, char* argv[])
 
     // Lambda to fill one level analytically
     auto fillLevel = [&](int lev) {
-      const auto lev_dx      = geoms[lev].CellSizeArray();
+      const auto lev_dx = geoms[lev].CellSizeArray();
       const auto lev_prob_lo = geoms[lev].ProbLoArray();
 
       Gpu::DeviceVector<FieldConfig> d_configs(ncomp);
@@ -971,8 +1007,8 @@ main(int argc, char* argv[])
       refRatios[lev] = IntVect(ref_ratio[lev]);
     }
     amrex::WriteMultiLevelPlotfile(
-      plotfile_name, Nlev, GetVecOfConstPtrs(mfs), varnames, geoms, 0.0,
-      isteps, refRatios);
+      plotfile_name, Nlev, GetVecOfConstPtrs(mfs), varnames, geoms, 0.0, isteps,
+      refRatios);
 
     amrex::Print() << "Plotfile created: " << plotfile_name << "\n";
   }
