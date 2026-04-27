@@ -18,7 +18,9 @@ print_usage(int, char* argv[])
 {
   std::cerr
     << "Usage:\n"
-    << "  " << argv[0] << " infiles=\"f1.mef\" \"f2.mef\" ... xvar=NAME yvar=NAME nBins=N [OPTIONS]\n\n"
+    << "  " << argv[0]
+    << " infiles=\"f1.mef\" \"f2.mef\" ... xvar=NAME yvar=NAME nBins=N "
+       "[OPTIONS]\n\n"
     << "Required arguments:\n"
     << "  infiles=FILE ...     MEF input files (space-separated list)\n"
     << "  xvar=NAME            Variable name for x-axis (as in MEF file)\n"
@@ -86,16 +88,17 @@ read_iso(
   auto first_close = box_str.find(')');
   auto second_open = box_str.find('(', first_close);
   auto second_close = box_str.find(')', second_open);
-  std::string stop_tuple = box_str.substr(second_open + 1, second_close - second_open - 1);
+  std::string stop_tuple =
+    box_str.substr(second_open + 1, second_close - second_open - 1);
   int stop0 = std::stoi(stop_tuple.substr(0, stop_tuple.find(',')));
   const int nNodes = stop0 + 1;
 
   std::vector<Real> raw(nNodes * nCompSurf);
   ifs.read((char*)raw.data(), sizeof(Real) * raw.size());
 
-  nodes.resize(Box(IntVect::TheZeroVector(),
-                   IntVect(AMREX_D_DECL(nNodes - 1, 0, 0))),
-               nCompSurf);
+  nodes.resize(
+    Box(IntVect::TheZeroVector(), IntVect(AMREX_D_DECL(nNodes - 1, 0, 0))),
+    nCompSurf);
   for (int j = 0; j < nCompSurf; ++j) {
     Real* dst = nodes.dataPtr(j);
     for (int i = 0; i < nNodes; ++i)
@@ -200,12 +203,17 @@ main(int argc, char* argv[])
     Real ymin = std::numeric_limits<Real>::max();
     Real ymax = -std::numeric_limits<Real>::max();
 
-    if (have_xmin) pp.get("xmin", xmin);
-    if (have_xmax) pp.get("xmax", xmax);
-    if (have_ymin) pp.get("ymin", ymin);
-    if (have_ymax) pp.get("ymax", ymax);
+    if (have_xmin)
+      pp.get("xmin", xmin);
+    if (have_xmax)
+      pp.get("xmax", xmax);
+    if (have_ymin)
+      pp.get("ymin", ymin);
+    if (have_ymax)
+      pp.get("ymax", ymax);
 
-    const bool need_pass1 = !have_xmin || !have_xmax || !have_ymin || !have_ymax;
+    const bool need_pass1 =
+      !have_xmin || !have_xmax || !have_ymin || !have_ymax;
 
     if (need_pass1) {
       std::cout << "Pass 1: scanning " << infiles.size()
@@ -223,14 +231,20 @@ main(int argc, char* argv[])
         for (int k = 0; k < nElts; ++k) {
           Real xc = elt_center_val(nodes, faceData, k, nodesPerElt, xcomp);
           Real yc = elt_center_val(nodes, faceData, k, nodesPerElt, ycomp);
-          if (!have_xmin) xmin = std::min(xmin, xc);
-          if (!have_xmax) xmax = std::max(xmax, xc);
-          if (!have_ymin) ymin = std::min(ymin, yc);
-          if (!have_ymax) ymax = std::max(ymax, yc);
+          if (!have_xmin)
+            xmin = std::min(xmin, xc);
+          if (!have_xmax)
+            xmax = std::max(xmax, xc);
+          if (!have_ymin)
+            ymin = std::min(ymin, yc);
+          if (!have_ymax)
+            ymax = std::max(ymax, yc);
         }
       }
-      std::cout << "  " << xvar << " in [" << xmin << ", " << xmax << "]" << std::endl;
-      std::cout << "  " << yvar << " in [" << ymin << ", " << ymax << "]" << std::endl;
+      std::cout << "  " << xvar << " in [" << xmin << ", " << xmax << "]"
+                << std::endl;
+      std::cout << "  " << yvar << " in [" << ymin << ", " << ymax << "]"
+                << std::endl;
     }
 
     const Real dx = (xmax - xmin) / nBins;
@@ -266,18 +280,19 @@ main(int argc, char* argv[])
     for (int i = 0; i < nBins * nBins; ++i)
       total += hist[i];
     if (total <= 0)
-      amrex::Abort("Histogram is empty — check variable names and file contents.");
+      amrex::Abort(
+        "Histogram is empty — check variable names and file contents.");
     for (int i = 0; i < nBins * nBins; ++i)
       hist[i] /= total;
 
-    const std::string outdir =
-      "MEF_JPDFAverage_" + xvar_out + "_" + yvar_out;
+    const std::string outdir = "MEF_JPDFAverage_" + xvar_out + "_" + yvar_out;
     if (!amrex::UtilCreateDirectory(outdir, 0755))
       amrex::Abort("Could not create output directory: " + outdir);
 
     {
       const std::string fname = outdir + "/Pdf_" + xvar_out + "_x.dat";
-      std::cout << "Saving " << xvar_out << " bin centers to " << fname << std::endl;
+      std::cout << "Saving " << xvar_out << " bin centers to " << fname
+                << std::endl;
       FILE* fp = fopen(fname.c_str(), "w");
       for (int i = 0; i < nBins; ++i)
         fprintf(fp, "%e\n", xmin + dx * (0.5 + (Real)i));
@@ -286,7 +301,8 @@ main(int argc, char* argv[])
 
     {
       const std::string fname = outdir + "/Pdf_" + yvar_out + "_x.dat";
-      std::cout << "Saving " << yvar_out << " bin centers to " << fname << std::endl;
+      std::cout << "Saving " << yvar_out << " bin centers to " << fname
+                << std::endl;
       FILE* fp = fopen(fname.c_str(), "w");
       for (int i = 0; i < nBins; ++i)
         fprintf(fp, "%e\n", ymin + dy * (0.5 + (Real)i));
