@@ -1,0 +1,6 @@
+#------------------- IO CONTROL -----------------------------------------------------------
+ infiles = plt00000_Filtered               # Input pltfile
+ outfile = plt00000_Favre_Filtered         # Name of output file
+
+#------------------- Operation control ----------------------------------------------------
+variables = density temp HeatRelease      # DEF: all possible, list of variable names (density is required)
