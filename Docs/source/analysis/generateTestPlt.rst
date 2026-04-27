@@ -121,8 +121,17 @@ Common parameters
 ::
 
    myField.type = <type_string>           # Field type (required, see table below)
+   myField.output_name = Y(OH)            # DEF: <field_name>; Variable name written to the plotfile header
    myField.value_inside  = 1.0            # DEF: 1.0; Value inside the region
    myField.value_outside = 0.0            # DEF: 0.0; Value outside the region
+
+.. note::
+
+   ``output_name`` lets you embed characters that ParmParse treats as key separators (e.g. ``/``) in the
+   plotfile variable name without affecting the ParmParse prefix used to configure the field.  For example,
+   setting ``myField.output_name = Y(OH)`` writes the variable as ``Y(OH)`` in the plotfile header while
+   ``myField`` remains the valid ParmParse prefix.  This is the recommended way to create test fixtures for
+   tools that handle slash-containing species names such as ``jpdf``.
 
 Available field types
 ---------------------

@@ -23,7 +23,10 @@ print_usage(int, char* argv[])
     << "  geometry.prob_hi=X [Y Z]     Physical upper bound of the domain\n"
     << "  geometry.is_periodic=N [N N] Periodicity flags per dimension\n"
     << "  field.names=NAME [NAME ...]  Space-separated list of field names\n"
-    << "  <name>.type=TYPE             Field type for each named field\n\n"
+    << "  <name>.type=TYPE             Field type for each named field\n"
+    << "  <name>.output_name=S         Variable name written to plotfile header\n"
+    << "                               (default: same as field name; use to embed\n"
+    << "                                '/' or other ParmParse-reserved characters)\n\n"
 
     << "AMR options (multilevel):\n"
     << "  amr.max_level=N              Maximum refinement level (default 0)\n"
@@ -837,10 +840,11 @@ main(int argc, char* argv[])
       fillLevel(lev);
     }
 
-    // Variable names for plotfile
+    // Variable names for plotfile (output_name overrides the ParmParse prefix)
     Vector<std::string> varnames(ncomp);
     for (int n = 0; n < ncomp; ++n) {
       varnames[n] = field_names[n];
+      ParmParse(field_names[n]).query("output_name", varnames[n]);
     }
 
     // Write multilevel plot file
