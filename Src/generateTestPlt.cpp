@@ -374,7 +374,7 @@ buildFineBoxArray(
   const auto prob_lo     = coarse_geom.ProbLoArray();
   const Box coarse_domain = coarse_geom.Domain();
 
-  TagBoxArray tba(coarse_ba, coarse_dm);
+  TagBoxArray tba(coarse_ba, coarse_dm, n_error_buf);
   tba.setVal(TagBox::CLEAR);
 
   for (const auto& reg : regions) {
