@@ -682,6 +682,9 @@ main(int argc, char* argv[])
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
       coord == 0 || coord == 1,
       "geometry.coord_sys must be 0 (Cartesian) or 1 (cylindrical/RZ)");
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+      coord == 0 || AMREX_SPACEDIM == 2,
+      "geometry.coord_sys=1 (cylindrical/RZ) requires a 2D build (DIM=2)");
 
     // Level-0 geometry
     IntVect domain_lo(AMREX_D_DECL(0, 0, 0));
