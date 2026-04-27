@@ -2,7 +2,7 @@
 ******************************************
 generateTestPlt
 ******************************************
-Generate a synthetic single-level AMReX plot file populated with one or more analytically defined fields. Fields can be simple constants, planar step or smooth transitions, circular/spherical regions, annular rings or spherical shells, or sinusoidal patterns. This tool is primarily used to create test and validation data for other tools in the PeleAnalysis suite without requiring a full simulation.
+Generate a synthetic multilevel AMReX plot file populated with one or more analytically defined fields. Fields can be simple constants, planar step or smooth transitions, circular/spherical regions, annular rings or spherical shells, or sinusoidal patterns. Refinement regions can be specified geometrically (bounding box) or by field-value criteria. This tool is primarily used to create test and validation data for other tools in the PeleAnalysis suite without requiring a full simulation.
 
 Usage: ::
 
@@ -14,7 +14,7 @@ Example: ::
 
 .. note::
 
-   Only single-level (non-AMR) Cartesian grids are supported. Only ``geometry.coord_sys = 0`` (Cartesian) is accepted; other coordinate systems will cause an abort.
+   Only Cartesian grids are supported (``geometry.coord_sys = 0``). 
 
 Tool Options
 #############
@@ -30,17 +30,81 @@ These parameters follow the standard AMReX geometry convention and are all requi
 ::
 
    #------------------- Grid ------------------------------------------------------------
-   amr.n_cell = 64 64 64                 # Number of cells per dimension (required)
+   amr.n_cell = 64 64 64                 # Number of cells per dimension on level 0 (required)
    amr.max_grid_size = 32                # DEF: 32; Maximum box size for domain decomposition
    amr.ngrow = 0                         # DEF: 0; Number of ghost cells
 
-``amr.n_cell`` sets the resolution of the generated plot file and is required. ``max_grid_size`` controls the internal parallel decomposition and does not affect the output. ``ngrow`` sets the number of ghost cell layers; ghost cells are filled with the same field values as interior cells.
+``amr.n_cell`` sets the level-0 resolution and is required. ``max_grid_size`` controls the parallel decomposition and does not affect the output.
+::
+
+   #------------------- AMR / Refinement ------------------------------------------------
+   amr.max_level = 2                     # DEF: 0; Maximum refinement level (0 = single-level)
+   amr.ref_ratio = 2 2                   # DEF: 2; Refinement ratio, one value per level transition
+   amr.grid_eff = 0.7                    # DEF: 0.7; Clustering efficiency threshold
+   amr.blocking_factor = 8               # DEF: 8; Minimum box size during grid generation
+   amr.n_error_buf = 2 2                 # DEF: 1; Buffer cells per level around tagged regions
+
+``amr.max_level`` enables multilevel output. When greater than 0, ``amr.refinement_indicators`` must list one or more criteria that determine where finer grids are placed. ``amr.ref_ratio`` accepts one integer per level transition; if fewer values are given the last value is repeated. ``amr.n_error_buf`` expands each tagged region by that many cells (in coarse index space) before clustering into boxes.
+
+Refinement Indicators
+######################
+::
+
+   amr.refinement_indicators = NAME [NAME ...]   # Space-separated list of indicator names
+
+Each name in ``amr.refinement_indicators`` introduces a refinement criterion whose parameters are read under the ``amr.<NAME>.*`` namespace. A single plotfile run may combine multiple indicators of any type.
+
+Common option for all indicator types::
+
+   amr.<name>.max_level = N              # DEF: amr.max_level; Max refinement level for this criterion
+
+Available criterion types
+--------------------------
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 1
+
+   * - Criterion
+     - Description
+   * - ``in_box_lo`` / ``in_box_hi``
+     - Refine all cells whose centres fall within the specified physical bounding box
+   * - ``value_greater`` + ``field_name``
+     - Refine cells where the named field evaluates above the threshold
+   * - ``value_less`` + ``field_name``
+     - Refine cells where the named field evaluates below the threshold
+   * - ``adjacent_difference_greater`` + ``field_name``
+     - Refine cells where the maximum absolute difference to any immediate neighbour exceeds the threshold
+
+**Box-based criterion** ::
+
+   amr.<name>.in_box_lo = 0.2 0.2 0.2   # Physical lower corner of the refinement region
+   amr.<name>.in_box_hi = 0.8 0.8 0.8   # Physical upper corner of the refinement region
+
+**Value-greater criterion** ::
+
+   amr.<name>.value_greater = 5.0        # Refine where field > 5.0
+   amr.<name>.field_name    = circle_step
+
+**Value-less criterion** ::
+
+   amr.<name>.value_less = 0.1           # Refine where field < 0.1
+   amr.<name>.field_name = plane_step
+
+**Adjacent-difference criterion** ::
+
+   amr.<name>.adjacent_difference_greater = 0.4   # Refine at sharp interfaces
+   amr.<name>.field_name                  = plane_step
+
+.. note::
+
+   Value-based criteria evaluate the analytic field expression at cell centres. They do not depend on data stored in the plotfile and can therefore be used at any refinement level without first filling a coarser level.
 ::
 
    #------------------- Output ----------------------------------------------------------
    plotfile_name = pltTestFile            # DEF: pltTestFile; Name of the output plot file
 
-The output is a standard single-level AMReX plot file that can be read by any tool in the PeleAnalysis suite or visualised with VisIt or ParaView.
+The output is a standard AMReX multilevel plot file (one level when ``amr.max_level = 0``) readable by any tool in the PeleAnalysis suite or visualised with VisIt or ParaView.
 ::
 
    #------------------- Fields ----------------------------------------------------------
@@ -145,4 +209,3 @@ Type-specific parameters
    myField.offset    = 0.0               # DEF: 0.0; Additive offset
 
    # Result: offset + amplitude * sin(2π f_x x + φ_x) * cos(2π f_y y + φ_y) * sin(2π f_z z + φ_z)
-
