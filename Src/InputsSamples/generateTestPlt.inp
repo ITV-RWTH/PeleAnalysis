@@ -1,27 +1,23 @@
 # AMReX Grid Parameters
-amr.n_cell = 64 64 64
-amr.max_grid_size = 32
-amr.ngrow = 0
+amr.n_cell = 64 64 64        # Number of cells along each axis at level 0
+amr.max_grid_size = 32       # Maximum box side length (cells) per MPI rank
+amr.ngrow = 0                # Ghost-cell layers (0 = none)
 
 # Geometry
-geometry.coord_sys = 0
+geometry.coord_sys = 0       # 0 = Cartesian, 1 = cylindrical/RZ (2D only)
 geometry.prob_lo = 0.0 0.0 0.0
 geometry.prob_hi = 1.0 1.0 1.0
-geometry.is_periodic = 0 0 0
+geometry.is_periodic = 0 0 0 # Periodic boundary flags per axis
 
 # Output
-plotfile_name = plt_test
+plotfile_name = plt_test      # Directory name written by the tool
 
 # --- Multilevel AMR (set amr.max_level = 0 or omit for single-level output) ---
-amr.max_level = 2
-# One refinement ratio per level transition (level 0->1, level 1->2, ...)
-amr.ref_ratio = 2 2
-# Minimum box size used during grid generation
-amr.blocking_factor = 8
-# Clustering efficiency threshold (higher = fewer but larger boxes)
-amr.grid_eff = 0.7
-# Buffer cells (in coarse index space) added around each tagged region, per level
-amr.n_error_buf = 2 2
+amr.max_level = 2            # Number of refinement levels above the base grid
+amr.ref_ratio = 2 2          # Refinement ratio per level transition (one entry per transition)
+amr.blocking_factor = 8      # Minimum box size used during grid generation
+amr.grid_eff = 0.7           # Clustering efficiency threshold (higher = fewer but larger boxes)
+amr.n_error_buf = 2 2        # Buffer cells (coarse index space) added around tagged regions, per level
 
 # List of refinement indicators — each entry below defines one criterion
 amr.refinement_indicators = sphere_box gthan adjd
@@ -42,7 +38,7 @@ amr.adjd.field_name                  = plane_step
 amr.adjd.max_level                   = 2
 
 # Field definitions
-field.names = const_field plane_step plane_smooth double_plane_step double_plane_smooth circle_step circle_smooth spherical_shell_step spherical_shell_smooth sine_field
+field.names = const_field plane_step plane_smooth double_plane_step double_plane_smooth circle_step circle_smooth spherical_shell_step spherical_shell_smooth sine_field cylinder_step cylinder_smooth
 
 # Constant field
 const_field.type = constant
@@ -118,3 +114,20 @@ sine_field.frequency = 2.0 3.0 1.0  # Frequency in each direction
 sine_field.phase = 0.0 0.0 0.0      # Phase shift
 sine_field.amplitude = 1.0
 sine_field.offset = 0.0
+
+# Infinite cylinder step (axis along z; radial distance in x-y plane)
+cylinder_step.type = cylinder_step
+cylinder_step.axis = 2               # Cylinder axis: 0=x, 1=y, 2=z
+cylinder_step.center = 0.5 0.5 0.5  # Point on the cylinder axis
+cylinder_step.radius = 0.3
+cylinder_step.value_inside = 1.0
+cylinder_step.value_outside = 0.0
+
+# Infinite cylinder with smooth radial transition
+cylinder_smooth.type = cylinder_smooth
+cylinder_smooth.axis = 2             # Cylinder axis: 0=x, 1=y, 2=z
+cylinder_smooth.center = 0.5 0.5 0.5
+cylinder_smooth.radius = 0.3
+cylinder_smooth.value_inside = 1.0
+cylinder_smooth.value_outside = 0.0
+cylinder_smooth.smooth_width = 0.1  # Transition width around radius
