@@ -55,19 +55,6 @@ static void do_fail(const std::string& label, const std::string& detail = "")
                       ", expected " + std::to_string(static_cast<double>(b))); } while(0)
 
 // ---------------------------------------------------------------------------
-// Reset analysis_util global state between test groups
-// ---------------------------------------------------------------------------
-static void reset_globals()
-{
-    analysis_util::nlev         = -1;
-    analysis_util::grids        .clear();
-    analysis_util::dmap         .clear();
-    analysis_util::ref_ratio    .clear();
-    analysis_util::geoms        .clear();
-    analysis_util::initialized  = false;
-}
-
-// ---------------------------------------------------------------------------
 // Group 1: String utilities
 // ---------------------------------------------------------------------------
 static void group_string_utils()
@@ -258,20 +245,6 @@ static void group_plotfile_io(const std::string& run_dir)
         do_pass("T-PLT-8 write two-var plotfile for header check");
     }
 
-    // T-PLT-9: returned PlotfileData compatible with init()
-    {
-        Vector<MultiFab> mf(1);
-        mf[0].define(ba, dm, 1, 0);
-        mf[0].setVal(1.0);
-        const std::string plt = run_dir + "/plt_init_compat";
-        analysis_util::write_plotfile(plt, mf, {"f"}, geoms);
-
-        auto data = analysis_util::read_plotfile(plt, {"f"});
-        reset_globals();
-        analysis_util::init(data.mf, data.geoms);
-        ASSERT_TRUE("T-PLT-9 init() compatible", analysis_util::initialized);
-    }
-
     // T-PLT-GUARD: write_plotfile redistributes when #boxes < #MPI ranks.
     // Verifies that the utility-level MPI guard in write_plotfile prevents
     // collective deadlocks on single-box domains with many ranks.
@@ -422,7 +395,6 @@ static void group_get_covered_mf()
 
     // T-COV-1: single level — all cells uncovered
     {
-        reset_globals();
         IntVect lo(AMREX_D_DECL(0, 0, 0)), hi(AMREX_D_DECL(7, 7, 7));
         Box domain(lo, hi);
         BoxArray ba(domain);
@@ -433,9 +405,8 @@ static void group_get_covered_mf()
 
         Vector<MultiFab> mf(1);
         mf[0].define(ba, dm, 1, 0);
-        analysis_util::init(mf, {geom});
-
-        auto mask = analysis_util::get_covered_mf();
+        Vector<int> no_ratios;
+        auto mask = analysis_util::get_covered_mf(mf, no_ratios);
         const long total_cells = AMREX_D_TERM(8, * 8, * 8);
         ASSERT_EQ("T-COV-1 all uncovered", mask[0]->sum(0),
                   static_cast<long>(total_cells));
@@ -443,7 +414,6 @@ static void group_get_covered_mf()
 
     // T-COV-2: two-level — fine-covered coarse cells = 0
     {
-        reset_globals();
         // Coarse: 8^3, Fine: 4^3 covering coarse cells [2..5]^3, ref=2
         Box coarse_domain(IntVect(AMREX_D_DECL(0,0,0)), IntVect(AMREX_D_DECL(7,7,7)));
         Box fine_domain  (IntVect(AMREX_D_DECL(4,4,4)), IntVect(AMREX_D_DECL(11,11,11)));
@@ -459,10 +429,8 @@ static void group_get_covered_mf()
         Vector<MultiFab> mfs(2);
         mfs[0].define(ba0, dm0, 1, 0);
         mfs[1].define(ba1, dm1, 1, 0);
-        analysis_util::init(mfs, {geom0, geom1});
-        analysis_util::ref_ratio = {2};
-
-        auto mask = analysis_util::get_covered_mf();
+        Vector<int> ref_ratios_2lev = {2};
+        auto mask = analysis_util::get_covered_mf(mfs, ref_ratios_2lev);
 
         // Fine covers coarse cells [2..5]^3 (fine [4..11] / 2 = coarse [2..5])
         const long covered = AMREX_D_TERM(4, * 4, * 4);  // 4^3 coarse cells covered
@@ -476,7 +444,6 @@ static void group_get_covered_mf()
 
     // T-COV-4: integrate() still calls get_covered_mf() (link-time + runtime check)
     {
-        reset_globals();
         IntVect lo(AMREX_D_DECL(0,0,0)), hi(AMREX_D_DECL(7,7,7));
         Box domain(lo, hi);
         BoxArray ba(domain);
@@ -488,10 +455,9 @@ static void group_get_covered_mf()
         Vector<MultiFab> mf(1);
         mf[0].define(ba, dm, 1, 0);
         mf[0].setVal(1.0);
-        analysis_util::init(mf, {geom});
-
         Vector<int> all_axes = {AMREX_D_DECL(0, 1, 2)};
-        auto result = analysis_util::integrate(mf, 0, 1, all_axes);
+        Vector<int> no_ratios;
+        auto result = analysis_util::integrate(mf, {geom}, no_ratios, 0, 1, all_axes);
         ASSERT_TRUE("T-COV-4 integrate still works", result != nullptr);
     }
 }
@@ -503,7 +469,6 @@ static void group_integrate()
 {
     amrex::Print() << "\n=== Group 5: integrate Regression ===\n";
 
-    reset_globals();
     IntVect lo(AMREX_D_DECL(0,0,0)), hi(AMREX_D_DECL(7,7,7));
     Box domain(lo, hi);
     BoxArray ba(domain);
@@ -516,13 +481,13 @@ static void group_integrate()
     Vector<MultiFab> mf(1);
     mf[0].define(ba, dm, 1, 0);
     mf[0].setVal(val);
-    analysis_util::init(mf, {geom});
+    Vector<int> no_ratios;
 
     // T-INT-1: all-axis integration of a constant field
     // Expected: val * domain_volume = 3.0 * 1.0 = 3.0
     {
         Vector<int> all_axes = {AMREX_D_DECL(0, 1, 2)};
-        auto result = analysis_util::integrate(mf, 0, 1, all_axes);
+        auto result = analysis_util::integrate(mf, {geom}, no_ratios, 0, 1, all_axes);
         AMREX_ALWAYS_ASSERT(result != nullptr);
         ASSERT_NEAR("T-INT-1 all-axis integral", (*result)[0], val * 1.0, 1e-10);
     }
@@ -530,7 +495,7 @@ static void group_integrate()
     // T-INT-2: x-axis integration only — result has ny*nz entries
     {
         Vector<int> x_axis = {0};
-        auto result = analysis_util::integrate(mf, 0, 1, x_axis);
+        auto result = analysis_util::integrate(mf, {geom}, no_ratios, 0, 1, x_axis);
         AMREX_ALWAYS_ASSERT(result != nullptr);
         const int ny = AMREX_D_PICK(1, 8, 8);
         const int nz = AMREX_D_PICK(1, 1, 8);

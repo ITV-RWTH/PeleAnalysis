@@ -8,17 +8,25 @@ namespace analysis_util {
 
 void
 gradient(
-  const amrex::Vector<amrex::MultiFab> a_mf,
-  const int scomp,
-  const int ncomp,
-  amrex::Vector<amrex::MultiFab> grad_mf)
+  const amrex::Vector<amrex::MultiFab>& a_mf,
+  const amrex::Vector<amrex::Geometry>& geoms,
+  const int                             scomp,
+  const int                             ncomp,
+  amrex::Vector<amrex::MultiFab>&       grad_mf)
 {
-  // Make sure init has been called
-  AMREX_ALWAYS_ASSERT(initialized);
   // Need AMREX_SPACEDIM components of gradients
   AMREX_ALWAYS_ASSERT(grad_mf[0].nComp() == AMREX_SPACEDIM * ncomp);
   // Need the data in to have at least one grow cell
   AMREX_ALWAYS_ASSERT(a_mf[0].nGrowVect() > amrex::IntVect(0));
+
+  const int nlev = static_cast<int>(a_mf.size());
+  amrex::Vector<amrex::BoxArray>          grids(nlev);
+  amrex::Vector<amrex::DistributionMapping> dmap(nlev);
+  for (int lev = 0; lev < nlev; ++lev) {
+    grids[lev] = a_mf[lev].boxArray();
+    dmap[lev]  = a_mf[lev].DistributionMap();
+  }
+
   amrex::LPInfo info;
   info.setAgglomeration(1);
   info.setConsolidation(1);
@@ -33,6 +41,7 @@ gradient(
   amrex::Vector<int> sym_dir(AMREX_SPACEDIM, 0);
   pp.queryarr("sym_dir", sym_dir, 0, AMREX_SPACEDIM);
 
+  const amrex::IntVect periodicity = geoms[0].periodicity().intVect();
   for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
     if (periodicity[idim] == 1) {
       lo_bc[idim] = hi_bc[idim] = amrex::LinOpBCType::Periodic;
@@ -48,14 +57,13 @@ gradient(
   constexpr int nGrowGrad = 1;
   for (int n = 0; n < ncomp; ++n) {
     amrex::Vector<amrex::Array<amrex::MultiFab, AMREX_SPACEDIM>> grad(nlev);
-    amrex::Vector<std::unique_ptr<amrex::MultiFab>> phi(nlev);
-    amrex::Vector<amrex::MultiFab> lap;
+    amrex::Vector<std::unique_ptr<amrex::MultiFab>>              phi(nlev);
+    amrex::Vector<amrex::MultiFab>                               lap;
     lap.reserve(nlev);
     for (int lev = 0; lev < nlev; ++lev) {
       for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
-        const auto& ba = grids[lev];
         grad[lev][idim].define(
-          amrex::convert(ba, amrex::IntVect::TheDimensionVector(idim)),
+          amrex::convert(grids[lev], amrex::IntVect::TheDimensionVector(idim)),
           dmap[lev], 1, nGrowGrad);
       }
       phi[lev] = std::make_unique<amrex::MultiFab>(

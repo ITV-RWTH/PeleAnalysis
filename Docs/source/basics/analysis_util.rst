@@ -87,44 +87,6 @@ unstructured surface or polyline in Marc's Element Format.
 Functions
 ---------
 
-init
-~~~~
-
-**What it does**
-
-Populates the global state used by ``get_covered_mf``, ``integrate``,
-and ``gradient``: the number of levels, box arrays, distribution maps,
-geometries, periodicity, and refinement ratios.
-Must be called once before using any of those three functions.
-Calling it a second time with the same data is a no-op.
-
-**Inputs**
-
-.. list-table::
-   :header-rows: 1
-   :widths: 30 70
-
-   * - Parameter
-     - Description
-   * - ``a_mf``
-     - ``Vector<MultiFab>`` — one MultiFab per AMR level (typically ``data.mf``).
-   * - ``a_geoms``
-     - ``Vector<Geometry>`` — one Geometry per level (typically ``data.geoms``).
-
-**Output**
-
-None (modifies global state).
-
-**Example**
-
-::
-
-   auto data = analysis_util::read_plotfile(infile, {"density"}, finestLevel);
-   analysis_util::init(data.mf, data.geoms);
-
-
-----
-
 read_plotfile
 ~~~~~~~~~~~~~
 
@@ -317,7 +279,19 @@ Used internally by ``integrate`` to avoid double-counting.
 
 **Inputs**
 
-None (uses global state set by ``init``).
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Parameter
+     - Description
+   * - ``mf``
+     - ``Vector<MultiFab>`` — one MultiFab per AMR level; grid structure is taken from its ``boxArray`` and ``DistributionMap``.
+   * - ``ref_ratios``
+     - ``Vector<int>`` — refinement ratio between consecutive levels (length ``n_lev - 1``); pass empty for a single-level domain.
+
+A ``PlotfileData`` convenience overload is also available: ``get_covered_mf(data)``
+expands to ``get_covered_mf(data.mf, data.ref_ratios)``.
 
 **Output**
 
@@ -327,8 +301,10 @@ None (uses global state set by ``init``).
 
 ::
 
-   analysis_util::init(data.mf, data.geoms);
-   auto mask = analysis_util::get_covered_mf();
+   Vector<int> no_ratios;   // single-level domain
+   auto mask = analysis_util::get_covered_mf(mf, no_ratios);
+   // or using PlotfileData directly:
+   auto mask = analysis_util::get_covered_mf(data);
    // mask[lev] == 1 where lev is the finest data at that location
 
 
@@ -355,12 +331,16 @@ Result is reduced across all MPI ranks before returning.
      - Description
    * - ``a_mf``
      - ``Vector<MultiFab>`` — data to integrate (one per level).
+   * - ``geoms``
+     - ``Vector<Geometry>`` — domain geometry per level (used to compute cell volumes).
+   * - ``ref_ratios``
+     - ``Vector<int>`` — refinement ratio between consecutive levels; pass empty for single-level.
    * - ``scomp``
      - First component index to integrate.
    * - ``ncomp``
      - Number of components to integrate, starting at ``scomp``.
    * - ``axes_to_integrate``
-     - ``Vector<int>`` of axis indices to sum over: ``0``=x, ``1``=y, ``2``=z. Pass all axes for a scalar result.
+     - ``Vector<int>`` of axis indices to sum over (0=x, 1=y, 2=z). Pass all three for a scalar result.
 
 **Output**
 
@@ -372,18 +352,21 @@ where Nx/Ny/Nz are the cell counts of the finest level.
 
 ::
 
-   analysis_util::init(data.mf, data.geoms);
-   // Integrate component 0 over all axes -> one value per component
-   auto result = analysis_util::integrate(data.mf, /*scomp=*/0, /*ncomp=*/1,
+   // Using PlotfileData overload (most common):
+   auto result = analysis_util::integrate(data, /*scomp=*/0, /*ncomp=*/1,
                                           {0, 1, 2});
    Print() << "Integral = " << (*result)[0] << "\n";
+
+   // Or with explicit parameters:
+   auto result = analysis_util::integrate(data.mf, data.geoms, data.ref_ratios,
+                                          0, 1, {0, 1, 2});
 
 **Example — line-average along y**
 
 ::
 
    // Integrate over x and z; result is an array indexed by y
-   auto profile = analysis_util::integrate(data.mf, 0, 1, {0, 2});
+   auto profile = analysis_util::integrate(data, 0, 1, {0, 2});
    // (*profile)[j] is the x-z integral at y-index j
 
 
@@ -410,6 +393,8 @@ directions.
      - Description
    * - ``a_mf``
      - ``Vector<MultiFab>`` — source data; **must have at least 1 ghost cell**.
+   * - ``geoms``
+     - ``Vector<Geometry>`` — domain geometry per level.
    * - ``scomp``
      - First component to differentiate.
    * - ``ncomp``
@@ -426,18 +411,17 @@ Components are ordered as ``(df0/dx, df0/dy, df0/dz, df1/dx, ...)``.
 
 ::
 
-   analysis_util::init(data.mf, data.geoms);
-   // Read with n_grow=1 so gradient has ghost cells
+   // Read with n_grow=1 so the solver has ghost cells
    auto data = analysis_util::read_plotfile(infile, {"temperature"},
                                             finestLevel, /*n_grow=*/1, is_per);
-   analysis_util::init(data.mf, data.geoms);
 
    Vector<MultiFab> grad_mf(data.n_lev);
    for (int lev = 0; lev < data.n_lev; ++lev)
      grad_mf[lev].define(data.mf[lev].boxArray(),
                          data.mf[lev].DistributionMap(),
                          AMREX_SPACEDIM, 0);
-   analysis_util::gradient(data.mf, /*scomp=*/0, /*ncomp=*/1, grad_mf);
+   // PlotfileData overload:
+   analysis_util::gradient(data, /*scomp=*/0, /*ncomp=*/1, grad_mf);
    // grad_mf[lev] now holds (dT/dx, dT/dy [, dT/dz])
 
 
@@ -569,7 +553,6 @@ It mirrors the pattern used in ``Src/template.cpp``.
        auto data = analysis_util::read_plotfile(infile, vars,
                                                 /*finestLevel=*/1000,
                                                 /*n_grow=*/0, is_per);
-       analysis_util::init(data.mf, data.geoms);
 
        // 2. Process (in-place kernel)
        for (int lev = 0; lev < data.n_lev; ++lev) {

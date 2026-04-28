@@ -73,7 +73,6 @@ main(int argc, char* argv[])
     auto data = analysis_util::read_plotfile(
       infile, vars, finestLevel,
       /*n_grow=*/0, is_per);
-    analysis_util::init(data.mf, data.geoms);
 
     Print() << "Read " << data.n_lev << " level(s) from " << infile << "\n";
 

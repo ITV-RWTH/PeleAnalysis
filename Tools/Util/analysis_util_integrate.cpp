@@ -2,26 +2,25 @@
 
 namespace analysis_util {
 
-// Get the integral of the MF, not including the fine-covered and
-// EB-covered cells
+// Integrate the MF over selected axes, excluding fine-covered and EB-covered
+// cells.  ref_ratios[k] is the refinement ratio between level k and level k+1.
 std::unique_ptr<amrex::Gpu::ManagedVector<amrex::Real>>
 integrate(
   const amrex::Vector<amrex::MultiFab>& a_mf,
-  const int scomp,
-  const int ncomp,
-  const amrex::Vector<int>& axes_to_integrate
+  const amrex::Vector<amrex::Geometry>& geoms,
+  const amrex::Vector<int>&             ref_ratios,
+  const int                             scomp,
+  const int                             ncomp,
+  const amrex::Vector<int>&             axes_to_integrate
 #ifdef AMREX_USE_EB
   ,
   const amrex::Vector<amrex::MultiFab>& vfrac_mf
 #endif
 )
 {
-
-  // Make sure init has been called
-  AMREX_ALWAYS_ASSERT(initialized);
-
-  const int integral_dimension = axes_to_integrate.size();
-  amrex::Vector<std::unique_ptr<amrex::iMultiFab>> mask_mf = get_covered_mf();
+  const int nlev = static_cast<int>(a_mf.size());
+  amrex::Vector<std::unique_ptr<amrex::iMultiFab>> mask_mf =
+    get_covered_mf(a_mf, ref_ratios);
   const int finest_level = nlev - 1;
   // Get the domain on the finest level
   amrex::Box probDomain = geoms[finest_level].Domain();
@@ -53,8 +52,8 @@ integrate(
     amrex::MultiFab volume(
       a_mf[lev].boxArray(), a_mf[lev].DistributionMap(), 1, 0);
     geoms[lev].GetVolume(volume);
-    auto const& ma = a_mf[lev].arrays();
-    auto const& mask_ma = mask_mf[lev]->const_arrays();
+    auto const& ma       = a_mf[lev].arrays();
+    auto const& mask_ma  = mask_mf[lev]->const_arrays();
     auto const& volume_ma = volume.const_arrays();
 #ifdef AMREX_USE_EB
     auto const& vfrac_ma = vfrac_mf[lev]->const_arrays();
@@ -91,7 +90,11 @@ integrate(
           }
         }
       });
-    ratio *= ref_ratio[lev];
+    // Update ratio for the next (coarser) level.  ref_ratios[lev-1] is the
+    // refinement factor between level lev-1 and level lev.
+    if (lev > 0 && !ref_ratios.empty()) {
+      ratio *= ref_ratios[lev - 1];
+    }
   }
   amrex::ParallelDescriptor::ReduceRealSum(
     integral->data(), static_cast<int>(integral->size()));
