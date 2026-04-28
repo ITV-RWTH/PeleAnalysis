@@ -7,8 +7,8 @@ PELE_ANALYSIS_HOME = ..
 # to link PeleAnalysis to your versions of PELE_PHYSICS_HOME and AMREX_HOME used by 
 # PeleLMeX or PeleC, make the following lines to point to the respective directories.
 #
-PELE_PHYSICS_HOME = ../../PelePhysics
-AMREX_HOME = ../../PelePhysics/Submodules/amrex
+#PELE_PHYSICS_HOME = ../../PelePhysics
+#AMREX_HOME = ../../PelePhysics/Submodules/amrex
 
 
 # AMReX
@@ -21,7 +21,6 @@ COMP          = gnu
 USE_MPI       = FALSE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
-USE_UTILS     = FALSE
 
 # Executable
 # Uncomment the desired exec
@@ -39,7 +38,7 @@ USE_UTILS     = FALSE
 #EBASE   = dumpFABslice
 #EBASE   = filterPlt
 #EBASE   = flattenAMRFile
-EBASE   = generateTestPlt
+#EBASE   = generateTestPlt
 #EBASE   = grad
 #EBASE   = integral
 #EBASE   = isoMEF
@@ -105,4 +104,3 @@ endif
 Blocs := .
 
 include $(PELE_ANALYSIS_HOME)/Tools/GNUmake/Make.Analysis
-
