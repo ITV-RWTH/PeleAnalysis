@@ -2,7 +2,7 @@
 
 namespace analysis_util {
 
-  int nlev;
+  int nlev = -1;
   amrex::Vector<amrex::BoxArray> grids;
   amrex::Vector<amrex::DistributionMapping> dmap;
   amrex::Vector<int> ref_ratio;
@@ -36,6 +36,38 @@ namespace analysis_util {
     periodicity = a_geoms[0].periodicity().intVect();    
     
     initialized = true;
+  }
+
+  amrex::Vector<std::unique_ptr<amrex::iMultiFab>> get_covered_mf() {
+    AMREX_ALWAYS_ASSERT(initialized);
+
+    amrex::Vector<std::unique_ptr<amrex::iMultiFab>> mask_mf(nlev);
+    for (int lev = 0; lev < nlev; ++lev) {
+      mask_mf[lev] = std::make_unique<amrex::iMultiFab>(grids[lev], dmap[lev], 1, 0);
+      mask_mf[lev]->setVal(1);
+    }
+    const int finest_level = nlev - 1;
+    for (int lev = 0; lev < finest_level; ++lev) {
+      amrex::BoxArray baf = grids[lev + 1];
+      baf.coarsen(ref_ratio[lev]);
+#ifdef AMREX_USE_OMP
+#pragma omp parallel if (amrex::Gpu::notInLaunchRegion())
+#endif
+      {
+        std::vector<std::pair<int, amrex::Box>> isects;
+        for (amrex::MFIter mfi(*mask_mf[lev], amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+          auto const& mask = mask_mf[lev]->array(mfi);
+          baf.intersections(grids[lev][mfi.index()], isects);
+          for (const auto& is : isects) {
+            amrex::ParallelFor(
+              is.second, [mask] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+                mask(i, j, k) = 0;
+              });
+          }
+        }
+      }
+    }
+    return mask_mf;
   }
 
 }

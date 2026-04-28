@@ -2,40 +2,6 @@
 
 namespace analysis_util {
 
-  amrex::Vector<std::unique_ptr<amrex::iMultiFab>> get_covered_mf() {
-    // Make sure init has been called
-    AMREX_ALWAYS_ASSERT(initialized);
-    
-    amrex::Vector<std::unique_ptr<amrex::iMultiFab>> mask_mf(nlev);
-    for (int lev = 0; lev < nlev; ++lev) {
-      mask_mf[lev] = std::make_unique<amrex::iMultiFab>(grids[lev],dmap[lev],1,0);
-      mask_mf[lev]->setVal(1);
-    }    
-    const int finest_level = nlev - 1;
-    for (int lev = 0; lev < finest_level; ++lev) {
-      // Set a fine-covered mask
-      amrex::BoxArray baf = grids[lev + 1];
-      baf.coarsen(ref_ratio[lev]);
-#ifdef AMREX_USE_OMP
-#pragma omp parallel if (amrex::Gpu::notInLaunchRegion())
-#endif
-      {
-        std::vector<std::pair<int, amrex::Box>> isects;
-        for (amrex::MFIter mfi(*mask_mf[lev], amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi) {
-          auto const& mask = mask_mf[lev]->array(mfi);
-          baf.intersections(grids[lev][mfi.index()], isects);
-          for (const auto& is : isects) {
-            amrex::ParallelFor(
-              is.second, [mask] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                mask(i, j, k) = 0;
-              });
-          }
-        }
-      }
-    }
-    return mask_mf;
-  }
-  
   // Get the integral of the MF, not including the fine-covered and
   // EB-covered cells
   std::unique_ptr<amrex::Gpu::ManagedVector<amrex::Real>> integrate(const amrex::Vector<amrex::MultiFab>& a_mf, const int scomp, const int ncomp, const amrex::Vector<int>& axes_to_integrate
@@ -111,6 +77,8 @@ namespace analysis_util {
       });
       ratio *= ref_ratio[lev];
     }
+    amrex::ParallelDescriptor::ReduceRealSum(integral->data(),
+                                             static_cast<int>(integral->size()));
     return integral;
   }
 }

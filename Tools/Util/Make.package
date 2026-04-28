@@ -1,3 +1,4 @@
-CEXE_sources += analysis_util.cpp analysis_util_integrate.cpp analysis_util_gradient.cpp
+CEXE_sources += analysis_util.cpp analysis_util_integrate.cpp analysis_util_gradient.cpp \
+                analysis_util_io.cpp analysis_util_mef.cpp
 CEXE_headers += analysis_util.H
 
