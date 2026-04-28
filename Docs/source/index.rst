@@ -8,6 +8,7 @@ PeleAnalysis documentation
 
    basics/data
    basics/template
+   basics/analysis_util
 
 .. toctree::
    :maxdepth: 2
