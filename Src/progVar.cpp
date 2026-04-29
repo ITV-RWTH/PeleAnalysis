@@ -22,6 +22,7 @@ print_usage (int,
   std::cerr << "\t     unburntVal=float This is the sum of the included species in the unburnt unburntVal[DEF->0]\n";
   std::cerr << "\t     burntVal=float This is the value of included species in the burnt comp[DEF->1]\n";
   std::cerr << "\t     outsuffix=string This is the ending of the output pltfile[DEF->_prog]\n";
+  std::cerr << "\t     outname=string This is the name of the variable in the output [DEF->progVar]\n";
   exit(1);
 }
 
@@ -60,6 +61,7 @@ main (int   argc,
     Real burnt = 1; pp.get("burntVal", burnt);
 
     std::string outsuffix = "_prog"; pp.get("outsuffix", outsuffix);
+    std::string outname = "progVar"; pp.get("outname", outname);
 
     DataServices::SetBatchMode();
     Amrvis::FileType fileType(Amrvis::NEWPLT);
@@ -125,7 +127,7 @@ main (int   argc,
     Vector<Geometry> geoms(Nlev);
     int nGrow = 0;
     // Output: specSum, progVar, I_R(progVar)
-    Vector<std::string> outNames = {"specSum", "progVar", "I_R(progVar)"};
+    Vector<std::string> outNames = {"specSum", outname, "I_R(" + outname +")"};
 
     Vector<int> destFillComps(nCompIn);
     for (int i=0; i<nCompIn; ++i) destFillComps[i] = i;
