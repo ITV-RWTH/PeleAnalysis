@@ -5,6 +5,22 @@
 
 namespace analysis_util {
 
+std::string
+parse_title(std::istream& is)
+{
+  std::string line;
+  std::getline(is, line);
+  return line;
+}
+
+std::vector<std::string>
+parse_var_names(std::istream& is)
+{
+  std::string line;
+  std::getline(is, line);
+  return amrex::Tokenize(line, std::string(", "));
+}
+
 MEFData
 read_mef(const std::string& infile)
 {

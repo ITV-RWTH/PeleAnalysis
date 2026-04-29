@@ -10,47 +10,6 @@ using namespace amrex;
 
 namespace analysis_util {
 
-std::string
-get_file_root(const std::string& infile)
-{
-  std::vector<std::string> tokens = Tokenize(infile, std::string("/"));
-  return tokens[tokens.size() - 1];
-}
-
-std::string
-parse_title(std::istream& is)
-{
-  std::string line;
-  std::getline(is, line);
-  return line;
-}
-
-std::vector<std::string>
-parse_var_names(std::istream& is)
-{
-  std::string line;
-  std::getline(is, line);
-  return Tokenize(line, std::string(", "));
-}
-
-int
-find_var_index(
-  const Vector<std::string>& var_names,
-  const std::string& name,
-  bool abort_if_not_found)
-{
-  for (int i = 0; i < static_cast<int>(var_names.size()); ++i) {
-    if (var_names[i] == name)
-      return i;
-  }
-  if (abort_if_not_found) {
-    amrex::Abort(
-      "analysis_util::find_var_index: variable '" + name +
-      "' not found in plotfile");
-  }
-  return -1;
-}
-
 // Returns a BoxArray with at least nprocs boxes by applying maxSize so that
 // WriteMultiLevelPlotfile and AmrData::FillVar do not deadlock in MPI mode
 // when some ranks would otherwise own no FABs.

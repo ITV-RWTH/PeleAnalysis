@@ -1,6 +1,33 @@
 #include <analysis_util.H>
 
+using namespace amrex;
+
 namespace analysis_util {
+
+std::string
+get_file_root(const std::string& infile)
+{
+  std::vector<std::string> tokens = Tokenize(infile, std::string("/"));
+  return tokens[tokens.size() - 1];
+}
+
+int
+find_var_index(
+  const Vector<std::string>& var_names,
+  const std::string&         name,
+  bool                       abort_if_not_found)
+{
+  for (int i = 0; i < static_cast<int>(var_names.size()); ++i) {
+    if (var_names[i] == name)
+      return i;
+  }
+  if (abort_if_not_found) {
+    amrex::Abort(
+      "analysis_util::find_var_index: variable '" + name +
+      "' not found in plotfile");
+  }
+  return -1;
+}
 
 amrex::Vector<std::unique_ptr<amrex::iMultiFab>>
 get_covered_mf(
