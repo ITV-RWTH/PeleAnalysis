@@ -1,4 +1,4 @@
-PELE_PHYSICS_HOME=/Users/terencelehmann/Applications/Pele/PelePhysics
-AMREX_HOME=/Users/terencelehmann/Applications/Pele/PelePhysics/Submodules/amrex
+PELE_PHYSICS_HOME= $(abspath ../../../PelePhysics)
+AMREX_HOME=$(abspath ../../../PelePhysics/Submodules/amrex)
 USE_UTILS=TRUE
 include $(abspath ../../Src/GNUmakefile)
