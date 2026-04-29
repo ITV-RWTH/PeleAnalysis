@@ -46,6 +46,17 @@ pass()    { echo -e "  ${GREEN}PASS${NC} $*"; ((PASS++)) || true; }
 fail()    { echo -e "  ${RED}FAIL${NC} $*"; ((FAIL++)) || true; }
 skip()    { echo -e "  ${YELLOW}SKIP${NC} $*"; }
 
+# Print per-test PASS/FAIL lines from a C++ test log with shell colours applied.
+print_test_results() {   # print_test_results <log_file>
+    while IFS= read -r line; do
+        if [[ "$line" == *"  PASS "* ]]; then
+            echo -e "  ${GREEN}PASS${NC} ${line#*  PASS }"
+        elif [[ "$line" == *"  FAIL "* ]]; then
+            echo -e "  ${RED}FAIL${NC} ${line#*  FAIL }"
+        fi
+    done < <(grep -E '  (PASS|FAIL) ' "$1" || true)
+}
+
 # ---------------------------------------------------------------------------
 # Assertion helpers
 # ---------------------------------------------------------------------------
@@ -149,14 +160,13 @@ section "Phase 2: Serial C++ tests"
 
 SERIAL_LOG="$RUN_DIR/serial_run.log"
 if "$EXE_SERIAL" run_dir="$RUN_DIR" > "$SERIAL_LOG" 2>&1; then
-    # Extract PASS/FAIL summary from log
+    print_test_results "$SERIAL_LOG"
     passed=$(grep -c '  PASS ' "$SERIAL_LOG" || true)
     failed=$(grep -c '  FAIL ' "$SERIAL_LOG" || true)
     if [[ "$failed" -eq 0 ]]; then
         pass "Serial test run  (${passed} passed, ${failed} failed)"
     else
         fail "Serial test run  (${passed} passed, ${failed} failed — see $SERIAL_LOG)"
-        grep '  FAIL ' "$SERIAL_LOG" | sed 's/^/    /'
     fi
 else
     fail "Serial executable exited non-zero — see $SERIAL_LOG"
@@ -269,13 +279,13 @@ else
             > "$MPI_LOG" 2>&1 || mpi_exit=$?
 
         if [[ $mpi_exit -eq 0 ]]; then
+            print_test_results "$MPI_LOG"
             passed=$(grep -c '  PASS ' "$MPI_LOG" || true)
             failed=$(grep -c '  FAIL ' "$MPI_LOG" || true)
             if [[ "$failed" -eq 0 ]]; then
                 pass "MPI ${np}-rank test run  (${passed} passed)"
             else
                 fail "MPI ${np}-rank test run  (${failed} failed — see $MPI_LOG)"
-                grep '  FAIL ' "$MPI_LOG" | sed 's/^/    /'
             fi
         elif [[ $mpi_exit -eq 124 ]]; then
             fail "MPI ${np}-rank test TIMED OUT after ${MPI_TIMEOUT}s — see $MPI_LOG"

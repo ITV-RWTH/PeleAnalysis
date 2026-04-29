@@ -172,7 +172,8 @@ static void group_plotfile_io(const std::string& run_dir)
         ASSERT_NEAR("T-PLT-2 loaded value", data.mf[0].min(0), 2.0, 1e-12);
     }
 
-    // T-PLT-3: PlotfileData.var_names contains all variables in file
+    // T-PLT-3: PlotfileData.var_names matches the requested variables (not all file vars)
+    //          so that write_plotfile(outfile, data) has consistent mf / var_names sizes.
     {
         Vector<MultiFab> mf(1);
         mf[0].define(ba, dm, 2, 0);
@@ -180,10 +181,9 @@ static void group_plotfile_io(const std::string& run_dir)
         const std::string plt = run_dir + "/plt_allvars";
         analysis_util::write_plotfile(plt, mf, {"alpha", "beta"}, geoms);
         auto data = analysis_util::read_plotfile(plt, {"alpha"});
-        ASSERT_EQ("T-PLT-3 var_names size", static_cast<int>(data.var_names.size()), 2);
-        if (static_cast<int>(data.var_names.size()) == 2) {
+        ASSERT_EQ("T-PLT-3 var_names size", static_cast<int>(data.var_names.size()), 1);
+        if (static_cast<int>(data.var_names.size()) == 1) {
             ASSERT_STR_EQ("T-PLT-3 var_names[0]", data.var_names[0], "alpha");
-            ASSERT_STR_EQ("T-PLT-3 var_names[1]", data.var_names[1], "beta");
         }
     }
 
@@ -408,7 +408,7 @@ static void group_get_covered_mf()
         Vector<int> no_ratios;
         auto mask = analysis_util::get_covered_mf(mf, no_ratios);
         const long total_cells = AMREX_D_TERM(8, * 8, * 8);
-        ASSERT_EQ("T-COV-1 all uncovered", mask[0]->sum(0),
+        ASSERT_EQ("T-COV-1 all uncovered", mask[0].sum(0),
                   static_cast<long>(total_cells));
     }
 
@@ -436,9 +436,9 @@ static void group_get_covered_mf()
         const long covered = AMREX_D_TERM(4, * 4, * 4);  // 4^3 coarse cells covered
         const long total_coarse = AMREX_D_TERM(8, * 8, * 8);
         ASSERT_EQ("T-COV-2 uncovered coarse cells",
-                  mask[0]->sum(0), static_cast<long>(total_coarse - covered));
+                  mask[0].sum(0), static_cast<long>(total_coarse - covered));
         const long total_fine = AMREX_D_TERM(8, * 8, * 8);
-        ASSERT_EQ("T-COV-2 all fine uncovered", mask[1]->sum(0),
+        ASSERT_EQ("T-COV-2 all fine uncovered", mask[1].sum(0),
                   static_cast<long>(total_fine));
     }
 
