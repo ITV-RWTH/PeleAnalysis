@@ -12,7 +12,7 @@ Include the header with:
 
    #include <analysis_util.H>
 
-For new tools, make sure that the library is flagged for  in your ``GNUmakefile`` by adding the tool to the 
+For new tools, make sure that the library is flagged for compilation in your ``GNUmakefile`` by adding the tool to the 
 space separated list:
 
 ::
