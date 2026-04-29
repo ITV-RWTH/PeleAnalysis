@@ -89,10 +89,6 @@ void write_plotfile(
   amrex::Real                           time = 0.0,
   const amrex::Vector<int>&             ref_ratios = {});
 
-void write_plotfile(
-  const std::string&  outfile,
-  const PlotfileData& data);
-
 // --- MEF file tools ---
 
 struct MEFData
@@ -136,6 +132,12 @@ gradient(
   amrex::Vector<amrex::MultiFab>& grad_mf)
 {
   return gradient(d.mf, d.geoms, scomp, ncomp, grad_mf);
+}
+
+inline void
+write_plotfile(const std::string& outfile, const PlotfileData& d)
+{
+  write_plotfile(outfile, d.mf, d.var_names, d.geoms, d.time, d.ref_ratios);
 }
 
 } // namespace analysis_util

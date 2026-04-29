@@ -153,12 +153,4 @@ write_plotfile(
   ParallelDescriptor::Barrier();
 }
 
-void
-write_plotfile(
-  const std::string& outfile,
-  const PlotfileData& data)
-{
-  write_plotfile(outfile, data.mf, data.var_names, data.geoms, data.time, data.ref_ratios);
-}
-
 } // namespace analysis_util
