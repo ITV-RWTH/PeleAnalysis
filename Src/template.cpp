@@ -61,8 +61,8 @@ main(int argc, char* argv[])
     }
     pp.getarr("vars", vars, 0, nvars);
 
-    int finestLevel = 1000;
-    pp.query("finestLevel", finestLevel);
+    int p_finestLevel = 1000;
+    pp.query("finestLevel", p_finestLevel);
 
     Vector<int> is_per(AMREX_SPACEDIM, 1);
     pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
@@ -71,7 +71,7 @@ main(int argc, char* argv[])
     // Read plotfile
     // -------------------------------------------------------------------------
     auto data = analysis_util::read_plotfile(
-      infile, vars, finestLevel,
+      infile, vars, p_finestLevel,
       /*n_grow=*/0, is_per);
 
     Print() << "Read " << data.n_lev << " level(s) from " << infile << "\n";
