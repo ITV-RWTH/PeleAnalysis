@@ -1,9 +1,9 @@
 .. highlight:: c++
 
-analysis_util API Reference
+analysis_util
 ***************************
 
-``analysis_util`` is a C++ utility library that wraps the low-level AMReX
+``analysis_util`` is a C++ utility library that wraps low-level AMReX
 plotfile and MEF I/O routines behind a concise, MPI-safe interface.
 All symbols live in the ``analysis_util`` namespace.
 Include the header with:
@@ -12,12 +12,20 @@ Include the header with:
 
    #include <analysis_util.H>
 
-Enable the library in your ``GNUmakefile`` by setting ``USE_UTILS = TRUE``
-(done automatically when ``EBASE = template``).
+For new tools, make sure that the library is flagged for  in your ``GNUmakefile`` by adding the tool to the 
+space separated list:
+
+::
+
+  ifeq ($(EBASE),$(filter $(EBASE), template <your_tool_name>)) 
+    USE_UTILS = TRUE
+  endif
 
 
 Data Structures
 ---------------
+
+The library defines two main data structures for holding plotfile and MEF data in memory.
 
 PlotfileData
 ~~~~~~~~~~~~
@@ -50,6 +58,10 @@ a multi-level dataset and to call ``write_plotfile``.
    * - ``var_names``
      - ``Vector<string>``
      - All variable names present in the file (not just the ones requested).
+
+.. hint::
+    There is an AMReX struct called ``PlotFileData``, but it only holds metadata and does not include the actual data arrays.  The
+    ``PlotfileData`` struct defined here is a separate, higher-level construct that includes the data arrays and is specific to this utility library.
 
 MEFData
 ~~~~~~~
@@ -111,10 +123,16 @@ MPI ranks to avoid ``FillVar`` deadlocks.
      - Path to the plotfile directory.
    * - ``var_names``
      - required
-     - Variables to load; each name must exist in the file (aborts otherwise).
+     - | Variables to load; each name must exist in the file (aborts otherwise).
+       | This list should only contain unique values; if a name appears multiple 
+       | times, it is loaded multiple times.
+       | Currently, there is no option to simply load aall variables; you must 
+       | explicitly list the ones you want. This is to avoid accidentally loading 
+       | large arrays that you don't need.
    * - ``finest_level``
      - ``1000``
-     - Cap on the highest AMR level to read; clamped to the file's actual finest level.
+     - | Cap on the highest AMR level to read; clamped to the file's actual finest 
+       | level.
    * - ``n_grow``
      - ``0``
      - Number of ghost cells to allocate in the returned ``MultiFab``.
@@ -176,6 +194,10 @@ and redistributes boxes when the domain has fewer boxes than MPI ranks.
      - ``{}`` (all 2)
      - Refinement ratio between consecutive levels (length ``n_lev - 1``).
 
+.. hint::
+    A convenience overload is available that takes a single ``PlotfileData`` struct as input: ``write_plotfile(outfile, data)`` expands to
+    ``write_plotfile(outfile, data.mf, data.var_names, data.geoms, data.time, data.ref_ratios)``.
+
 **Output**
 
 None (writes to disk).
@@ -184,7 +206,7 @@ None (writes to disk).
 
 ::
 
-   const std::string outfile = analysis_util::get_file_root(infile) + "_result";
+   const std::string outfile = "plt_result";
    analysis_util::write_plotfile(outfile, data.mf, {"density", "velocity_x"},
                                  data.geoms, data.time, data.ref_ratios);
 
@@ -290,7 +312,8 @@ Used internally by ``integrate`` to avoid double-counting.
    * - ``ref_ratios``
      - ``Vector<int>`` — refinement ratio between consecutive levels (length ``n_lev - 1``); pass empty for a single-level domain.
 
-A ``PlotfileData`` convenience overload is also available: ``get_covered_mf(data)``
+.. hint::
+   A ``PlotfileData`` convenience overload is also available: ``get_covered_mf(data)``
 expands to ``get_covered_mf(data.mf, data.ref_ratios)``.
 
 **Output**
