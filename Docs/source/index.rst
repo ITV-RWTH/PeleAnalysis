@@ -15,6 +15,7 @@ PeleAnalysis documentation
    :caption: Analysis:
 
    analysis/amrToFE
+   analysis/arithmetics
    analysis/avgPlotfiles
    analysis/avgToPlane
    analysis/checkIso
