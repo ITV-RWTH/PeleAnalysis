@@ -16,7 +16,7 @@ namespace analysis_util {
 
 // --- AMR utilities ---
 [[nodiscard]]
-amrex::Vector<std::unique_ptr<amrex::iMultiFab>>
+amrex::Vector<amrex::iMultiFab>
 get_covered_mf(
   const amrex::Vector<amrex::MultiFab>& mf,
   const amrex::Vector<int>&             ref_ratios);
@@ -112,7 +112,7 @@ void write_mef(const std::string& outfile, const MEFData& data);
 
 // --- PlotfileData convenience overloads ---
 
-inline amrex::Vector<std::unique_ptr<amrex::iMultiFab>>
+inline amrex::Vector<amrex::iMultiFab>
 get_covered_mf(const PlotfileData& d)
 {
   return get_covered_mf(d.mf, d.ref_ratios);

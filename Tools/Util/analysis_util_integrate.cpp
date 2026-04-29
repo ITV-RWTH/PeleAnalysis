@@ -19,7 +19,7 @@ integrate(
 )
 {
   const int nlev = static_cast<int>(a_mf.size());
-  amrex::Vector<std::unique_ptr<amrex::iMultiFab>> mask_mf =
+  amrex::Vector<amrex::iMultiFab> mask_mf =
     get_covered_mf(a_mf, ref_ratios);
   const int finest_level = nlev - 1;
   // Get the domain on the finest level
@@ -53,7 +53,7 @@ integrate(
       a_mf[lev].boxArray(), a_mf[lev].DistributionMap(), 1, 0);
     geoms[lev].GetVolume(volume);
     auto const& ma       = a_mf[lev].arrays();
-    auto const& mask_ma  = mask_mf[lev]->const_arrays();
+    auto const& mask_ma  = mask_mf[lev].const_arrays();
     auto const& volume_ma = volume.const_arrays();
 #ifdef AMREX_USE_EB
     auto const& vfrac_ma = vfrac_mf[lev]->const_arrays();
