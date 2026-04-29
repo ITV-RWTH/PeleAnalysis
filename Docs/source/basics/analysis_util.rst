@@ -57,7 +57,8 @@ a multi-level dataset and to call ``write_plotfile``.
      - Number of levels loaded.
    * - ``var_names``
      - ``Vector<string>``
-     - All variable names present in the file (not just the ones requested).
+     - Names of the loaded variables; mirrors the ``var_names`` argument passed to ``read_plotfile``.
+       Must match ``mf[0].nComp()`` for ``write_plotfile(outfile, data)`` to work correctly.
 
 .. hint::
     There is an AMReX struct called ``PlotFileData``, but it only holds metadata and does not include the actual data arrays.  The
