@@ -314,11 +314,11 @@ Used internally by ``integrate`` to avoid double-counting.
 
 .. hint::
    A ``PlotfileData`` convenience overload is also available: ``get_covered_mf(data)``
-expands to ``get_covered_mf(data.mf, data.ref_ratios)``.
+   expands to ``get_covered_mf(data.mf, data.ref_ratios)``.
 
 **Output**
 
-``Vector<unique_ptr<iMultiFab>>`` — one mask MultiFab per level.
+``Vector<iMultiFab>`` — one mask MultiFab per level.
 
 **Example**
 
@@ -364,6 +364,10 @@ Result is reduced across all MPI ranks before returning.
      - Number of components to integrate, starting at ``scomp``.
    * - ``axes_to_integrate``
      - ``Vector<int>`` of axis indices to sum over (0=x, 1=y, 2=z). Pass all three for a scalar result.
+
+.. hint::
+   A ``PlotfileData`` convenience overload is also available: ``integrate(data, scomp, ncomp, axes)``
+   expands to ``integrate(data.mf, data.geoms, data.ref_ratios, scomp, ncomp, axes)``.
 
 **Output**
 
@@ -424,6 +428,10 @@ directions.
      - Number of scalar fields to differentiate.
    * - ``grad_mf``
      - ``Vector<MultiFab>`` — output; must have ``AMREX_SPACEDIM * ncomp`` components.
+
+.. hint::
+   A ``PlotfileData`` convenience overload is also available: ``gradient(data, scomp, ncomp, grad_mf)``
+   expands to ``gradient(data.mf, data.geoms, scomp, ncomp, grad_mf)``.
 
 **Output**
 
