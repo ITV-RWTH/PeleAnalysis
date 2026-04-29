@@ -112,7 +112,7 @@ read_plotfile(
   PlotfileData result;
   result.n_lev = n_lev;
   result.time = amrData.Time();
-  result.var_names = all_vars;
+  result.var_names = var_names;
   result.mf.resize(n_lev);
   result.geoms.resize(n_lev);
 
@@ -192,6 +192,14 @@ write_plotfile(
   // Ensure the Header written by IOProcessor is visible to all ranks
   // before any rank returns and potentially tries to read the same file.
   ParallelDescriptor::Barrier();
+}
+
+void
+write_plotfile(
+  const std::string& outfile,
+  const PlotfileData& data)
+{
+  write_plotfile(outfile, data.mf, data.var_names, data.geoms, data.time, data.ref_ratios);
 }
 
 } // namespace analysis_util

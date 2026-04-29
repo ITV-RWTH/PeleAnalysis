@@ -89,6 +89,10 @@ void write_plotfile(
   amrex::Real                           time = 0.0,
   const amrex::Vector<int>&             ref_ratios = {});
 
+void write_plotfile(
+  const std::string&  outfile,
+  const PlotfileData& data);
+
 // --- MEF file tools ---
 
 struct MEFData
