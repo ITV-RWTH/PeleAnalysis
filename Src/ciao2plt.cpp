@@ -126,11 +126,31 @@ read_periodicity(const H5File& file, const std::string& mesh)
     return per;
 }
 
+// Read coordinate system type from sd_info/icyl if present; fall back to coord_sys= input.
+static int
+read_coord_sys(const H5File& file, const std::string& mesh)
+{
+    std::string sdpath = "/" + mesh + "/geometry/sd_info";
+    if (H5Lexists(file.getId(), sdpath.c_str(), H5P_DEFAULT) > 0) {
+        Group sd = file.openGroup(sdpath);
+        if (H5Lexists(sd.getId(), "icyl", H5P_DEFAULT) > 0) {
+            int v = 0;
+            sd.openDataSet("icyl").read(&v, PredType::NATIVE_INT);
+            Print() << "Coord sys (from file): " << v << "\n";
+            return v;
+        }
+    }
+    int coord = 0;
+    ParmParse pp;
+    pp.query("coord_sys", coord);
+    return coord;
+}
+
 // Build BoxArray and Geometry from grid node coordinates.
 // Grid coords are node-based: N+1 nodes define N cells.
 static void
 setup_grid(const H5File& file, const std::string& mesh,
-           const Vector<int>& per, int max_grid_size,
+           const Vector<int>& per, int coord_sys, int max_grid_size,
            BoxArray& ba, Geometry& geom)
 {
     std::string gp = "/" + mesh + "/geometry/grid/";
@@ -163,7 +183,11 @@ setup_grid(const H5File& file, const std::string& mesh,
     Real plo[AMREX_SPACEDIM] = {AMREX_D_DECL(x[0],    y[0],    z[0])};
     Real phi[AMREX_SPACEDIM] = {AMREX_D_DECL(x[nx],   y[ny],   z[nz])};
     RealBox rb(plo, phi);
-    geom = Geometry(domain, &rb, 0, per.data());
+#if AMREX_SPACEDIM != 2
+    if (coord_sys != 0)
+        Abort("coord_sys != 0 (cylindrical/RZ) requires a DIM=2 build");
+#endif
+    geom = Geometry(domain, &rb, coord_sys, per.data());
 
     ba = BoxArray(domain);
     ba.maxSize(max_grid_size);
@@ -292,10 +316,11 @@ main(int argc, char* argv[])
 
         Real time        = read_time(file, mesh);
         Vector<int> per  = read_periodicity(file, mesh);
+        int coord_sys    = read_coord_sys(file, mesh);
 
         BoxArray  ba;
         Geometry  geom;
-        setup_grid(file, mesh, per, max_grid_size, ba, geom);
+        setup_grid(file, mesh, per, coord_sys, max_grid_size, ba, geom);
 
         MultiFab data(ba, DistributionMapping(ba), (int)vars.size(), 0);
         read_fields(file, mesh, vars, data);

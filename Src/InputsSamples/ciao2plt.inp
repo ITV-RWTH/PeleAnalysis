@@ -21,3 +21,8 @@ max_grid_size = 32                         # DEF: 32; maximum AMReX box size use
 per = 0 0 0                                # DEF: 0 0 0; periodicity flags (x y z).
                                            # Only used when the file does not contain
                                            # geometry/sd_info/xper|yper|zper.
+
+#------------------- Coordinate system fallback --------------------------------------------
+coord_sys = 0                              # DEF: 0 (Cartesian); 1 = cylindrical/RZ.
+                                           # Only used when the file does not contain
+                                           # geometry/sd_info/icyl. DIM=2 required for 1.

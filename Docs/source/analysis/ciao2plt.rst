@@ -71,6 +71,15 @@ AMReX boxes for parallel I/O. Larger values produce fewer, larger boxes.
 object. This parameter is only read when the HDF5 file does not contain
 ``geometry/sd_info/xper|yper|zper``; when those datasets are present they
 take precedence.
+::
+
+   #------------------- Coordinate system fallback --------------------------------------------
+   coord_sys = 0                              # DEF: 0 (Cartesian); 1 = cylindrical/RZ
+
+``coord_sys`` sets the AMReX coordinate system type. ``0`` is Cartesian
+(default); ``1`` is cylindrical/RZ, which requires a ``DIM=2`` build.
+This parameter is only read when the HDF5 file does not contain
+``geometry/sd_info/icyl``; when that dataset is present it takes precedence.
 
 HDF5 File Structure
 ####################
@@ -89,7 +98,8 @@ The tool expects the standard NGA2/CIAO HDF5 layout:
        │   └── globals_r0/time   simulation time (required, F64 scalar)
        └── geometry/
            ├── grid/x, y, z      node coordinates (N+1 values for N cells)
-           └── sd_info/          optional; xper, yper, zper periodicity flags
+           └── sd_info/          optional; xper, yper, zper periodicity flags;
+                              icyl coordinate type (0=Cartesian, 1=cylindrical)
 
 Grid coordinates are node-based: a coordinate array of length *N*+1 defines
 *N* cells. Field data in ``cv_data_real`` is stored in C order ``(nz, ny, nx)``
