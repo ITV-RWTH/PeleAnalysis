@@ -20,19 +20,29 @@ Example: ::
 Build Configuration
 ####################
 
-This tool links against the HDF5 C++ library directly. Set ``HDF5_DIR`` to
-your HDF5 installation before building:
+This tool links against the HDF5 C++ library directly. Two variables control
+the HDF5 installation used:
+
+``HDF5_DIR``
+   Root of the **serial** HDF5 installation. Used for ``USE_MPI=FALSE`` builds
+   (the default).
+
+``HDF5_PAR_DIR``
+   Root of a **parallel** HDF5 installation (compiled with MPI support). Used
+   for ``USE_MPI=TRUE`` builds. Falls back to ``HDF5_DIR`` if not set.
+
+On most HPC systems, serial and parallel HDF5 use the same library names
+(``libhdf5``, ``libhdf5_cpp``) but live under different module paths. On
+systems that give the parallel build distinct names (e.g., ``libhdf5_par``),
+override ``LIBRARIES`` manually in ``GNUmakefile``.
 
 .. code-block:: makefile
 
-   ifeq ($(EBASE),ciao2plt)
-     LIBRARIES         += -lhdf5 -lhdf5_hl -lz -lhdf5_cpp
-     INCLUDE_LOCATIONS += $(HDF5_DIR)/include
-     LIBRARY_LOCATIONS += $(HDF5_DIR)/lib
-   endif
+   # Serial
+   make EBASE=ciao2plt HDF5_DIR=/path/to/hdf5-serial
 
-``HDF5_DIR`` is the root of your HDF5 installation (the directory that
-contains ``include/H5Cpp.h`` and ``lib/libhdf5_cpp``).
+   # MPI
+   make EBASE=ciao2plt USE_MPI=TRUE HDF5_PAR_DIR=/path/to/hdf5-parallel
 
 Tool Options
 #############

@@ -301,7 +301,14 @@ main(int argc, char* argv[])
         int max_grid_size = 32;
         pp.query("max_grid_size", max_grid_size);
 
+#ifdef AMREX_USE_MPI
+        H5::FileAccPropList fapl;
+        fapl.setFaplMpio(ParallelDescriptor::Communicator(), MPI_INFO_NULL);
+        H5File file(infile.c_str(), H5F_ACC_RDONLY,
+                    H5::FileCreatPropList::DEFAULT, fapl);
+#else
         H5File file(infile.c_str(), H5F_ACC_RDONLY);
+#endif
         std::string mesh = discover_mesh_group(file);
 
         Vector<std::string> vars;
