@@ -285,6 +285,8 @@ main(int argc, char* argv[])
 {
     amrex::Initialize(argc, argv);
     {
+        const Real strt_time = amrex::second();
+
         if (argc < 2)
             print_usage(argc, argv);
 
@@ -335,7 +337,10 @@ main(int argc, char* argv[])
 
         Print() << "Writing " << outfile << "...\n";
         WriteSingleLevelPlotfile(outfile, data, vars, geom, time, 0);
-        Print() << "Done.\n";
+
+        Real elapsed = amrex::second() - strt_time;
+        ParallelDescriptor::ReduceRealMax(elapsed);
+        Print() << "Done. Run time: " << elapsed << " s\n";
     }
     amrex::Finalize();
     return 0;
