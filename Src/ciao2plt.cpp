@@ -35,6 +35,20 @@ stem(const std::string& path)
     return (dot == std::string::npos) ? base : base.substr(0, dot);
 }
 
+// H5Lexists emits diagnostics in HDF5 >=1.14 when an intermediate path component is
+// absent. Suppress the error stack for the duration of the check.
+static bool
+h5_exists(hid_t loc, const char* name)
+{
+    H5E_auto_t old_func;
+    void*      old_data;
+    H5Eget_auto(H5E_DEFAULT, &old_func, &old_data);
+    H5Eset_auto(H5E_DEFAULT, nullptr, nullptr);
+    htri_t ret = H5Lexists(loc, name, H5P_DEFAULT);
+    H5Eset_auto(H5E_DEFAULT, old_func, old_data);
+    return ret > 0;
+}
+
 // Find the single mesh group (skip IO-information).
 static std::string
 discover_mesh_group(const H5File& file)
@@ -69,9 +83,9 @@ list_fields(const H5File& file, const std::string& mesh)
             names.push_back(cvg.getObjnameByIdx(i));
 
     std::string scpath = "/" + mesh + "/data/scalars";
-    if (H5Lexists(file.getId(), scpath.c_str(), H5P_DEFAULT) > 0) {
+    if (h5_exists(file.getId(), scpath.c_str())) {
         Group scalg = file.openGroup(scpath);
-        if (H5Lexists(scalg.getId(), "SC", H5P_DEFAULT) > 0) {
+        if (h5_exists(scalg.getId(), "SC")) {
             DataSet sc = scalg.openDataSet("SC");
             hsize_t dims[4] = {};
             sc.getSpace().getSimpleExtentDims(dims);
@@ -91,7 +105,7 @@ static Real
 read_time(const H5File& file, const std::string& mesh)
 {
     std::string path = "/" + mesh + "/data/globals_r0/time";
-    if (H5Lexists(file.getId(), path.c_str(), H5P_DEFAULT) <= 0)
+    if (!h5_exists(file.getId(), path.c_str()))
         Abort("Time dataset not found at " + path);
     double t = 0.0;
     file.openDataSet(path).read(&t, PredType::NATIVE_DOUBLE);
@@ -105,9 +119,9 @@ read_periodicity(const H5File& file, const std::string& mesh)
 {
     Vector<int> per(3, 0);
     std::string sdpath = "/" + mesh + "/geometry/sd_info";
-    if (H5Lexists(file.getId(), sdpath.c_str(), H5P_DEFAULT) > 0) {
+    if (h5_exists(file.getId(), sdpath.c_str())) {
         Group sd = file.openGroup(sdpath);
-        if (H5Lexists(sd.getId(), "xper", H5P_DEFAULT) > 0) {
+        if (h5_exists(sd.getId(), "xper")) {
             auto ri = [&](const std::string& name) {
                 int v = 0;
                 sd.openDataSet(name).read(&v, PredType::NATIVE_INT);
@@ -131,9 +145,9 @@ static int
 read_coord_sys(const H5File& file, const std::string& mesh)
 {
     std::string sdpath = "/" + mesh + "/geometry/sd_info";
-    if (H5Lexists(file.getId(), sdpath.c_str(), H5P_DEFAULT) > 0) {
+    if (h5_exists(file.getId(), sdpath.c_str())) {
         Group sd = file.openGroup(sdpath);
-        if (H5Lexists(sd.getId(), "icyl", H5P_DEFAULT) > 0) {
+        if (h5_exists(sd.getId(), "icyl")) {
             int v = 0;
             sd.openDataSet("icyl").read(&v, PredType::NATIVE_INT);
             Print() << "Coord sys (from file): " << v << "\n";
@@ -201,7 +215,7 @@ read_fields(const H5File& file, const std::string& mesh,
 {
     std::string cvbase = "/" + mesh + "/data/cv_data_real/";
     std::string scpath = "/" + mesh + "/data/scalars/SC";
-    bool has_sc = H5Lexists(file.getId(), scpath.c_str(), H5P_DEFAULT) > 0;
+    bool has_sc = h5_exists(file.getId(), scpath.c_str());
 
     // Build scalar name -> 0-based index map.
     std::map<std::string, int> sc_map;
@@ -219,7 +233,7 @@ read_fields(const H5File& file, const std::string& mesh,
 
     // Validate all vars exist before starting I/O.
     for (const auto& v : vars) {
-        bool in_cv = H5Lexists(file.getId(), (cvbase + v).c_str(), H5P_DEFAULT) > 0;
+        bool in_cv = h5_exists(file.getId(), (cvbase + v).c_str());
         bool in_sc = sc_map.count(v) > 0;
         if (!in_cv && !in_sc) {
             auto avail = list_fields(file, mesh);
@@ -233,7 +247,7 @@ read_fields(const H5File& file, const std::string& mesh,
         const std::string& vname = vars[n];
         Print() << "Reading " << vname << "\n";
 
-        bool is_cv = H5Lexists(file.getId(), (cvbase + vname).c_str(), H5P_DEFAULT) > 0;
+        bool is_cv = h5_exists(file.getId(), (cvbase + vname).c_str());
         DataSet ds = file.openDataSet(is_cv ? cvbase + vname : scpath);
 
         for (MFIter mfi(data); mfi.isValid(); ++mfi) {
