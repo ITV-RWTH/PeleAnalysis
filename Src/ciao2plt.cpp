@@ -302,10 +302,11 @@ main(int argc, char* argv[])
         pp.query("max_grid_size", max_grid_size);
 
 #ifdef AMREX_USE_MPI
-        H5::FileAccPropList fapl;
-        fapl.setFaplMpio(ParallelDescriptor::Communicator(), MPI_INFO_NULL);
+        hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
+        H5Pset_fapl_mpio(fapl_id, ParallelDescriptor::Communicator(), MPI_INFO_NULL);
         H5File file(infile.c_str(), H5F_ACC_RDONLY,
-                    H5::FileCreatPropList::DEFAULT, fapl);
+                    H5::FileCreatPropList::DEFAULT, H5::FileAccPropList(fapl_id));
+        H5Pclose(fapl_id);
 #else
         H5File file(infile.c_str(), H5F_ACC_RDONLY);
 #endif
