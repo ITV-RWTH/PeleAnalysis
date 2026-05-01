@@ -151,11 +151,11 @@ main (int   argc,
       
       for (int nv = 0; nv < nFeatures; nv++) {
 	f_max[nv] = std::max(f_max[nv],indata[lev].max(nv));
-	f_min[nv] = std::min(f_max[nv],indata[lev].min(nv));
+	f_min[nv] = std::min(f_min[nv],indata[lev].min(nv));
       }
       for (int nv = 0; nv < nTargets; nv++) {
 	t_max[nv] = std::max(t_max[nv],indata[lev].max(nv+nFeatures));
-	t_min[nv] = std::min(t_max[nv],indata[lev].min(nv+nFeatures));
+	t_min[nv] = std::min(t_min[nv],indata[lev].min(nv+nFeatures));
       }
       if (lev == Nlev - 1) {
 	for (int nv = 0; nv < nFeatures; nv++) {
@@ -287,7 +287,7 @@ main (int   argc,
     for (int epoch = 0; epoch < nEpochs; ++epoch) {   
       Real epoch_training_loss = 0.0;
       Real epoch_validation_loss = 0.0;      
-      int counter = 0;
+      //int counter = 0;
       for (int nb = 0; nb < num_train; nb++) {
 	torch::Tensor train_input = torch::from_blob(features_t[nb].dataPtr(),{ncell_t[nb],nFeatures},tensoropt);
 	torch::Tensor train_target = torch::from_blob(target_t[nb].dataPtr(),{ncell_t[nb],nTargets},tensoropt);
@@ -348,8 +348,8 @@ main (int   argc,
       }
       //Print() << num_batches << std::endl;
       //Print() << counter << std::endl;
-      epoch_training_loss /= split;
-      epoch_validation_loss /= 1-split;
+      epoch_training_loss /= num_train; // split
+      epoch_validation_loss /= num_val; // 1- split
       /*
       if (epoch > 0) {
 	//we're starting to overfit, bias the regularisation more
