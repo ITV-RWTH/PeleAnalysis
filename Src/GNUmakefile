@@ -21,6 +21,7 @@ COMP          = gnu
 USE_MPI       = FALSE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
+USE_EB        = FALSE
 
 # Executable
 # Uncomment the desired exec
@@ -118,6 +119,11 @@ endif
 
 ifeq ($(EBASE),decimateMEF) #make qslim first!
    NEED_QSLIM = TRUE
+endif
+
+ifeq ($(USE_EB), TRUE)
+   EB_DIR := $(PELE_ANALYSIS_HOME)/Src/EBUserDefined
+   CXXFLAGS += -I$(EB_DIR)
 endif
 
 Blocs := .
