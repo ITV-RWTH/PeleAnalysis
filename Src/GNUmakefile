@@ -24,7 +24,7 @@ USE_CUDA      = FALSE
 
 # Executable
 # Uncomment the desired exec
-#EBASE   = template
+EBASE   = template
 #EBASE   = amrToFE
 #EBASE   = arithmetics
 #EBASE   = avgPlotfiles
@@ -37,6 +37,7 @@ USE_CUDA      = FALSE
 #EBASE   = curvature
 #EBASE   = diffPlts
 #EBASE   = dumpFABslice
+#EBASE   = favreAvgPlotfiles
 #EBASE   = filterPlt
 #EBASE   = flattenAMRFile
 #EBASE   = generateTestPlt
@@ -66,7 +67,6 @@ USE_CUDA      = FALSE
 ##EBASE   = multMEF
 ##EBASE   = sliceMEF
 ##EBASE   = smoothMEF
-
 
 
 CEXE_sources += $(EBASE).cpp
