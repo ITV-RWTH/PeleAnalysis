@@ -53,20 +53,47 @@ ifeq ($(NEED_QSLIM),TRUE)
 endif
 
 ifeq ($(NEED_PYTORCH),TRUE)
-  PYTORCH_ROOT= ${PELE_ANALYSIS_HOME}/Tools/libtorch
-  TORCH_LIBPATH = $(PYTORCH_ROOT)/lib
+  # 1. ATTEMPT TO FIND SYSTEM PYTORCH MODULE FIRST
+  # We check if 'import torch' works and get the path
+  TORCH_CHECK := $(shell python3 -c "import torch; print(torch.__file__)" 2>/dev/null)
+
+  ifneq ($(TORCH_CHECK),)
+    # --- OPTION A: USE SYSTEM MODULE ---
+    $(info Using PyTorch from system module/Python environment)
+    PYTORCH_ROOT := $(shell python3 -c "import torch; import os; print(os.path.dirname(torch.__file__))")
+    INCLUDE_LOCATIONS += $(PYTORCH_ROOT)/include $(PYTORCH_ROOT)/include/torch/csrc/api/include
+    TORCH_LIBPATH = $(PYTORCH_ROOT)/lib
+  else		  
+    # --- OPTION B: DOWNLOAD WORKAROUND ---
+    $(info PyTorch module not found. Falling back to manual download workaround...)
+
+    PYTORCH_ROOT = ${PELE_ANALYSIS_HOME}/Tools/libtorch
+    TORCH_LIBPATH = $(PYTORCH_ROOT)/lib
+    INCLUDE_LOCATIONS += $(PYTORCH_ROOT)/include $(PYTORCH_ROOT)/include/torch/csrc/api/include
+
+    # Architecture-aware download logic
+    ARCH := $(shell uname -m)
+    ifeq ($(USE_CUDA),TRUE)
+      PYTORCH_VERSION=cu126
+    else
+      PYTORCH_VERSION=cpu
+    endif
+
+    # Handle ARM vs x86 ZIP naming
+    ifeq ($(ARCH),aarch64)
+      # Note: Adjust the version string based on available ARM64 libtorch builds
+      ZIPFILE = libtorch-cxx11-abi-shared-with-deps-2.7.0-aarch64+$(PYTORCH_VERSION).zip
+    else
+      ZIPFILE = libtorch-cxx11-abi-shared-with-deps-2.7.0+$(PYTORCH_VERSION).zip
+    endif
+    ZIPLINK = $(subst +,%2B,$(ZIPFILE))
+  endif
+
+  # 2. SHARED LINKING LOGIC (Applies to both methods)
   TORCH_LIBS = -ltorch -ltorch_cpu -lc10
   LIBRARY_LOCATIONS += $(TORCH_LIBPATH)
-  INCLUDE_LOCATIONS += $(PYTORCH_ROOT)/include $(PYTORCH_ROOT)/include/torch/csrc/api/include
   DEFINES += -D_GLIBCXX_USE_CXX11_ABI=1
-  LDFLAGS += -Wl,--no-as-needed,-rpath=$(TORCH_LIBPATH) $(TORCH_LIBS)
-  ifeq ($(USE_CUDA),TRUE)
-    PYTORCH_VERSION=cu126
-  else
-    PYTORCH_VERSION=cpu
-  endif
-  ZIPLINK = libtorch-cxx11-abi-shared-with-deps-2.7.0%2B$(PYTORCH_VERSION).zip
-  ZIPFILE = libtorch-cxx11-abi-shared-with-deps-2.7.0+$(PYTORCH_VERSION).zip
+  LDFLAGS += -L$(TORCH_LIBPATH) -Wl,--no-as-needed,-rpath=$(TORCH_LIBPATH) $(TORCH_LIBS)
 endif
 
 #-------------------
