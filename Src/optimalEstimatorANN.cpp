@@ -1,6 +1,7 @@
 #include <optimalEstimatorANN.H>
 
-Net::Net(int input_size, amrex::Vector<int> neurons, int output_size) {
+Net::Net(int input_size, amrex::Vector<int> neurons, int output_size, int act_type) {
+  activation_type = static_cast<ActivationType>(act_type);
   n_layers = neurons.size();
   layers.resize(n_layers+1,nullptr);
   if (n_layers == 0) {
@@ -21,45 +22,37 @@ Net::Net(int input_size, amrex::Vector<int> neurons, int output_size) {
 
 // Implement the forward pass
 torch::Tensor Net::forward(torch::Tensor x) {
-  //following Berger et al. (2018), linear activation function, followed by tansig function
-  /*
-  x = layers[0]->forward(x);
-  for (int n = 1; n <= n_layers; n++) {
-    x = tansig(layers[n]->forward(x));
-  }
-  */
-  
+  //following Berger et al. (2018), linear activation function, after tansig function  
   for (int n = 0; n < n_layers; n++) {
-    x = tansig(layers[n]->forward(x));
+    x = activate(layers[n]->forward(x));
   }
   x = layers[n_layers]->forward(x);
   
   return x;
 }
 
-torch::Tensor Net::tansig(torch::Tensor x) {
+torch::Tensor Net::activate(torch::Tensor x) {
+  if (activation_type == ActivationType::TANSIG) {
     return 2.0 / (1.0 + torch::exp(-2.0 * x)) - 1.0;
+  } else if (activation_type == ActivationType::RELU) {
+    return torch::relu(x);
+  } else {
+    return x; // fallback (should not happen)
+  }
 }
 
   
-  // Function to initialize weights
+// Function to initialize weights
 void Net::initializeWeights() {
   // Calculate the scaling factor
-  for (int n = 0; n <= n_layers; n++) {
-    torch::nn::init::xavier_uniform_(layers[n]->weight);
-    /*
-    auto weight = layers[n]->weight;
-    auto bias = layers[n]->bias;
-    int output_neurons = weight.size(0);
-    amrex::Print() << n << std::endl;
-    int input_neurons = weight.size(1);
-    //Xavier initialisation
-    amrex::Real beta = std::sqrt(6.0)/std::sqrt(output_neurons+input_neurons);
-    //amrex::Real beta = 0.7*std::pow(output_neurons,1.0/input_neurons);//std::sqrt(output_neurons)/std::sqrt(input_neurons);
-    amrex::Print() << beta << std::endl;
-    torch::nn::init::normal_(weight,0,beta);
-    torch::nn::init::zeros_(bias);
-    */
+  if (activation_type == ActivationType::RELU) {
+     for (int n = 0; n <= n_layers; n++) {
+        torch::nn::init::kaiming_uniform_(layers[n]->weight);
+     }
+  } else {
+     for (int n = 0; n <= n_layers; n++) {
+        torch::nn::init::xavier_uniform_(layers[n]->weight);
+     }
   }
 }
     

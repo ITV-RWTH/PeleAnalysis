@@ -21,35 +21,17 @@ getFileRoot(const std::string& infile)
 
 torch::Tensor compute_regularisation(const torch::nn::Module& model) {
   torch::Tensor l2_reg = torch::tensor(0.0);
+  int64_t n_params = 0;
   for (const auto param : model.parameters()) {
     l2_reg += torch::sum(torch::pow(param, 2));
+    n_params += param.numel();
+  }
+
+  if (n_params > 0) {
+    l2_reg = l2_reg / n_params;
   }
   return l2_reg;
 }
-/*
-std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
-split_data(torch::Tensor input, torch::Tensor target, amrex::Real train_ratio, amrex::Real val_ratio) {
-    auto dataset_size = input.size(0);
-    auto train_size = static_cast<int>(dataset_size * train_ratio);
-    auto val_size = dataset_size-train_size;
-
-    std::vector<int> indices(dataset_size);
-    std::iota(indices.begin(), indices.end(), 0);
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(indices.begin(), indices.end(), g);
-
-    auto train_indices = torch::tensor(std::vector<int>(indices.begin(), indices.begin() + train_size), torch::kLong);
-    auto val_indices = torch::tensor(std::vector<int>(indices.begin() + train_size, indices.end()), torch::kLong);
-    
-    auto train_input = input.index_select(0, train_indices);
-    auto train_target = target.index_select(0, train_indices);
-    auto val_input = input.index_select(0, val_indices);
-    auto val_target = target.index_select(0, val_indices);
-
-    return std::make_tuple(train_input, train_target, val_input, val_target);
-}
-*/
 
 int
 main (int   argc,
@@ -108,11 +90,15 @@ main (int   argc,
     int n_layers = pp.countval("neurons");
     Vector<int> neurons(n_layers); pp.getarr("neurons",neurons);
     torch::manual_seed(42); //ensure same seeding used each time
+    int reg_mode = 0;
+    pp.query("reg_mode", reg_mode);
+
+    int activation = 0;  // default: tansig
+    pp.query("activation", activation);
 
     auto dtype0 = torch::kDouble;
 
-    auto model = std::make_shared<Net>(nFeatures,neurons,nTargets);
-    //Net model(nFeatures,n_neurons,nTargets);
+    auto model = std::make_shared<Net>(nFeatures,neurons,nTargets, activation);
     
 #ifdef AMREX_USE_CUDA
     torch::Device device0(torch::kCUDA);
@@ -135,14 +121,10 @@ main (int   argc,
       //Get the array of boxes for this level
       BoxArray ba = amrData.boxArray(lev);
       if (batch_size > 0) {
-	//IntVect boxshape = {AMREX_D_DECL(box_size,box_size,box_size)};
-	//ba.minmaxSize(boxshape,boxshape); //everything comes in in equally sized boxes (box_size^AMREX_SPACEDIM)
-	//batch_size += ba.size();
 	ba.maxSize(batch_size);
       }
       //Distribution mapping i.e. how are boxes distributed across processors
       const DistributionMapping dm(ba);
-      //Vector<torch::Tensor> lev_batches(amrData.boxArray(lev).size());
       
       indata[lev].define(ba,dm,nCompIn,nGrow);
       Print() << "Reading data for level " << lev << std::endl;
@@ -224,17 +206,6 @@ main (int   argc,
     }
     
     int num_batches = training_batches.size();
-    /*
-    //pick a random number (<num_batches)
-    std::random_device rd;         // Obtain a random number from hardware
-    std::mt19937 gen(rd());        // Seed the generator
-    
-    // Create a uniform integer distribution
-    std::uniform_int_distribution<> dis(0, num_batches-1);
-    
-    // Generate a random number within the range
-    int r_batches = dis(gen);
-    */
     Vector<int> indices(num_batches);
     for (int i = 0; i < num_batches; i++) {
       indices[i] = i;
@@ -272,69 +243,80 @@ main (int   argc,
     Real learning_rate = 1e-3; pp.query("learning_rate",learning_rate);
     
     //at this point we have a bunch of distributed tensors, and a model
-    // Create an optimizer
-    //auto optimizer = torch::optim::SGD(model->parameters(), learning_rate);
-    auto optimizer = torch::optim::Adam(model->parameters(), learning_rate);
-    //auto optimizer = torch::optim::LBFGS(model->parameters(), learning_rate);
+
 
     // Training loop
+    Vector<int> train_indices(num_train);
+    for (int i = 0; i < num_train; i++) train_indices[i] = i;
+
     torch::Tensor loss;
     Real alpha = 0.01; pp.query("alpha",alpha);
     Real beta = 1.0-alpha;
     Real prev_epoch_training_loss, prev_epoch_validation_loss;
 
+    // Create an optimizer (other options SGD, LBFGS)
+    double weight_decay = 0.0;
+
+    if (reg_mode == 1) {
+      weight_decay = alpha;  // reuse alpha as L2 strength
+    }
+
+    auto optimizer = torch::optim::Adam(
+        model->parameters(),
+        torch::optim::AdamOptions(learning_rate).weight_decay(weight_decay)
+    );
+    //auto optimizer = torch::optim::Adam(model->parameters(), learning_rate);
+
     
-    for (int epoch = 0; epoch < nEpochs; ++epoch) {   
+    for (int epoch = 0; epoch < nEpochs; ++epoch) {
+      // Shuffle training batches every epoch
+      std::shuffle(train_indices.begin(), train_indices.end(), g);
+   
       Real epoch_training_loss = 0.0;
       Real epoch_validation_loss = 0.0;      
-      //int counter = 0;
-      for (int nb = 0; nb < num_train; nb++) {
-	torch::Tensor train_input = torch::from_blob(features_t[nb].dataPtr(),{ncell_t[nb],nFeatures},tensoropt);
-	torch::Tensor train_target = torch::from_blob(target_t[nb].dataPtr(),{ncell_t[nb],nTargets},tensoropt);
 
-	//torch::Tensor val_input = torch::from_blob(features_e[nb].dataPtr(),{ncell_e[nb],nFeatures},tensoropt);
-	//torch::Tensor val_target = torch::from_blob(target_e[nb].dataPtr(),{ncell_e[nb],nTargets},tensoropt);
-	
-	//torch::Tensor training_batch = torch::from_blob(training_batches[nb].dataPtr(),{ncell_batch[nb],nFeatures},tensoropt);
-	//torch::Tensor target_batch = torch::from_blob(target_batches[nb].dataPtr(),{ncell_batch[nb],nTargets},tensoropt);
-	
-	//auto [train_input, train_target, val_input, val_target] = split_data(training_batch, target_batch, 0.7, 0.3);
-	//if (torch::std(train_target).item<Real>() < 0.001) {
-	//  counter++;
-	//  continue;
-	//}
-	//Print() << torch::std(train_target) << std::endl;
-							 
-	//auto [train_input,train_target] = removeConstantRows(train_input_all,train_target_all);
+      for (int nb = 0; nb < num_train; nb++) {
+        int ib = train_indices[nb];  // shuffled index
+	torch::Tensor train_input = torch::from_blob(features_t[ib].dataPtr(),{ncell_t[ib],nFeatures},tensoropt);
+	torch::Tensor train_target = torch::from_blob(target_t[ib].dataPtr(),{ncell_t[ib],nTargets},tensoropt);
 	
 	model->train();
 
 	auto output = model->forward(train_input);
 	auto mse_loss = torch::mse_loss(output, train_target);
-	auto reg_loss = compute_regularisation(*model);
-	
-	// Forward pass
-	//if (!loss.defined()) {
-	loss = beta*mse_loss + alpha * reg_loss;
-	//}
+	//auto reg_loss = compute_regularisation(*model);
+	//loss = beta*mse_loss + alpha * reg_loss;
+        if (reg_mode == 0) {
+           auto reg_loss = compute_regularisation(*model); // normalized
+           loss = beta * mse_loss + alpha * reg_loss;
+        } else {
+        // Adam already applies L2 via weight_decay
+           loss = mse_loss;
+        }
 	
 	// Compute loss
 	//auto loss = custom_loss(output, train_target, *model);
+
 	// Backward pass and optimization step
 	optimizer.zero_grad();
-	/*auto trHinv= compute_sum_inv_d2loss_dw2(loss,*model);
-	int n_params = model->parameters().size();
-	auto gamma = n_params*(1-trHinv/(2.0*(reg_loss + trHinv)));
-	auto alpha = gamma/(2.0*reg_loss);
-	auto beta = (nTargets-gamma)/(2.0*mse_loss);
-	loss = beta * mse_loss + alpha * reg_loss;*/
+
 	loss.backward();
+
+	/*for (auto& param : model->parameters()) {
+    	    ParallelDescriptor::ReduceRealSum(param.grad().data_ptr<Real>(), param.numel());
+    	    param.grad() /= ParallelDescriptor::NProcs();
+	}*/
+
+	for (auto& param : model->parameters()) {
+    	    ParallelDescriptor::ReduceRealSum(param.grad().data_ptr<Real>(), param.numel());
+    	    param.grad().data() /= ParallelDescriptor::NProcs();  // <-- .data() here
+	}
+
 	optimizer.step();
 		
-	//if (nb == num_batches - 1) { //just compute on the last batch
+
 	epoch_training_loss += loss.item<Real>();	  
-	// Validation phase
-	//}
+
       }
       for (int nb = 0; nb < num_val; nb++) {
 	torch::Tensor val_input = torch::from_blob(features_e[nb].dataPtr(),{ncell_e[nb],nFeatures},tensoropt);
@@ -346,39 +328,17 @@ main (int   argc,
 	epoch_validation_loss += val_loss.item<Real>();
 
       }
-      //Print() << num_batches << std::endl;
-      //Print() << counter << std::endl;
-      epoch_training_loss /= num_train; // split
-      epoch_validation_loss /= num_val; // 1- split
-      /*
-      if (epoch > 0) {
-	//we're starting to overfit, bias the regularisation more
-	if (prev_epoch_training_loss > epoch_training_loss && prev_epoch_validation_loss < epoch_validation_loss) {
-	  Print() << "Overfitting, emphasising regularisation... " << std::endl;
-	  beta *= 0.9;
-	  alpha = 1.0-beta;
-	} else {
-	  Print() << "Not overfitting, emphasising fitting... " << std::endl;
-	  alpha *= 0.9;
-	  beta = 1.0-beta;
-	}
-      }
-      */
-      //alpha -= alpha/(Real)nEpochs;
-      //beta += beta/(Real)nEpochs;
+
+      epoch_training_loss /= num_train;
+      epoch_validation_loss /= num_val;
+
+
       prev_epoch_training_loss = epoch_training_loss;
       prev_epoch_validation_loss = epoch_validation_loss;
       
-      for (auto& param : model->parameters()) {
-	param = param.contiguous();
-	ParallelDescriptor::ReduceRealSum((param.grad()).data_ptr<Real>(),param.numel());
-      }
       ParallelDescriptor::ReduceRealSum(epoch_training_loss);
       ParallelDescriptor::ReduceRealSum(epoch_validation_loss);
-      Print() << "Epoch [" << epoch+1 << "/" << nEpochs << "], Training Loss: " << epoch_training_loss << ", Validation Loss: " << epoch_validation_loss << std::endl;
-     
-      //std::cout << "Process: " << ParallelDescriptor::MyProc() << ", Epoch [" << epoch << "/" << nEpochs << "], Training Loss: " << epoch_training_loss << ", Validation Loss: " << epoch_validation_loss << std::endl;
-      
+      Print() << "Epoch [" << epoch+1 << "/" << nEpochs << "], Training Loss: " << epoch_training_loss << ", Validation Loss: " << epoch_validation_loss << std::endl;      
     }
     
     

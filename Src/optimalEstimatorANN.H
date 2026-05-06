@@ -14,17 +14,26 @@
 #include <iostream>
 
 //optimalEstimatorANN.cpp
+enum class ActivationType {
+  TANSIG = 0,
+  RELU   = 1
+};
+
+
 struct Net : torch::nn::Module {
 public:
   // Constructor declaration
-  Net(int input_size, amrex::Vector<int> neurons, int output_size);
+  Net(int input_size, amrex::Vector<int> neurons, int output_size, int act_type);
 
   // Forward pass declaration
   torch::Tensor forward(torch::Tensor x);
 
+  ActivationType activation_type;
+
 private:
   // Forward pass declaration
-  torch::Tensor tansig(torch::Tensor x);
+  //torch::Tensor tansig(torch::Tensor x);
+  torch::Tensor activate(torch::Tensor x);
 
   // Function to initialize weights
   void initializeWeights();
