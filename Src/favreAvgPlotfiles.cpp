@@ -20,6 +20,11 @@ print_usage (int,
   std::cerr << "\t     output_max_grid_size=<s> where <s> is the output max_grid_size. If all BoxArrays are the same, this is ignored. [DEF->32]\n";
   std::cerr << "\t     interp_type=<int> where this determines the type of interpolation when FillPatching: 0 -> piecewise constant, 1 -> cell cons linear [DEF->1]\n";
   std::cerr << "\t     favre_average=<0/1> divide by rho_mean to output Favre averages [DEF->1]\n"; // UPDATE
+/* TODO:
+ *  - do_divide=<0/1> divide by rho_mean to output Favre averages [DEF=1]
+ *  - do_average=<0/1> compute average [DEF=1]
+ *  - do_variance=<0/1> compute variance [DEF=1]
+*/
 exit(1);
 }
 
