@@ -19,6 +19,7 @@ print_usage (int,
   std::cerr << "\t     output_max_level=<s> where <s> is the max refinement level to combine, zero-indexed [DEF->1000]\n";
   std::cerr << "\t     output_max_grid_size=<s> where <s> is the output max_grid_size. If all BoxArrays are the same, this is ignored. [DEF->32]\n";
   std::cerr << "\t     interp_type=<int> where this determines the type of interpolation when FillPatching: 0 -> piecewise constant, 1 -> cell cons linear [DEF->1]\n";
+  std::cerr << "\t     favre_average=<0/1> divide by rho_mean to output Favre averages [DEF->1]\n"; // UPDATE
 exit(1);
 }
 
@@ -68,6 +69,10 @@ main (int   argc,
      // Type of interpolation to do
      int interp_type = 1;
      pp.query("interp_type",interp_type);
+
+     // UPDATE: Toggle between rho-weighted output and Favre-averaged output
+     int favre_average = 1;
+     pp.query("favre_average",favre_average);
 
 
      // ---------------------------------------------------------------------
@@ -225,11 +230,18 @@ main (int   argc,
        running_data[lev].mult(factor);
        running_data2[lev].mult(factor);
        running_rho[lev].mult(factor);
-       for (int var = 0; var < nvar; ++var) {
-         //MultiFab::Divide(running_data[lev], running_rho[lev], 0, var, 1, 0); //comment out to compute rho*phi
-         //MultiFab::Divide(running_data2[lev], running_rho[lev], 0, var, 1, 0); //comment out to compute rho*phi
+
+       // UPDATE: If favre_average=1, divide rho*phi and rho*phi^2 by rho_mean
+       if (favre_average == 1) {
+         for (int var = 0; var < nvar; ++var) {
+           MultiFab::Divide(running_data[lev], running_rho[lev], 0, var, 1, 0);
+           MultiFab::Divide(running_data2[lev], running_rho[lev], 0, var, 1, 0);
+         }
        }
-       // Compute variance using variance decomposition formula (i.e., var(p) = favre(p^2) - favre(p)^2)
+
+       // Compute variance using variance decomposition formula
+       // If favre_average=1: var(p) = favre(p^2) - favre(p)^2
+       // If favre_average=0: this remains the original rho-weighted behavior
        MultiFab::Copy(variance[lev], running_data[lev], 0, 0, nvar, 0);
        MultiFab::Multiply(variance[lev], running_data[lev], 0, 0, nvar, 0);
        variance[lev].mult(-1.0);
@@ -240,8 +252,15 @@ main (int   argc,
      std::string variableName;
      for (int var = 0; var < nvar; var++) {
          variableName = variableNames[var+1];
-         variableNames[1+var] = "rho_"+variableName+"_mean";
-         variableNames.push_back("rho_"+variableName+"_2_mean");
+
+         // UPDATE: Rename output fields depending on selected averaging mode
+         if (favre_average == 1) {
+           variableNames[1+var] = variableName+"_favre_mean";
+           variableNames.push_back(variableName+"_favre_variance");
+         } else {
+           variableNames[1+var] = "rho_"+variableName+"_mean";
+           variableNames.push_back("rho_"+variableName+"_2_mean");
+         }
      }
 
      // Combine MultiFabs running_data and variance
@@ -256,13 +275,13 @@ main (int   argc,
      Print() << "Saving final plt file..." << std::endl;
      Vector<int> stepidx(nlevels,0);
      WriteMultiLevelPlotfile(
-       outfile, 
-       nlevels, 
-       GetVecOfConstPtrs(combined_data), 
-       variableNames, 
-       level_geometries, 
-       0.0, 
-       stepidx, 
+       outfile,
+       nlevels,
+       GetVecOfConstPtrs(combined_data),
+       variableNames,
+       level_geometries,
+       0.0,
+       stepidx,
        refRatios
      );
      Print() << "Done." << std::endl;
