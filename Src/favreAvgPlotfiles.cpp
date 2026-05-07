@@ -5,27 +5,22 @@
 
 using namespace amrex;
 
-static
-void
-print_usage (int,
-             char* argv[])
+static void
+print_usage(int, char* argv[])
 {
-  std::cerr << "Utility to average pltfiles on same domain but with non-matching AMR";
-  std::cerr << "usage:\n";
-  std::cerr << argv[0] << "infiles=<s1 s2 s3> [options] \n\tOptions:\n";
-  std::cerr << "\t     infiles=<s1 s2 s3> where <s1> <s2> amnd <s3> are pltfiles\n";
-  std::cerr << "\t     outfile=<s> where <s> is the output pltfile\n";
-  std::cerr << "\t     variables=<s1 s2 s3> where <s1> <s2> and <s3> are variable names to select for combined pltfile [DEF-> all possible]\n";
-  std::cerr << "\t     output_max_level=<s> where <s> is the max refinement level to combine, zero-indexed [DEF->1000]\n";
-  std::cerr << "\t     output_max_grid_size=<s> where <s> is the output max_grid_size. If all BoxArrays are the same, this is ignored. [DEF->32]\n";
-  std::cerr << "\t     interp_type=<int> where this determines the type of interpolation when FillPatching: 0 -> piecewise constant, 1 -> cell cons linear [DEF->1]\n";
-  std::cerr << "\t     favre_average=<0/1> divide by rho_mean to output Favre averages [DEF->1]\n"; // UPDATE
-/* TODO:
- *  - do_divide=<0/1> divide by rho_mean to output Favre averages [DEF=1]
- *  - do_average=<0/1> compute average [DEF=1]
- *  - do_variance=<0/1> compute variance [DEF=1]
-*/
-exit(1);
+  std::cerr << "Usage:\n"
+            << "  " << argv[0] << " infiles=FILE1 FILE2 ... [OPTIONS]\n\n"
+
+            << "Required arguments:\n"
+            << "  infiles=LIST       List of AMReX plotfiles to average\n\n"
+
+            << "Options:\n"
+            << "  -h, --help         Show this help message\n\n"
+
+            << "For optional arguments and examples, refer to the documentation\n"
+            << "or see PeleAnalysis/Src/InputSamples/\n";
+
+  std::exit(1);
 }
 
 int
@@ -50,7 +45,6 @@ main (int   argc,
      int nf = pp.countval("infiles");
      AMREX_ALWAYS_ASSERT(nf>0);
      Vector<std::string> plotFileNames; pp.getarr("infiles",plotFileNames,0,nf);
-
      // into a single output file
      std::string outfile("plt_averaged");
      pp.query("outfile",outfile);
@@ -75,10 +69,22 @@ main (int   argc,
      int interp_type = 1;
      pp.query("interp_type",interp_type);
 
-     // UPDATE: Toggle between rho-weighted output and Favre-averaged output
-     int favre_average = 1;
-     pp.query("favre_average",favre_average);
+     // Control over individual operations
+     int do_divide = 1;
+     pp.query("do_divide",do_divide);
 
+     int do_average = 1;
+     pp.query("do_average",do_average);
+
+     int do_variance = 1;
+     pp.query("do_variance",do_variance);
+
+     // Validation: must compute at least average or variance
+     if (do_average == 0 && do_variance == 0) {
+       amrex::Abort("At least one of do_average or do_variance must be 1");
+     }
+
+     Print() << "Options: do_average=" << do_average << " do_variance=" << do_variance << " do_divide=" << do_divide << std::endl;
 
      // ---------------------------------------------------------------------
      // Execute
@@ -127,7 +133,6 @@ main (int   argc,
      }
      nlevels = min(nlevels, output_max_level);
      Print() << " -> Combining " << nf << " files across " << nlevels << " levels" << std::endl;
-
      // Find density index:
      Vector<std::string> variableNamesPlt = plt_file_data[0]->getVariableList();
      int idRho = -1;
@@ -171,6 +176,11 @@ main (int   argc,
        }
      }
 
+     // Calculate number of output components based on what we're computing
+     int ncomp_output = 1; // rho_mean
+     if (do_average) ncomp_output += nvar;
+     if (do_variance) ncomp_output += nvar;
+
      // Create the data structures to read in the data and keep running sums
      Vector<MultiFab> running_data(nlevels);
      Vector<MultiFab> running_data2(nlevels);
@@ -193,7 +203,7 @@ main (int   argc,
        tmp_data2[lev].define(combined_boxes[lev], dmap, nvar, 0);
        tmp_rho[lev].define(combined_boxes[lev], dmap, 1, 0);
        variance[lev].define(combined_boxes[lev], dmap, nvar, 0);
-       combined_data[lev].define(combined_boxes[lev], dmap, 1+nvar*2, 0);
+       combined_data[lev].define(combined_boxes[lev], dmap, ncomp_output, 0);
        running_data[lev].setVal(0.0);
        running_data2[lev].setVal(0.0);
        running_rho[lev].setVal(0.0);
@@ -202,7 +212,6 @@ main (int   argc,
          refRatios[lev-1] = {AMREX_D_DECL(rr,rr,rr)};
        }
      }
-
      // Fillpatch tmp_data from each pltfile and add to running data
      Print() << "Fillpatching and combining..." << std::endl;
      for (int i = 0; i < plt_file_data.size(); ++i) {
@@ -236,44 +245,70 @@ main (int   argc,
        running_data2[lev].mult(factor);
        running_rho[lev].mult(factor);
 
-       // UPDATE: If favre_average=1, divide rho*phi and rho*phi^2 by rho_mean
-       if (favre_average == 1) {
+       // Compute variance BEFORE dividing (need both rho-weighted quantities)
+       // var(p) = E[p^2] - E[p]^2
+       if (do_variance == 1) {
+         MultiFab::Copy(variance[lev], running_data[lev], 0, 0, nvar, 0);
+         MultiFab::Multiply(variance[lev], variance[lev], 0, 0, nvar, 0);
+         variance[lev].mult(-1.0);
+         MultiFab::Add(variance[lev], running_data2[lev], 0, 0, nvar, 0);
+       }
+
+       // Divide by rho_mean if requested (do this AFTER variance computation)
+       if (do_divide == 1) {
          for (int var = 0; var < nvar; ++var) {
            MultiFab::Divide(running_data[lev], running_rho[lev], 0, var, 1, 0);
            MultiFab::Divide(running_data2[lev], running_rho[lev], 0, var, 1, 0);
+           MultiFab::Divide(variance[lev], running_rho[lev], 0, var, 1, 0);
          }
        }
-
-       // Compute variance using variance decomposition formula
-       // If favre_average=1: var(p) = favre(p^2) - favre(p)^2
-       // If favre_average=0: this remains the original rho-weighted behavior
-       MultiFab::Copy(variance[lev], running_data[lev], 0, 0, nvar, 0);
-       MultiFab::Multiply(variance[lev], running_data[lev], 0, 0, nvar, 0);
-       variance[lev].mult(-1.0);
-       MultiFab::Add(variance[lev], running_data2[lev], 0, 0, nvar, 0);
      }
 
-     variableNames.insert(variableNames.begin(), "rho_mean");
-     std::string variableName;
-     for (int var = 0; var < nvar; var++) {
-         variableName = variableNames[var+1];
+     // Build output variable names based on what is being computed
+     Vector<std::string> outputVariableNames;
+     outputVariableNames.push_back("rho_mean");
 
-         // UPDATE: Rename output fields depending on selected averaging mode
-         if (favre_average == 1) {
-           variableNames[1+var] = variableName+"_favre_mean";
-           variableNames.push_back(variableName+"_favre_variance");
+     if (do_average) {
+       for (int var = 0; var < nvar; ++var) {
+         std::string variableName = variableNames[var];
+         if (do_divide == 1) {
+           outputVariableNames.push_back(variableName + "_favre_mean");
          } else {
-           variableNames[1+var] = "rho_"+variableName+"_mean";
-           variableNames.push_back("rho_"+variableName+"_2_mean");
+           outputVariableNames.push_back(variableName + "_mean");
          }
+       }
      }
 
-     // Combine MultiFabs running_data and variance
+     if (do_variance) {
+       for (int var = 0; var < nvar; ++var) {
+         std::string variableName = variableNames[var];
+         if (do_divide == 1) {
+           outputVariableNames.push_back(variableName + "_favre_variance");
+         } else {
+           outputVariableNames.push_back(variableName + "_variance");
+         }
+       }
+     }
+
+     // Populate combined_data with the computed fields
      for (int lev = 0; lev < nlevels; ++lev) {
-       DistributionMapping dmap = DistributionMapping(combined_boxes[lev]);
-       MultiFab::Copy(combined_data[lev], running_rho[lev], 0, 0, 1, 0);
-       MultiFab::Copy(combined_data[lev], running_data[lev], 0, 1, nvar, 0);
-       MultiFab::Copy(combined_data[lev], variance[lev], 0, nvar+1, nvar, 0);
+       int icomp = 0;
+
+       // Add rho_mean
+       MultiFab::Copy(combined_data[lev], running_rho[lev], 0, icomp, 1, 0);
+       icomp += 1;
+
+       // Add averages if computed
+       if (do_average) {
+         MultiFab::Copy(combined_data[lev], running_data[lev], 0, icomp, nvar, 0);
+         icomp += nvar;
+       }
+
+       // Add variances if computed
+       if (do_variance) {
+         MultiFab::Copy(combined_data[lev], variance[lev], 0, icomp, nvar, 0);
+         icomp += nvar;
+       }
      }
 
      // Save the final plt file
@@ -283,7 +318,7 @@ main (int   argc,
        outfile,
        nlevels,
        GetVecOfConstPtrs(combined_data),
-       variableNames,
+       outputVariableNames,
        level_geometries,
        0.0,
        stepidx,
