@@ -93,12 +93,9 @@ main (int   argc,
     int reg_mode = 0;
     pp.query("reg_mode", reg_mode);
 
-    int activation = 0;  // default: tansig
-    pp.query("activation", activation);
-
     auto dtype0 = torch::kDouble;
 
-    auto model = std::make_shared<Net>(nFeatures,neurons,nTargets, activation);
+    auto model = std::make_shared<Net>(nFeatures,neurons,nTargets);
     
 #ifdef AMREX_USE_CUDA
     torch::Device device0(torch::kCUDA);
@@ -304,13 +301,8 @@ main (int   argc,
 
 	/*for (auto& param : model->parameters()) {
     	    ParallelDescriptor::ReduceRealSum(param.grad().data_ptr<Real>(), param.numel());
-    	    param.grad() /= ParallelDescriptor::NProcs();
-	}*/
-
-	for (auto& param : model->parameters()) {
-    	    ParallelDescriptor::ReduceRealSum(param.grad().data_ptr<Real>(), param.numel());
     	    param.grad().data() /= ParallelDescriptor::NProcs();  // <-- .data() here
-	}
+	}*/
 
 	optimizer.step();
 		
@@ -336,6 +328,11 @@ main (int   argc,
       prev_epoch_training_loss = epoch_training_loss;
       prev_epoch_validation_loss = epoch_validation_loss;
       
+
+      for (auto& param : model->parameters()) {
+	param = param.contiguous();
+	ParallelDescriptor::ReduceRealSum((param.grad()).data_ptr<Real>(),param.numel());
+      }
       ParallelDescriptor::ReduceRealSum(epoch_training_loss);
       ParallelDescriptor::ReduceRealSum(epoch_validation_loss);
       Print() << "Epoch [" << epoch+1 << "/" << nEpochs << "], Training Loss: " << epoch_training_loss << ", Validation Loss: " << epoch_validation_loss << std::endl;      

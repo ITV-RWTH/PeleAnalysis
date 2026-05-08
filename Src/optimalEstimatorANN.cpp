@@ -1,7 +1,6 @@
 #include <optimalEstimatorANN.H>
 
-Net::Net(int input_size, amrex::Vector<int> neurons, int output_size, int act_type) {
-  activation_type = static_cast<ActivationType>(act_type);
+Net::Net(int input_size, amrex::Vector<int> neurons, int output_size) {
   n_layers = neurons.size();
   layers.resize(n_layers+1,nullptr);
   if (n_layers == 0) {
@@ -32,27 +31,14 @@ torch::Tensor Net::forward(torch::Tensor x) {
 }
 
 torch::Tensor Net::activate(torch::Tensor x) {
-  if (activation_type == ActivationType::TANSIG) {
-    return 2.0 / (1.0 + torch::exp(-2.0 * x)) - 1.0;
-  } else if (activation_type == ActivationType::RELU) {
-    return torch::relu(x);
-  } else {
-    return x; // fallback (should not happen)
-  }
+    return torch::tanh(x);
 }
-
-  
+ 
 // Function to initialize weights
 void Net::initializeWeights() {
   // Calculate the scaling factor
-  if (activation_type == ActivationType::RELU) {
-     for (int n = 0; n <= n_layers; n++) {
-        torch::nn::init::kaiming_uniform_(layers[n]->weight);
-     }
-  } else {
-     for (int n = 0; n <= n_layers; n++) {
-        torch::nn::init::xavier_uniform_(layers[n]->weight);
-     }
-  }
+    for (int n = 0; n <= n_layers; n++) {
+    torch::nn::init::xavier_uniform_(layers[n]->weight);
+    }
 }
     

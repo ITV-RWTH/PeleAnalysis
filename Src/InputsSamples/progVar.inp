@@ -1,0 +1,13 @@
+# Example input file for progVar, Calculates a progress variable and its source term from a pltFile as C = (Sum(specNames) - unburntVal)/(burntVal - unburntVal)
+
+#------------------- IO CONTROL -----------------------------------------------------------
+infile = plt12809                 	# Input File
+
+#------------------- Variables ------------------------------------------------------------
+speciesNames = Y(H2)		  	# List of species
+unburntVal = 0.015			# DEF 0, Unburnt value
+burntVal = 0				# DEF 1, Burnt value
+outsuffix = "_prog"			# DEF _prog, Output suffix, outputs infile_outsuffix
+outname = "prog"			# DEF progVar, Variable name in output file
+#finestLevel = 				# DEF finest Level available, finest level to consider
+is_per = 0 0				# DEF 0 0, periodicity

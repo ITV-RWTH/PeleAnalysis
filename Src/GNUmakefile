@@ -35,7 +35,7 @@ BL_NO_FORT = TRUE
 #EBASE         = flattenAMRFile
 #EBASE         = filterPlt
 #EBASE         = curvature
-#EBASE          = optimalEstimatorInfer
+EBASE          = optimalEstimatorInfer
 #EBASE          = optimalEstimatorTraining
 #EBASE         = surfMEFtoDAT
 #EBASE         = surfDATtoMEF
@@ -46,7 +46,7 @@ BL_NO_FORT = TRUE
 #EBASE         = subPlt
 #EBASE         = partStream
 #EBASE	       = integral
-EBASE		= progVar
+#EBASE		= progVar
 
 # tools that need review/combining/fixing/work
 #EBASE         = avgToPlane
@@ -65,7 +65,7 @@ ifeq ($(EBASE),stream2plt)
   CEXE_sources += StreamData.cpp
 endif
 
-ifeq ($(EBASE), $(filter $(EBASE),optimalEstimatorTraining optimalEstimatorInfer)) #make pytorch first!
+ifeq ($(EBASE), $(filter $(EBASE),optimalEstimatorTraining optimalEstimatorInfer)) #either load PyTorch module or make pytorch first!
   NEED_PYTORCH = TRUE
   CEXE_headers += optimalEstimatorANN.H
   CEXE_sources += optimalEstimatorANN.cpp

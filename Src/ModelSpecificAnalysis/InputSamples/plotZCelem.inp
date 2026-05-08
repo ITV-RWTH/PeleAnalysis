@@ -1,0 +1,10 @@
+# Example input file for conditionalMean
+
+#------------------- IO CONTROL -----------------------------------------------------------
+infile = plt12809                 # Plot file
+
+#------------------- Variables ------------------------------------------------------------
+fuelNames = H2 CH4		  # List of species present in fuel
+fuelMoleFracs = 0.95 0.05	  # Model fraction ratio of species in fuel
+# finestLevel = 	          # DEF finestLevel available, finest level to consider
+is_per = 0 0			  # DEF 0 0, periodicity

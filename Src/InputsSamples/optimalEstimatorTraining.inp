@@ -1,0 +1,14 @@
+infile=plt00000					# PLT file to analyze
+features=temp density				# List of features (inputs)
+targets=I_R(prog)				# List of targets (outputs)
+nEpochs=1000					# DEF: 1000, Number of training epochs
+#finestLevel=					# DEF: Finest level available, maximum read level
+minLevel=0 					# DEF: 0, minimum read level
+model_path="test/optimal_estimator"		# DEF: optimal_estimator, Path where network is stored
+neurons=6 12 8					# Number of neurons per layer
+batch_size=32 					# DEF: -1, Data chunks that are fed to the network
+learning_rate=1e-3				# DEF: 1e-3, Classical gradient learning rate
+reg_mode=1					# DEF: 0, Mode for regularization 0: custom, 1: Adam
+alpha=0.01					# DEF: 0.01 Parameter to weight Regularization loss
+minmax_path="test1E20/minmax"			# DEF: minmax, Path where feature and target min and max are stored
+

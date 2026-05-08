@@ -63,8 +63,6 @@ main (int   argc,
     pp.getarr("features",features);
     Vector<std::string> targets(nTargets);
     pp.getarr("targets",targets);
-    int activation = 0;  // default: tansig
-    pp.query("activation", activation);
     for (int n = 0; n < nFeatures; n++) {
       inNames[n] = features[n];
       destFillComps[n] = n;
@@ -123,7 +121,7 @@ main (int   argc,
     Vector<int> neurons(n_layers); pp.getarr("neurons",neurons);
     // set pytorch data type (default is float or torch::kFloat32)
     auto dtype0 = torch::kDouble;
-    auto model = std::make_shared<Net>(nFeatures,neurons,nTargets,activation);
+    auto model = std::make_shared<Net>(nFeatures,neurons,nTargets);
     torch::load(model,path);
     
 #ifdef AMREX_USE_CUDA

@@ -1,0 +1,10 @@
+infile=plt00000					# PLT file to analyze
+features=temp density				# List of features (inputs)
+targets=I_R(progBlend)				# List of targets (outputs)
+#finestLevel=					# DEF: Finest level available, maximum read level
+is_per=1 0					# DEF: 1 1 (1), Periodicity
+model_path="test1E20/optimal_estimator"		# DEF: optimal_estimator, Path where network is stored
+neurons=6 12 8					# Number of neurons per layer
+minmax_path="test1E20/minmax"			# DEF: minmax, Path where feature and target min and max are stored
+outfile=plt00000_OE				# DEF:infile_OE, output file name
+
