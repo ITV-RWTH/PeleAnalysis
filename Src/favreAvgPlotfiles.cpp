@@ -2,6 +2,9 @@
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
 #include <PltFileManager.H>
+#include <analysis_util.H>
+
+#include <memory>
 
 using namespace amrex;
 
@@ -40,10 +43,11 @@ main(int argc, char* argv[])
     // Arbitrary number of input files will be combined and averaged
     int nf = pp.countval("infiles");
     AMREX_ALWAYS_ASSERT(nf > 0);
+
     Vector<std::string> plotFileNames;
     pp.getarr("infiles", plotFileNames, 0, nf);
 
-    // into a single output file
+    // Into a single output file
     std::string outfile("plt_averaged");
     pp.query("outfile", outfile);
 
@@ -86,17 +90,21 @@ main(int argc, char* argv[])
             << std::endl;
 
     // ---------------------------------------------------------------------
-    // Execute
+    // Load metadata
     // ---------------------------------------------------------------------
-
-    // First load the metadata of each input plt file
+    // unique_ptr automatically releases PltFileManager objects and avoids
+    // manual delete calls if amrex::Abort is triggered.
     Print() << "Loading plt file metadata..." << std::endl;
-    Vector<pele::physics::pltfilemanager::PltFileManager*> plt_file_data(nf);
+
+    Vector<std::unique_ptr<pele::physics::pltfilemanager::PltFileManager>>
+      plt_file_data(nf);
+
     int nlevels = 0;
 
     for (int i = 0; i < plt_file_data.size(); ++i) {
       plt_file_data[i] =
-        new pele::physics::pltfilemanager::PltFileManager(plotFileNames[i]);
+        std::make_unique<pele::physics::pltfilemanager::PltFileManager>(
+          plotFileNames[i]);
 
       nlevels = max(nlevels, plt_file_data[i]->getNlev());
 
@@ -131,19 +139,9 @@ main(int argc, char* argv[])
           plt_file_data[i]->getVariableList();
 
         for (int var = 0; var < nvar; ++var) {
-          int pvar;
-          for (pvar = 0; pvar < variableNamesPlt.size(); ++pvar) {
-            if (variableNames[var] == variableNamesPlt[pvar]) {
-              var_idx_loc.push_back(pvar);
-              break;
-            }
-          }
-
-          if (pvar == variableNamesPlt.size()) {
-            amrex::Abort(
-              "Variable '" + variableNames[var] +
-              "' not found in file: " + plotFileNames[i]);
-          }
+          var_idx_loc.push_back(
+            analysis_util::find_var_index(
+              variableNamesPlt, variableNames[var]));
         }
 
         var_idxs.push_back(var_idx_loc);
@@ -155,24 +153,18 @@ main(int argc, char* argv[])
     Print() << " -> Combining " << nf << " files across " << nlevels
             << " levels" << std::endl;
 
-    // Find density index
+    // Density is always required because the tool forms density-weighted
+    // moments, even if density is not explicitly included in variables.
     Vector<std::string> variableNamesPlt = plt_file_data[0]->getVariableList();
+    int idRho = analysis_util::find_var_index(variableNamesPlt, "density");
 
-    int idRho = -1;
-    for (int var = 0; var < variableNamesPlt.size(); ++var) {
-      if (variableNamesPlt[var] == "density") {
-        idRho = var;
-      }
-    }
-
-    if (idRho == -1) {
-      amrex::Abort(
-        "Density not found in file with index 0: " + plotFileNames[0]);
-    }
-
-    // Loop over each input file to get union of boxes on each level
-    // On any level with all same BoxArray, we use that without modification
+    // ---------------------------------------------------------------------
+    // Build combined grids
+    // ---------------------------------------------------------------------
+    // Input plotfiles must have the same physical geometry but may have
+    // different AMR BoxArrays. The tool builds one combined BoxArray per level.
     Print() << "Finding the combined grids..." << std::endl;
+
     Vector<BoxArray> combined_boxes;
     Vector<Geometry> level_geometries;
     Vector<int> boxarray_all_same(nlevels, 1);
@@ -197,7 +189,7 @@ main(int argc, char* argv[])
           }
         }
 
-        // Now combine the boxes - if not the same
+        // Combine the BoxArrays if they are not identical
         if (combined_boxes.size() <= lev) {
           combined_boxes.push_back(BoxArray(plt_file_data[i]->getGrid(lev)));
         } else {
@@ -214,24 +206,52 @@ main(int argc, char* argv[])
       }
     }
 
-    // Calculate number of output components based on what we're computing
+    // Calculate number of output components:
+    //
+    //   rho_mean is always written.
+    //   nvar mean fields are written if do_average == 1.
+    //   nvar variance fields are written if do_variance == 1.
     int ncomp_output = 1; // rho_mean
-    if (do_average == 1)
-      ncomp_output += nvar;
-    if (do_variance == 1)
-      ncomp_output += nvar;
 
-    // Create the data structures to read in the data and keep running sums
+    if (do_average == 1) {
+      ncomp_output += nvar;
+    }
+
+    if (do_variance == 1) {
+      ncomp_output += nvar;
+    }
+
+    // ---------------------------------------------------------------------
+    // Allocate accumulation data
+    // ---------------------------------------------------------------------
+    // running_data stores:
+    //
+    //   <rho * phi>
+    //
+    // running_rho stores:
+    //
+    //   <rho>
+    //
+    // running_data2 stores:
+    //
+    //   <rho * phi^2>
+    //
+    // and is only needed when variances are requested.
     Vector<MultiFab> running_data(nlevels);
-    Vector<MultiFab> running_data2(nlevels);
     Vector<MultiFab> running_rho(nlevels);
 
     Vector<MultiFab> tmp_data(nlevels);
-    Vector<MultiFab> tmp_data2(nlevels);
     Vector<MultiFab> tmp_rho(nlevels);
 
-    Vector<MultiFab> variance(nlevels);
-    Vector<MultiFab> combined_data(nlevels);
+    Vector<MultiFab> running_data2;
+    Vector<MultiFab> tmp_data2;
+    Vector<MultiFab> variance;
+
+    if (do_variance == 1) {
+      running_data2.resize(nlevels);
+      tmp_data2.resize(nlevels);
+      variance.resize(nlevels);
+    }
 
     Vector<IntVect> refRatios(nlevels - 1);
 
@@ -243,21 +263,22 @@ main(int argc, char* argv[])
       DistributionMapping dmap = DistributionMapping(combined_boxes[lev]);
 
       running_data[lev].define(combined_boxes[lev], dmap, nvar, 0);
-      running_data2[lev].define(combined_boxes[lev], dmap, nvar, 0);
       running_rho[lev].define(combined_boxes[lev], dmap, 1, 0);
 
       tmp_data[lev].define(combined_boxes[lev], dmap, nvar, 0);
-      tmp_data2[lev].define(combined_boxes[lev], dmap, nvar, 0);
       tmp_rho[lev].define(combined_boxes[lev], dmap, 1, 0);
 
-      variance[lev].define(combined_boxes[lev], dmap, nvar, 0);
-      combined_data[lev].define(combined_boxes[lev], dmap, ncomp_output, 0);
-
       running_data[lev].setVal(0.0);
-      running_data2[lev].setVal(0.0);
       running_rho[lev].setVal(0.0);
-      variance[lev].setVal(0.0);
-      combined_data[lev].setVal(0.0);
+
+      if (do_variance == 1) {
+        running_data2[lev].define(combined_boxes[lev], dmap, nvar, 0);
+        tmp_data2[lev].define(combined_boxes[lev], dmap, nvar, 0);
+        variance[lev].define(combined_boxes[lev], dmap, nvar, 0);
+
+        running_data2[lev].setVal(0.0);
+        variance[lev].setVal(0.0);
+      }
 
       if (lev > 0) {
         int rr = int(
@@ -267,7 +288,20 @@ main(int argc, char* argv[])
       }
     }
 
-    // Fillpatch tmp_data from each pltfile and add to running data
+    // ---------------------------------------------------------------------
+    // Fillpatch and accumulate moments
+    // ---------------------------------------------------------------------
+    // For each input plotfile:
+    //
+    //   tmp_data initially contains phi.
+    //   tmp_rho contains rho.
+    //
+    // Then:
+    //
+    //   tmp_data  -> rho * phi
+    //   tmp_data2 -> rho * phi^2    if do_variance == 1
+    //
+    // These moments are accumulated over all input files.
     Print() << "Fillpatching and combining..." << std::endl;
 
     for (int i = 0; i < plt_file_data.size(); ++i) {
@@ -289,46 +323,91 @@ main(int argc, char* argv[])
           }
         }
 
-        MultiFab::Copy(tmp_data2[lev], tmp_data[lev], 0, 0, nvar, 0);
+        if (do_variance == 1) {
+          MultiFab::Copy(tmp_data2[lev], tmp_data[lev], 0, 0, nvar, 0);
+        }
 
         for (int var = 0; var < nvar; ++var) {
           // Multiply with density to get rho*phi
           MultiFab::Multiply(tmp_data[lev], tmp_rho[lev], 0, var, 1, 0);
 
-          // Square phi
-          MultiFab::Multiply(tmp_data2[lev], tmp_data2[lev], var, var, 1, 0);
+          if (do_variance == 1) {
+            // Square phi
+            MultiFab::Multiply(tmp_data2[lev], tmp_data2[lev], var, var, 1, 0);
 
-          // Multiply with density to get rho*phi^2
-          MultiFab::Multiply(tmp_data2[lev], tmp_rho[lev], 0, var, 1, 0);
+            // Multiply with density to get rho*phi^2
+            MultiFab::Multiply(tmp_data2[lev], tmp_rho[lev], 0, var, 1, 0);
+          }
         }
 
         MultiFab::Add(running_data[lev], tmp_data[lev], 0, 0, nvar, 0);
-        MultiFab::Add(running_data2[lev], tmp_data2[lev], 0, 0, nvar, 0);
         MultiFab::Add(running_rho[lev], tmp_rho[lev], 0, 0, 1, 0);
+
+        if (do_variance == 1) {
+          MultiFab::Add(running_data2[lev], tmp_data2[lev], 0, 0, nvar, 0);
+        }
       }
 
-      delete plt_file_data[i];
+      // Release metadata for this plotfile as soon as it is no longer needed.
+      // This preserves the memory behavior of the original raw-pointer version.
+      plt_file_data[i].reset();
     }
 
-    // Divide by number of files to get average
+    plt_file_data.clear();
+    tmp_data.clear();
+    tmp_rho.clear();
+
+    if (do_variance == 1) {
+      tmp_data2.clear();
+    }
+
+    // ---------------------------------------------------------------------
+    // Convert accumulated sums to averages
+    // ---------------------------------------------------------------------
+    // After multiplying by factor:
+    //
+    //   running_data  = <rho * phi>
+    //   running_rho   = <rho>
+    //   running_data2 = <rho * phi^2>    if do_variance == 1
+    //
+    // If do_divide == 1, the density-weighted moments are normalized by
+    // <rho>, giving Favre moments:
+    //
+    //   <rho * phi>   / <rho>
+    //   <rho * phi^2> / <rho>
     Real factor = 1.0 / Real(nf);
 
     for (int lev = 0; lev < nlevels; ++lev) {
-      running_data[lev].mult(factor);  // <rho*phi>
-      running_data2[lev].mult(factor); // <rho*phi^2>
-      running_rho[lev].mult(factor);   // <rho>
+      running_data[lev].mult(factor);
+      running_rho[lev].mult(factor);
+
+      if (do_variance == 1) {
+        running_data2[lev].mult(factor);
+      }
 
       // Divide by rho_mean if requested
       if (do_divide == 1) {
         for (int var = 0; var < nvar; ++var) {
           MultiFab::Divide(running_data[lev], running_rho[lev], 0, var, 1, 0);
 
-          MultiFab::Divide(running_data2[lev], running_rho[lev], 0, var, 1, 0);
+          if (do_variance == 1) {
+            MultiFab::Divide(
+              running_data2[lev], running_rho[lev], 0, var, 1, 0);
+          }
         }
       }
 
-      // Compute variance using variance decomposition formula
-      // var(phi) = mean(phi^2) - mean(phi)^2
+      // Compute variance using:
+      //
+      //   var(phi) = mean(phi^2) - mean(phi)^2
+      //
+      // If do_divide == 1, this is the Favre variance:
+      //
+      //   <rho*phi^2>/<rho> - (<rho*phi>/<rho>)^2
+      //
+      // If do_divide == 0, this is an undivided diagnostic:
+      //
+      //   <rho*phi^2> - <rho*phi>^2
       if (do_variance == 1) {
         MultiFab::Copy(variance[lev], running_data2[lev], 0, 0, nvar, 0);
 
@@ -343,7 +422,13 @@ main(int argc, char* argv[])
       }
     }
 
-    // Build output variable names based on what is being computed
+    if (do_variance == 1) {
+      running_data2.clear();
+    }
+
+    // ---------------------------------------------------------------------
+    // Build output variable names
+    // ---------------------------------------------------------------------
     Vector<std::string> outputVariableNames;
     outputVariableNames.push_back("rho_mean");
 
@@ -371,8 +456,19 @@ main(int argc, char* argv[])
       }
     }
 
-    // Populate combined_data with the computed fields
+    // ---------------------------------------------------------------------
+    // Allocate and populate output MultiFab
+    // ---------------------------------------------------------------------
+    // combined_data is allocated only after all averaging work is finished.
+    // This avoids holding the full output MultiFab during fillpatching.
+    Vector<MultiFab> combined_data(nlevels);
+
     for (int lev = 0; lev < nlevels; ++lev) {
+      combined_data[lev].define(
+        running_rho[lev].boxArray(), running_rho[lev].DistributionMap(),
+        ncomp_output, 0);
+      combined_data[lev].setVal(0.0);
+
       int icomp = 0;
 
       // Add rho_mean
@@ -393,7 +489,19 @@ main(int argc, char* argv[])
       }
     }
 
+    // After combined_data has been populated, intermediate data can be
+    // released before writing the output plotfile. This reduces peak memory
+    // usage at write time.
+    running_rho.clear();
+    running_data.clear();
+
+    if (do_variance == 1) {
+      variance.clear();
+    }
+
+    // ---------------------------------------------------------------------
     // Save the final plt file
+    // ---------------------------------------------------------------------
     Print() << "Saving final plt file..." << std::endl;
 
     Vector<int> stepidx(nlevels, 0);
