@@ -8,11 +8,13 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Utility to average pltfiles on same domain but with non-matching AMR\n";
+  std::cerr
+    << "Utility to average pltfiles on same domain but with non-matching AMR\n";
   std::cerr << "usage:\n";
   std::cerr << argv[0] << " infiles=<s1 s2 s3> [options]\n";
   std::cerr << "\tRequired:\n";
-  std::cerr << "\t     infiles=<s1 s2 s3> where <s1> <s2> and <s3> are pltfiles\n";
+  std::cerr
+    << "\t     infiles=<s1 s2 s3> where <s1> <s2> and <s3> are pltfiles\n";
   std::cerr << "\tOptional arguments are documented separately.\n";
   exit(1);
 }
@@ -80,8 +82,8 @@ main(int argc, char* argv[])
     }
 
     Print() << "Options: do_average=" << do_average
-            << " do_variance=" << do_variance
-            << " do_divide=" << do_divide << std::endl;
+            << " do_variance=" << do_variance << " do_divide=" << do_divide
+            << std::endl;
 
     // ---------------------------------------------------------------------
     // Execute
@@ -109,15 +111,17 @@ main(int argc, char* argv[])
 
           if (variableNamesTest.size() != nvar) {
             amrex::Abort(
-              "All plt files must have same number of variables unless variable list is specified. File: "
-              + plotFileNames[i]);
+              "All plt files must have same number of variables unless "
+              "variable list is specified. File: " +
+              plotFileNames[i]);
           }
 
           for (int var = 0; var < nvar; ++var) {
             if (variableNames[var] != variableNamesTest[var]) {
               amrex::Abort(
-                "All plt files must have same variables unless variable list is specified. File: "
-                + plotFileNames[i]);
+                "All plt files must have same variables unless variable list "
+                "is specified. File: " +
+                plotFileNames[i]);
             }
           }
         }
@@ -137,8 +141,8 @@ main(int argc, char* argv[])
 
           if (pvar == variableNamesPlt.size()) {
             amrex::Abort(
-              "Variable '" + variableNames[var] + "' not found in file: "
-              + plotFileNames[i]);
+              "Variable '" + variableNames[var] +
+              "' not found in file: " + plotFileNames[i]);
           }
         }
 
@@ -148,12 +152,11 @@ main(int argc, char* argv[])
 
     nlevels = min(nlevels, output_max_level);
 
-    Print() << " -> Combining " << nf << " files across "
-            << nlevels << " levels" << std::endl;
+    Print() << " -> Combining " << nf << " files across " << nlevels
+            << " levels" << std::endl;
 
     // Find density index
-    Vector<std::string> variableNamesPlt =
-      plt_file_data[0]->getVariableList();
+    Vector<std::string> variableNamesPlt = plt_file_data[0]->getVariableList();
 
     int idRho = -1;
     for (int var = 0; var < variableNamesPlt.size(); ++var) {
@@ -182,14 +185,12 @@ main(int argc, char* argv[])
         if (level_geometries.size() <= lev) {
           level_geometries.push_back(plt_file_data[i]->getGeom(lev));
         } else {
-          bool same_domain =
-            AlmostEqual(
-              plt_file_data[i]->getGeom(lev).ProbDomain(),
-              level_geometries[lev].ProbDomain());
+          bool same_domain = AlmostEqual(
+            plt_file_data[i]->getGeom(lev).ProbDomain(),
+            level_geometries[lev].ProbDomain());
 
-          bool same_box =
-            plt_file_data[i]->getGeom(lev).Domain()
-            == level_geometries[lev].Domain();
+          bool same_box = plt_file_data[i]->getGeom(lev).Domain() ==
+                          level_geometries[lev].Domain();
 
           if (!(same_domain && same_box)) {
             amrex::Abort("All plt files must have the same geometry");
@@ -215,8 +216,10 @@ main(int argc, char* argv[])
 
     // Calculate number of output components based on what we're computing
     int ncomp_output = 1; // rho_mean
-    if (do_average == 1) ncomp_output += nvar;
-    if (do_variance == 1) ncomp_output += nvar;
+    if (do_average == 1)
+      ncomp_output += nvar;
+    if (do_variance == 1)
+      ncomp_output += nvar;
 
     // Create the data structures to read in the data and keep running sums
     Vector<MultiFab> running_data(nlevels);
@@ -257,9 +260,9 @@ main(int argc, char* argv[])
       combined_data[lev].setVal(0.0);
 
       if (lev > 0) {
-        int rr =
-          int(level_geometries[lev - 1].CellSize(0)
-              / level_geometries[lev].CellSize(0));
+        int rr = int(
+          level_geometries[lev - 1].CellSize(0) /
+          level_geometries[lev].CellSize(0));
         refRatios[lev - 1] = {AMREX_D_DECL(rr, rr, rr)};
       }
     }
@@ -268,9 +271,8 @@ main(int argc, char* argv[])
     Print() << "Fillpatching and combining..." << std::endl;
 
     for (int i = 0; i < plt_file_data.size(); ++i) {
-      Print() << "   working on file " << plotFileNames[i]
-              << " (" << i + 1 << "/" << plt_file_data.size() << ")"
-              << std::endl;
+      Print() << "   working on file " << plotFileNames[i] << " (" << i + 1
+              << "/" << plt_file_data.size() << ")" << std::endl;
 
       for (int lev = 0; lev < nlevels; ++lev) {
         plt_file_data[i]->fillPatchFromPlt(
@@ -282,13 +284,8 @@ main(int argc, char* argv[])
         } else {
           for (int var = 0; var < nvar; ++var) {
             plt_file_data[i]->fillPatchFromPlt(
-              lev,
-              level_geometries[lev],
-              var_idxs[i][var],
-              var,
-              1,
-              tmp_data[lev],
-              interp_type);
+              lev, level_geometries[lev], var_idxs[i][var], var, 1,
+              tmp_data[lev], interp_type);
           }
         }
 
@@ -317,18 +314,16 @@ main(int argc, char* argv[])
     Real factor = 1.0 / Real(nf);
 
     for (int lev = 0; lev < nlevels; ++lev) {
-      running_data[lev].mult(factor);   // <rho*phi>
-      running_data2[lev].mult(factor);  // <rho*phi^2>
-      running_rho[lev].mult(factor);    // <rho>
+      running_data[lev].mult(factor);  // <rho*phi>
+      running_data2[lev].mult(factor); // <rho*phi^2>
+      running_rho[lev].mult(factor);   // <rho>
 
       // Divide by rho_mean if requested
       if (do_divide == 1) {
         for (int var = 0; var < nvar; ++var) {
-          MultiFab::Divide(
-            running_data[lev], running_rho[lev], 0, var, 1, 0);
+          MultiFab::Divide(running_data[lev], running_rho[lev], 0, var, 1, 0);
 
-          MultiFab::Divide(
-            running_data2[lev], running_rho[lev], 0, var, 1, 0);
+          MultiFab::Divide(running_data2[lev], running_rho[lev], 0, var, 1, 0);
         }
       }
 
@@ -338,10 +333,8 @@ main(int argc, char* argv[])
         MultiFab::Copy(variance[lev], running_data2[lev], 0, 0, nvar, 0);
 
         MultiFab mean_squared(
-          running_data[lev].boxArray(),
-          running_data[lev].DistributionMap(),
-          nvar,
-          0);
+          running_data[lev].boxArray(), running_data[lev].DistributionMap(),
+          nvar, 0);
 
         MultiFab::Copy(mean_squared, running_data[lev], 0, 0, nvar, 0);
         MultiFab::Multiply(mean_squared, mean_squared, 0, 0, nvar, 0);
@@ -388,7 +381,8 @@ main(int argc, char* argv[])
 
       // Add averages if computed
       if (do_average == 1) {
-        MultiFab::Copy(combined_data[lev], running_data[lev], 0, icomp, nvar, 0);
+        MultiFab::Copy(
+          combined_data[lev], running_data[lev], 0, icomp, nvar, 0);
         icomp += nvar;
       }
 
@@ -405,14 +399,8 @@ main(int argc, char* argv[])
     Vector<int> stepidx(nlevels, 0);
 
     WriteMultiLevelPlotfile(
-      outfile,
-      nlevels,
-      GetVecOfConstPtrs(combined_data),
-      outputVariableNames,
-      level_geometries,
-      0.0,
-      stepidx,
-      refRatios);
+      outfile, nlevels, GetVecOfConstPtrs(combined_data), outputVariableNames,
+      level_geometries, 0.0, stepidx, refRatios);
 
     Print() << "Done." << std::endl;
   }
