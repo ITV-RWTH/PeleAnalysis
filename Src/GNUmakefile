@@ -71,7 +71,7 @@ EBASE   = template
 
 CEXE_sources += $(EBASE).cpp
 
-ifeq ($(EBASE),$(filter $(EBASE), template)) # add targets that need utils as space-separated list
+ifeq ($(EBASE),$(filter $(EBASE), template favreAvgPlotfiles)) # add targets that need utils as space-separated list
    USE_UTILS = TRUE
 endif
 

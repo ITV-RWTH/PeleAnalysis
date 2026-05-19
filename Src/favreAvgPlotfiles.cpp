@@ -139,9 +139,8 @@ main(int argc, char* argv[])
           plt_file_data[i]->getVariableList();
 
         for (int var = 0; var < nvar; ++var) {
-          var_idx_loc.push_back(
-            analysis_util::find_var_index(
-              variableNamesPlt, variableNames[var]));
+          var_idx_loc.push_back(analysis_util::find_var_index(
+            variableNamesPlt, variableNames[var]));
         }
 
         var_idxs.push_back(var_idx_loc);
