@@ -44,6 +44,12 @@ main(int argc, char* argv[])
     int nf = pp.countval("infiles");
     AMREX_ALWAYS_ASSERT(nf > 0);
 
+    if (nf < 2) {
+      amrex::Abort(
+        "This tool requires at least 2 input files to average. You provided " +
+        std::to_string(nf) + " file(s).");
+    }
+
     Vector<std::string> plotFileNames;
     pp.getarr("infiles", plotFileNames, 0, nf);
 
@@ -101,7 +107,7 @@ main(int argc, char* argv[])
 
     int nlevels = 0;
 
-    for (int i = 0; i < plt_file_data.size(); ++i) {
+    for (int i = 0; i < nf; ++i) {
       plt_file_data[i] =
         std::make_unique<pele::physics::pltfilemanager::PltFileManager>(
           plotFileNames[i]);
@@ -168,7 +174,7 @@ main(int argc, char* argv[])
     Vector<Geometry> level_geometries;
     Vector<int> boxarray_all_same(nlevels, 1);
 
-    for (int i = 0; i < plt_file_data.size(); ++i) {
+    for (int i = 0; i < nf; ++i) {
       int nlevels_file = min(nlevels, plt_file_data[i]->getNlev());
 
       for (int lev = 0; lev < nlevels_file; ++lev) {
@@ -303,9 +309,9 @@ main(int argc, char* argv[])
     // These moments are accumulated over all input files.
     Print() << "Fillpatching and combining..." << std::endl;
 
-    for (int i = 0; i < plt_file_data.size(); ++i) {
+    for (int i = 0; i < nf; ++i) {
       Print() << "   working on file " << plotFileNames[i] << " (" << i + 1
-              << "/" << plt_file_data.size() << ")" << std::endl;
+              << "/" << nf << ")" << std::endl;
 
       for (int lev = 0; lev < nlevels; ++lev) {
         plt_file_data[i]->fillPatchFromPlt(
@@ -348,7 +354,8 @@ main(int argc, char* argv[])
       }
 
       // Release metadata for this plotfile as soon as it is no longer needed.
-      // This preserves the memory behavior of the original raw-pointer version.
+      // This preserves memory and prevents accumulation when processing many
+      // files.
       plt_file_data[i].reset();
     }
 
@@ -503,11 +510,15 @@ main(int argc, char* argv[])
     // ---------------------------------------------------------------------
     Print() << "Saving final plt file..." << std::endl;
 
-    Vector<int> stepidx(nlevels, 0);
+    // Convert IntVect refRatios to Vector<int> for write_plotfile
+    Vector<int> refRatiosInt(nlevels - 1);
+    for (int lev = 0; lev < nlevels - 1; ++lev) {
+      refRatiosInt[lev] = refRatios[lev][0];
+    }
 
-    WriteMultiLevelPlotfile(
-      outfile, nlevels, GetVecOfConstPtrs(combined_data), outputVariableNames,
-      level_geometries, 0.0, stepidx, refRatios);
+    analysis_util::write_plotfile(
+      outfile, combined_data, outputVariableNames, level_geometries, 0.0,
+      refRatiosInt);
 
     Print() << "Done." << std::endl;
   }
