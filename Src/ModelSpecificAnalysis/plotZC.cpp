@@ -9,8 +9,6 @@
 #include <AMReX_PlotFileUtil.H>
 #include <PelePhysics.H>
 
-// #include <mechanism.H>
-
 using namespace amrex;
 
 static void
@@ -42,20 +40,21 @@ main(int argc, char* argv[])
       print_usage(argc, argv);
 
     if (pp.contains("verbose"))
-      AmrData::SetVerbose(false);
+      AmrData::SetVerbose(true);
 
     std::string plotFileName;
     pp.get("infile", plotFileName);
     std::string fuelName = "H2";
     pp.query("fuelName", fuelName);
-    // Real s = 8.0; pp.query("stoichRatio",s);
-    // Real Y_O_air = 0.233; pp.query("YO2Air",Y_O_air);
-    // Real S = s/Y_O_air;
-    // const Real Z_st = Y_O_air/(s+Y_O_air);
     std::string productName = "H2O";
     pp.query("productName", productName);
     int clipProgress = 0;
     pp.query("clipProgress", clipProgress);
+    // Oxidizer stream composition (mass fractions); defaults to air.
+    Real YO2ox = 0.233;
+    pp.query("YO2ox", YO2ox);
+    Real YN2ox = 0.767;
+    pp.query("YN2ox", YN2ox);
     Vector<int> is_per(AMREX_SPACEDIM, 1);
     pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
     DataServices::SetBatchMode();
@@ -74,10 +73,6 @@ main(int argc, char* argv[])
     pele::physics::eos::speciesNames<pele::physics::PhysicsType::eos_type>(
       spec_names);
     auto eos = pele::physics::PhysicsType::eos();
-    const Vector<std::string>& plotVarNames = amrData.PlotVarNames();
-    const std::string spName = "Y(" + fuelName + ")";
-    // const std::string oxName= "Y(O2)";
-    const std::string prodName = "Y(" + productName + ")";
 
     constexpr int nCompIn = NUM_SPECIES;
     constexpr int nCompOut = 3;
@@ -105,10 +100,21 @@ main(int argc, char* argv[])
     Vector<Real> YPminmax = {1e100, -1e100};
     Vector<Box> probDomain = amrData.ProbDomain();
 
-    const int YFcomp = amrData.StateNumber("Y(" + fuelName + ")") -
-                       amrData.StateNumber("Y(" + spec_names[0] + ")");
-    const int YPcomp = amrData.StateNumber("Y(" + productName + ")") -
-                       amrData.StateNumber("Y(" + spec_names[0] + ")");
+    // Locate the fuel and product species in the mechanism ordering that is
+    // used to fill indata (destFillComps[i] = i, inNames[i] =
+    // Y(spec_names[i])).
+    int YFcomp = -1, YPcomp = -1;
+    for (int i = 0; i < NUM_SPECIES; ++i) {
+      if (spec_names[i] == fuelName)
+        YFcomp = i;
+      if (spec_names[i] == productName)
+        YPcomp = i;
+    }
+    if (YFcomp < 0)
+      amrex::Abort("Fuel species " + fuelName + " not found in mechanism");
+    if (YPcomp < 0)
+      amrex::Abort(
+        "Product species " + productName + " not found in mechanism");
 
     for (int lev = 0; lev < Nlev; ++lev) {
       Real min, max;
@@ -138,10 +144,10 @@ main(int argc, char* argv[])
       YF[i] = 0.0;
       YO[i] = 0.0;
       if (spec_names[i] == "O2") {
-        YO[i] = 0.233;
+        YO[i] = YO2ox;
       }
       if (spec_names[i] == "N2") {
-        YO[i] = 0.767;
+        YO[i] = YN2ox;
       }
       if (i == YFcomp) {
         YF[i] = 1.0;
@@ -179,44 +185,65 @@ main(int argc, char* argv[])
       Zfu += spec_Bilger_fact[i] * YF[i];
       Zox += spec_Bilger_fact[i] * YO[i];
     }
+    if (Zfu == Zox) {
+      amrex::Abort("Fuel and oxidizer Bilger values are equal; check fuelName "
+                   "and oxidizer composition (Zfu - Zox is zero)");
+    }
     const Real denom_inv = 1.0 / (Zfu - Zox);
-    // amrex::GpuArray<amrex::Real, NUM_SPECIES> fact_Bilger;
-    // for (int n = 0; n < NUM_SPECIES; ++n) {
-    //   fact_Bilger[n] = a_pelelm->spec_Bilger_fact[n];
-    // }
+
+    // Precompute host-side scalar normalization factors for CF/CP. Capturing an
+    // amrex::Vector into a device lambda would copy a host pointer, so extract
+    // plain Reals here (finding: GPU device-lambda capture).
+    if (YFminmax[1] == 0.0) {
+      amrex::Abort(
+        "Max fuel mass fraction is zero; cannot normalize CF (fuel absent?)");
+    }
+    if (YPminmax[1] == 0.0) {
+      amrex::Abort(
+        "Max product mass fraction is zero; cannot normalize CP (product "
+        "absent?)");
+    }
+    const Real YFmaxInv = 1.0 / YFminmax[1];
+    const Real YPmaxInv = 1.0 / YPminmax[1];
+    const int doClip = clipProgress;
 
     for (int lev = 0; lev < Nlev; ++lev) {
       const BoxArray ba = amrData.boxArray(lev);
-      const Vector<Real>& delta = amrData.DxLevel()[lev];
       const DistributionMapping dm(ba);
       MultiFab indata(ba, dm, nCompIn, nGrow);
       outdata[lev].define(ba, dm, nCompOut, nGrow);
 
       Print() << "Reading data for level " << lev << std::endl;
-      amrData.FillVar(indata, lev, inNames, destFillComps); // Problem
-      geoms[lev] = Geometry(amrData.ProbDomain()[lev], &rb, 0, &(is_per[0]));
+      amrData.FillVar(indata, lev, inNames, destFillComps);
+      geoms[lev] = Geometry(
+        amrData.ProbDomain()[lev], &rb, amrData.CoordSys(), &(is_per[0]));
       Print() << "Data has been read for level " << lev << std::endl;
       auto in_ma = indata.const_arrays();
       auto out_ma = outdata[lev].arrays();
       amrex::ParallelFor(
         outdata[lev],
         [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept {
-          out_ma[box_no](i, j, k, idCFlocal) =
-            1.0 - in_ma[box_no](i, j, k, YFcomp) / YFminmax[1];
-          out_ma[box_no](i, j, k, idCPlocal) =
-            in_ma[box_no](i, j, k, YPcomp) / YPminmax[1];
+          Real CF = 1.0 - in_ma[box_no](i, j, k, YFcomp) * YFmaxInv;
+          Real CP = in_ma[box_no](i, j, k, YPcomp) * YPmaxInv;
           Real Zloc = 0.0;
           for (int n = 0; n < NUM_SPECIES; ++n) {
             Zloc += in_ma[box_no](i, j, k, n) * spec_Bilger_fact[n];
           }
-          out_ma[box_no](i, j, k, idZlocal) = (Zloc - Zox) * denom_inv;
+          Real Z = (Zloc - Zox) * denom_inv;
+          if (doClip) {
+            CF = amrex::min(Real(1.0), amrex::max(Real(0.0), CF));
+            CP = amrex::min(Real(1.0), amrex::max(Real(0.0), CP));
+            Z = amrex::min(Real(1.0), amrex::max(Real(0.0), Z));
+          }
+          out_ma[box_no](i, j, k, idCFlocal) = CF;
+          out_ma[box_no](i, j, k, idCPlocal) = CP;
+          out_ma[box_no](i, j, k, idZlocal) = Z;
         });
       Print() << "Derive finished for level " << lev << std::endl;
     }
 
     std::string outfile(getFileRoot(plotFileName) + "_ZC");
     Print() << "Writing new data to " << outfile << std::endl;
-    const bool verb = false;
     Vector<int> isteps(Nlev, 0);
     Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});
     amrex::WriteMultiLevelPlotfile(

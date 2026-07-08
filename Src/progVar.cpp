@@ -69,6 +69,11 @@ main(int argc, char* argv[])
     Real burnt = 1;
     pp.get("burntVal", burnt);
 
+    if (burnt == unburnt) {
+      amrex::Abort(
+        "burntVal must differ from unburntVal (denominator is zero)");
+    }
+
     std::string outsuffix = "_prog";
     pp.get("outsuffix", outsuffix);
     std::string outname = "progVar";
@@ -151,7 +156,7 @@ main(int argc, char* argv[])
       outdata[lev] = MultiFab(ba, dm, outNames.size(), nGrow);
       MultiFab indata(ba, dm, nCompIn, nGrow);
 
-      int coord = 0;
+      int coord = amrData.CoordSys();
       geoms[lev] =
         Geometry(amrData.ProbDomain()[lev], &rb, coord, &(is_per[0]));
 
