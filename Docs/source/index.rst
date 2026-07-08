@@ -52,12 +52,12 @@ PeleAnalysis documentation
    :maxdepth: 2
    :caption: Model Specific:
 
+   modelSpecific/computeMixtureFraction
    modelSpecific/plotQPD
    modelSpecific/plotTransportCoeff
    modelSpecific/plotTYtoLe
    modelSpecific/plotXtoY
    modelSpecific/plotYtoX
-   modelSpecific/plotZC
    modelSpecific/testQPDtools
    modelSpecific/testTsolve
 

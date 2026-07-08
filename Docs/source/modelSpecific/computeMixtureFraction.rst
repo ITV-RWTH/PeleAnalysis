@@ -1,10 +1,11 @@
-plotZC
-======
+computeMixtureFraction
+======================
 
 Description
 -----------
 
-``plotZC`` computes the Bilger mixture fraction ``Z`` from an AMReX plotfile.
+``computeMixtureFraction`` computes the Bilger mixture fraction ``Z`` from an
+AMReX plotfile.
 The mixture fraction is evaluated from the elemental (C, H, O) composition of
 the mixture using the Bilger formulation and the PelePhysics equation of state,
 so it is consistent with the compiled chemical mechanism.
@@ -31,7 +32,7 @@ Usage
 
 .. code-block:: bash
 
-   plotZC infile=<s> [options]
+   computeMixtureFraction infile=<s> [options]
 
 
 Input File
