@@ -35,6 +35,7 @@ PeleAnalysis documentation
    analysis/jpdf
    analysis/makePlotfile
    analysis/partStream
+   analysis/progVar
    analysis/qCriterion
    analysis/regridPlt
    analysis/rmsVel
@@ -56,6 +57,7 @@ PeleAnalysis documentation
    modelSpecific/plotTYtoLe
    modelSpecific/plotXtoY
    modelSpecific/plotYtoX
+   modelSpecific/plotZC
    modelSpecific/testQPDtools
    modelSpecific/testTsolve
 
