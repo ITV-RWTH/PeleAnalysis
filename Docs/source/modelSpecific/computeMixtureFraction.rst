@@ -67,6 +67,10 @@ Parameters
    N\ :sub:`2` mass fraction of the oxidizer stream used for
    :math:`\beta_\mathrm{ox}`. Default: ``0.767`` (air).
 
+``outsuffix``
+   Suffix appended to the input filename to form the output filename.
+   Default: ``_ZC``.
+
 ``finestLevel``
    Finest AMR level up to which the field is computed.
    Default: plotfile finest level.
@@ -79,7 +83,8 @@ Parameters
 Output
 ------
 
-A new AMReX plotfile named ``<infile>_ZC`` containing:
+A new AMReX plotfile named ``<infile>outsuffix`` (by default
+``<infile>_ZC``) containing:
 
 - ``Z`` — Bilger mixture fraction
 
@@ -101,4 +106,4 @@ Notes
 This tool requires a PelePhysics-enabled build. The chemical mechanism is
 compiled in at build time and determines the species list and the elemental
 composition used to build the Bilger factors; the tool cannot be used with a
-generic AMReX build. The output filename ``<infile>_ZC`` cannot be overridden.
+generic AMReX build.

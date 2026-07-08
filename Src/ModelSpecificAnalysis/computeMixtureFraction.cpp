@@ -51,6 +51,8 @@ main(int argc, char* argv[])
     pp.query("YO2ox", YO2ox);
     Real YN2ox = 0.767;
     pp.query("YN2ox", YN2ox);
+    std::string outsuffix = "_ZC";
+    pp.query("outsuffix", outsuffix);
     Vector<int> is_per(AMREX_SPACEDIM, 1);
     pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
     DataServices::SetBatchMode();
@@ -179,7 +181,7 @@ main(int argc, char* argv[])
       Print() << "Derive finished for level " << lev << std::endl;
     }
 
-    std::string outfile(getFileRoot(plotFileName) + "_ZC");
+    std::string outfile(getFileRoot(plotFileName) + outsuffix);
     Print() << "Writing new data to " << outfile << std::endl;
     Vector<int> isteps(Nlev, 0);
     Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});
