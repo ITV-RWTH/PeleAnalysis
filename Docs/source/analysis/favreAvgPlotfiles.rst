@@ -181,7 +181,7 @@ When division by ``rho_mean`` is disabled, the output contains:
 
      \langle \rho \phi \rangle
 
-- ``<variable>_variance`` — variance-like quantity from undivided moments, if ``do_variance=1``:
+- ``rho_<variable>_variance`` — variance-like quantity from undivided moments, if ``do_variance=1``:
 
   .. math::
 
