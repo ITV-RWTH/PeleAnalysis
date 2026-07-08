@@ -57,7 +57,8 @@ Parameters
 
 ``infile``
    Path to the input AMReX plotfile. It must contain the mass fractions of
-   all selected species and their production rates ``I_R(<species>)``.
+   all selected species, and their production rates ``I_R(<species>)`` when
+   the source term is written (``printSource=1``, the default).
 
 ``speciesNames``
    List of species mass-fraction fields to include in the progress
@@ -82,6 +83,12 @@ Parameters
    term is written as ``I_R(<outname>)``.
    Default: ``progVar``.
 
+``printSource``
+   Whether to compute and write the progress-variable source term
+   ``I_R(<outname>)``. Set to ``0`` to output only ``specSum`` and the
+   progress variable, in which case the input plotfile does not need the
+   ``I_R(<species>)`` fields. Default: ``1`` (source term written).
+
 ``finestLevel``
    Finest AMR level up to which the progress variable is computed.
    Default: plotfile finest level.
@@ -98,7 +105,8 @@ A new AMReX plotfile named ``<infile>outsuffix`` containing:
 
 - ``specSum`` — the sum of the selected species mass fractions
 - ``<outname>`` — the normalized progress variable :math:`C`
-- ``I_R(<outname>)`` — the progress-variable source term
+- ``I_R(<outname>)`` — the progress-variable source term (only when
+  ``printSource=1``, the default)
 
 The output inherits the domain geometry, coordinate system, and box
 structure from the input plotfile.
@@ -115,7 +123,9 @@ Typical Applications
 Notes
 -----
 
-The input plotfile must contain both the selected species mass fractions and
-their production rates ``I_R(<species>)``; the tool aborts if any requested
-field is missing. The source term is normalized by ``burntVal - unburntVal``,
-so these two values must not be equal.
+The input plotfile must contain the selected species mass fractions, and —
+when ``printSource=1`` (the default) — their production rates
+``I_R(<species>)``; the tool aborts if any requested field is missing. The
+progress variable and its source term are normalized by
+``burntVal - unburntVal``, so these two values must not be equal (the tool
+aborts if they are).

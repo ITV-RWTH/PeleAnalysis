@@ -46,10 +46,6 @@ main(int argc, char* argv[])
     pp.get("infile", plotFileName);
     std::string fuelName = "H2";
     pp.query("fuelName", fuelName);
-    std::string productName = "H2O";
-    pp.query("productName", productName);
-    int clipProgress = 0;
-    pp.query("clipProgress", clipProgress);
     // Oxidizer stream composition (mass fractions); defaults to air.
     Real YO2ox = 0.233;
     pp.query("YO2ox", YO2ox);
@@ -75,7 +71,7 @@ main(int argc, char* argv[])
     auto eos = pele::physics::PhysicsType::eos();
 
     constexpr int nCompIn = NUM_SPECIES;
-    constexpr int nCompOut = 3;
+    constexpr int nCompOut = 1;
     Vector<std::string> outNames(nCompOut);
     Vector<std::string> inNames(nCompIn);
     Vector<int> destFillComps(nCompIn);
@@ -85,57 +81,24 @@ main(int argc, char* argv[])
       inNames[i] = "Y(" + spec_names[i] + ")";
     }
     // out
-    constexpr int idZlocal = 0;  // Z out here
-    constexpr int idCFlocal = 1; // CF out here
-    constexpr int idCPlocal = 2; // CP out here
+    constexpr int idZlocal = 0; // Z out here
     outNames[idZlocal] = "Z";
-    outNames[idCFlocal] = "CF";
-    outNames[idCPlocal] = "CP";
 
     Vector<MultiFab> outdata(Nlev);
     Vector<Geometry> geoms(Nlev);
     RealBox rb(&(amrData.ProbLo()[0]), &(amrData.ProbHi()[0]));
     constexpr int nGrow = 0;
-    Vector<Real> YFminmax = {1e100, -1e100};
-    Vector<Real> YPminmax = {1e100, -1e100};
-    Vector<Box> probDomain = amrData.ProbDomain();
 
-    // Locate the fuel and product species in the mechanism ordering that is
-    // used to fill indata (destFillComps[i] = i, inNames[i] =
-    // Y(spec_names[i])).
-    int YFcomp = -1, YPcomp = -1;
+    // Locate the fuel species in the mechanism ordering that is used to fill
+    // indata (destFillComps[i] = i, inNames[i] = Y(spec_names[i])).
+    int YFcomp = -1;
     for (int i = 0; i < NUM_SPECIES; ++i) {
       if (spec_names[i] == fuelName)
         YFcomp = i;
-      if (spec_names[i] == productName)
-        YPcomp = i;
     }
     if (YFcomp < 0)
       amrex::Abort("Fuel species " + fuelName + " not found in mechanism");
-    if (YPcomp < 0)
-      amrex::Abort(
-        "Product species " + productName + " not found in mechanism");
 
-    for (int lev = 0; lev < Nlev; ++lev) {
-      Real min, max;
-      amrData.MinMax(probDomain[lev], "Y(" + fuelName + ")", lev, min, max);
-      if (YFminmax[0] > min) {
-        YFminmax[0] = min;
-      }
-      if (YFminmax[1] < max) {
-        YFminmax[1] = max;
-      }
-      amrData.MinMax(probDomain[lev], "Y(" + productName + ")", lev, min, max);
-      if (YPminmax[0] > min) {
-        YPminmax[0] = min;
-      }
-      if (YPminmax[1] < max) {
-        YPminmax[1] = max;
-      }
-    }
-    // TODO: add some verb and manual querying
-    pp.queryarr("YFminmax", YFminmax);
-    pp.queryarr("YPminmax", YPminmax);
     Real Zfu = -1.0;
     Real Zox = -1.0;
 
@@ -191,22 +154,6 @@ main(int argc, char* argv[])
     }
     const Real denom_inv = 1.0 / (Zfu - Zox);
 
-    // Precompute host-side scalar normalization factors for CF/CP. Capturing an
-    // amrex::Vector into a device lambda would copy a host pointer, so extract
-    // plain Reals here (finding: GPU device-lambda capture).
-    if (YFminmax[1] == 0.0) {
-      amrex::Abort(
-        "Max fuel mass fraction is zero; cannot normalize CF (fuel absent?)");
-    }
-    if (YPminmax[1] == 0.0) {
-      amrex::Abort(
-        "Max product mass fraction is zero; cannot normalize CP (product "
-        "absent?)");
-    }
-    const Real YFmaxInv = 1.0 / YFminmax[1];
-    const Real YPmaxInv = 1.0 / YPminmax[1];
-    const int doClip = clipProgress;
-
     for (int lev = 0; lev < Nlev; ++lev) {
       const BoxArray ba = amrData.boxArray(lev);
       const DistributionMapping dm(ba);
@@ -223,21 +170,11 @@ main(int argc, char* argv[])
       amrex::ParallelFor(
         outdata[lev],
         [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) noexcept {
-          Real CF = 1.0 - in_ma[box_no](i, j, k, YFcomp) * YFmaxInv;
-          Real CP = in_ma[box_no](i, j, k, YPcomp) * YPmaxInv;
           Real Zloc = 0.0;
           for (int n = 0; n < NUM_SPECIES; ++n) {
             Zloc += in_ma[box_no](i, j, k, n) * spec_Bilger_fact[n];
           }
-          Real Z = (Zloc - Zox) * denom_inv;
-          if (doClip) {
-            CF = amrex::min(Real(1.0), amrex::max(Real(0.0), CF));
-            CP = amrex::min(Real(1.0), amrex::max(Real(0.0), CP));
-            Z = amrex::min(Real(1.0), amrex::max(Real(0.0), Z));
-          }
-          out_ma[box_no](i, j, k, idCFlocal) = CF;
-          out_ma[box_no](i, j, k, idCPlocal) = CP;
-          out_ma[box_no](i, j, k, idZlocal) = Z;
+          out_ma[box_no](i, j, k, idZlocal) = (Zloc - Zox) * denom_inv;
         });
       Print() << "Derive finished for level " << lev << std::endl;
     }
