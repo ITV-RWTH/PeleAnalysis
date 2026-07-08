@@ -30,6 +30,8 @@ print_usage(int, char* argv[])
                "pltfile[DEF->_prog]\n";
   std::cerr << "\t     outname=string This is the name of the variable in the "
                "output [DEF->progVar]\n";
+  std::cerr << "\t     printSource=int Set to 0 to skip computing and writing "
+               "the source term I_R(<outname>) [DEF->1]\n";
   exit(1);
 }
 
@@ -69,10 +71,20 @@ main(int argc, char* argv[])
     Real burnt = 1;
     pp.get("burntVal", burnt);
 
+    if (burnt == unburnt) {
+      amrex::Abort(
+        "burntVal must differ from unburntVal (denominator is zero)");
+    }
+
     std::string outsuffix = "_prog";
     pp.get("outsuffix", outsuffix);
     std::string outname = "progVar";
     pp.get("outname", outname);
+
+    // By default the progress-variable source term I_R(<outname>) is written.
+    // Set printSource=0 to output only specSum and the progress variable.
+    int printSource = 1;
+    pp.query("printSource", printSource);
 
     DataServices::SetBatchMode();
     Amrvis::FileType fileType(Amrvis::NEWPLT);
@@ -112,32 +124,37 @@ main(int argc, char* argv[])
       }
     }
 
-    // Get ids of production rates I_R(<species>) for each species
+    // Get ids of production rates I_R(<species>) for each species (only needed
+    // when the source term is requested)
     Vector<int> idIR(nSpec, -1);
-    for (int j = 0; j < nSpec; ++j) {
-      // Strip "Y(" prefix and ")" suffix if present, e.g. "Y(H2)" -> "H2"
-      std::string specBase = species[j];
-      if (
-        specBase.size() > 2 && specBase.substr(0, 2) == "Y(" &&
-        specBase.back() == ')') {
-        specBase = specBase.substr(2, specBase.size() - 3);
-      }
+    if (printSource) {
+      for (int j = 0; j < nSpec; ++j) {
+        // Strip "Y(" prefix and ")" suffix if present, e.g. "Y(H2)" -> "H2"
+        std::string specBase = species[j];
+        if (
+          specBase.size() > 2 && specBase.substr(0, 2) == "Y(" &&
+          specBase.back() == ')') {
+          specBase = specBase.substr(2, specBase.size() - 3);
+        }
 
-      std::string irName = "I_R(" + specBase + ")";
-      for (int i = 0; i < (int)inNames.size(); ++i) {
-        if (inNames[i] == irName)
-          idIR[j] = i;
-      }
-      if (idIR[j] < 0) {
-        amrex::Abort("Production rate " + irName + " not found in plotfile");
+        std::string irName = "I_R(" + specBase + ")";
+        for (int i = 0; i < (int)inNames.size(); ++i) {
+          if (inNames[i] == irName)
+            idIR[j] = i;
+        }
+        if (idIR[j] < 0) {
+          amrex::Abort("Production rate " + irName + " not found in plotfile");
+        }
       }
     }
 
     Vector<MultiFab> outdata(Nlev);
     Vector<Geometry> geoms(Nlev);
     int nGrow = 0;
-    // Output: specSum, progVar, I_R(progVar)
-    Vector<std::string> outNames = {"specSum", outname, "I_R(" + outname + ")"};
+    // Output: specSum, progVar, and optionally I_R(progVar)
+    Vector<std::string> outNames = {"specSum", outname};
+    if (printSource)
+      outNames.push_back("I_R(" + outname + ")");
 
     Vector<int> destFillComps(nCompIn);
     for (int i = 0; i < nCompIn; ++i)
@@ -151,7 +168,7 @@ main(int argc, char* argv[])
       outdata[lev] = MultiFab(ba, dm, outNames.size(), nGrow);
       MultiFab indata(ba, dm, nCompIn, nGrow);
 
-      int coord = 0;
+      int coord = amrData.CoordSys();
       geoms[lev] =
         Geometry(amrData.ProbDomain()[lev], &rb, coord, &(is_per[0]));
 
@@ -165,11 +182,15 @@ main(int argc, char* argv[])
         amrex::Gpu::hostToDevice, idY.begin(), idY.end(), d_idY.begin());
       int const* idY_d = d_idY.data();
 
-      // Copy production rate index arrays to device
-      amrex::Gpu::DeviceVector<int> d_idIR(idIR.size());
-      amrex::Gpu::copy(
-        amrex::Gpu::hostToDevice, idIR.begin(), idIR.end(), d_idIR.begin());
-      int const* idIR_d = d_idIR.data();
+      // Copy production rate index arrays to device (only when writing source)
+      amrex::Gpu::DeviceVector<int> d_idIR;
+      int const* idIR_d = nullptr;
+      if (printSource) {
+        d_idIR.resize(idIR.size());
+        amrex::Gpu::copy(
+          amrex::Gpu::hostToDevice, idIR.begin(), idIR.end(), d_idIR.begin());
+        idIR_d = d_idIR.data();
+      }
 
       Real denom = burnt - unburnt;
 
@@ -194,11 +215,13 @@ main(int argc, char* argv[])
 
             // Production rate of progress variable:
             // I_R(C) = Sum( I_R(species) ) / (burnt - unburnt)
-            Real irSum = 0.0_rt;
-            for (int s = 0; s < nSpec; ++s) {
-              irSum += in_a(i, j, k, idIR_d[s]);
+            if (printSource) {
+              Real irSum = 0.0_rt;
+              for (int s = 0; s < nSpec; ++s) {
+                irSum += in_a(i, j, k, idIR_d[s]);
+              }
+              out_a(i, j, k, 2) = irSum / denom;
             }
-            out_a(i, j, k, 2) = irSum / denom;
           });
       }
     }

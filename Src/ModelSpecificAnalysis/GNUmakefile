@@ -30,6 +30,7 @@ TINY_PROFILE = FALSE
 #EBASE=plotYtoX
 #EBASE=testQPDtools
 #EBASE=plotTransportCoeff
+#EBASE=computeMixtureFraction
 EBASE=plotZCelem
 
 CEXE_sources += $(EBASE).cpp
