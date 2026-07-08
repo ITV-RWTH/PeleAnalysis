@@ -13,9 +13,10 @@
 #include <string>
 #include <iostream>
 
-//optimalEstimatorANN.cpp
+// optimalEstimatorANN.cpp
 
-struct Net : torch::nn::Module {
+struct Net : torch::nn::Module
+{
 public:
   // Constructor declaration
   Net(int input_size, amrex::Vector<int> neurons, int output_size);
@@ -25,19 +26,18 @@ public:
 
 private:
   // Forward pass declaration
-  //torch::Tensor tansig(torch::Tensor x);
+  // torch::Tensor tansig(torch::Tensor x);
   torch::Tensor activate(torch::Tensor x);
 
   // Function to initialize weights
   void initializeWeights();
 
   // Declare layers
-  //torch::nn::Linearfc1{nullptr}, fc2{nullptr}, fc3{nullptr}; // Add more layers if needed
+  // torch::nn::Linearfc1{nullptr}, fc2{nullptr}, fc3{nullptr}; // Add more
+  // layers if needed
 
   int n_layers;
   amrex::Vector<torch::nn::Linear> layers;
 };
 
 #endif
-
-
