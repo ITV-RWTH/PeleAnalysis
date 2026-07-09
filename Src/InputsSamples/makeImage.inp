@@ -37,3 +37,4 @@ goPastMax = 1                              # [0, 1], DEF: 1; jet only: values ab
 #zslice = 128                              # by cell index.
 #ysliceCoord = 0.01                        # by physical coordinate (nearest cell).
 #xsliceCoord = -0.002                      # by physical coordinate (nearest cell).
+#zsliceCoord = -0.002                      # by physical coordinate (nearest cell).
