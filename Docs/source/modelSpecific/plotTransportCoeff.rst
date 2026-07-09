@@ -66,6 +66,12 @@ The flag `verbose` enables additional console output from the AMReX data service
    Aux_Variables = density                    # DEF: none; variables copied unchanged to output
 
 `Aux_Variables` lists variables that are copied unchanged from the input to the output plot file, appended after the computed transport coefficients. This is useful for carrying through fields (such as ``density`` or ``temp``) that the tool does not otherwise write. The variables must exist in the input plot file. Default: none.
+::
+
+   #------------------- Output control -------------------------------------------------------
+   n_files = 64                               # DEF: AMReX default; cap on the number of plotfile data files
+
+`n_files` caps the number of binary files used to write the output plot file data (AMReX ``VisMF::SetNOutFiles``). Lower it to reduce the number of files created for large parallel post-processing runs. AMReX clamps the value to the number of MPI ranks, so a serial run always writes a single data file. Default: the AMReX default.
 
 Output
 ######
