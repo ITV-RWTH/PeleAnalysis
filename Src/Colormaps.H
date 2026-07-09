@@ -13,7 +13,7 @@
 // -------------------------------------------------------------------------
 // The RGB values in this file were sampled from the Matplotlib colormaps
 // (https://matplotlib.org) and are redistributed under the licenses of their
-// original authors. Full license texts live in Src/ThirdPartyNotices/.
+// original authors. Full license texts live in licenses/.
 //
 //   * ColorBrewer colormaps -- the "Sequential" group (Greys, Purples,
 //     Blues, Greens, Oranges, Reds, YlOrBr, YlOrRd, OrRd, PuRd, RdPu, BuPu,
@@ -21,12 +21,12 @@
 //     PRGn, BrBG, PuOr, RdGy, RdBu, RdYlBu, RdYlGn and Spectral -- are
 //     Copyright (c) 2002 Cynthia Brewer, Mark Harrower, and The
 //     Pennsylvania State University, licensed under the Apache License,
-//     Version 2.0. See Src/ThirdPartyNotices/LICENSE_COLORBREWER.
+//     Version 2.0. See licenses/LICENSE_COLORBREWER.
 //   * The remaining maps (binary, gist_yarg, gist_gray, gray, bone, pink,
 //     spring, summer, autumn, winter, cool, Wistia, hot, afmhot, gist_heat,
 //     copper, bwr, seismic) are from Matplotlib, Copyright (c) 2012-
 //     Matplotlib Development Team, under the Matplotlib license. See
-//     Src/ThirdPartyNotices/LICENSE_MATPLOTLIB.
+//     licenses/LICENSE_MATPLOTLIB.
 //   * "coolwarm" is by Kenneth Moreland ("Diverging Color Maps for
 //     Scientific Visualization", https://www.kennethmoreland.com/color-maps/),
 //     redistributed via Matplotlib under the Matplotlib license.

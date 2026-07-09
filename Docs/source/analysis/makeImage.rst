@@ -143,7 +143,7 @@ each one looks like.
    Mark Harrower and The Pennsylvania State University under the Apache License
    2.0; the remaining maps are © the Matplotlib Development Team under the
    Matplotlib license; ``coolwarm`` is by Kenneth Moreland. The full license
-   texts and the map-to-license mapping are in ``Src/ThirdPartyNotices/``.
+   texts and the map-to-license mapping are in ``licenses/``.
 
 Image Orientation
 #################
