@@ -15,6 +15,7 @@
 // of PeleAnalysis builds.
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <iostream>
@@ -44,7 +45,7 @@ print_usage(int, char* argv[])
        "render\n\n"
 
     << "Options:\n"
-    << "  format=ppm|png          Output image format (DEF: ppm)\n"
+    << "  format=ppm|png|pdf      Output image format (DEF: ppm)\n"
     << "  colormap=jet|grayscale  Colormap (DEF: jet)\n"
     << "  reverse=0|1             Reverse the colormap direction (DEF: 0)\n"
     << "  goPastMax=0|1           jet only: extend past the max into "
@@ -56,8 +57,10 @@ print_usage(int, char* argv[])
     << "  outputDir=DIR           Directory for the images (DEF: current "
        "dir)\n"
 #if (AMREX_SPACEDIM == 3)
-    << "  xslice=I|yslice=J|zslice=K  3-D slice plane (index at finest level; "
-       "DEF: yslice=0)\n"
+    << "  xslice=I|yslice=J|zslice=K  3-D slice plane by cell index at finest "
+       "level (DEF: yslice=0)\n"
+    << "  xsliceCoord=X|ysliceCoord=Y|zsliceCoord=Z  3-D slice plane by "
+       "physical coordinate (nearest cell)\n"
 #endif
     << "  verbose                 Enable verbose plotfile I/O\n"
     << "  -h, --help              Show this help message\n\n"
@@ -321,6 +324,83 @@ WritePNG(
   return true;
 }
 
+// Write a minimal single-page PDF that embeds the image as an uncompressed
+// 8-bit RGB image XObject (top row first). No external library is needed; the
+// page is sized so one pixel maps to one PDF point.
+static bool
+WritePDF(
+  const std::string& path,
+  int width,
+  int height,
+  const std::vector<unsigned char>& rgb)
+{
+  std::vector<unsigned char> buf;
+  auto put = [&](const std::string& s) {
+    buf.insert(buf.end(), s.begin(), s.end());
+  };
+  auto pad10 = [](size_t v) {
+    std::string s = std::to_string(v);
+    return std::string(s.size() < 10 ? 10 - s.size() : 0, '0') + s;
+  };
+
+  put("%PDF-1.4\n");
+  put("%\xE2\xE3\xCF\xD3\n"); // binary-content marker
+
+  const int nobj = 5;
+  std::vector<size_t> off;
+
+  off.push_back(buf.size());
+  put("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+
+  off.push_back(buf.size());
+  put("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+
+  off.push_back(buf.size());
+  put(
+    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " +
+    std::to_string(width) + " " + std::to_string(height) +
+    "] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\n"
+    "endobj\n");
+
+  off.push_back(buf.size());
+  {
+    const size_t n = (size_t)width * height * 3;
+    put(
+      "4 0 obj\n<< /Type /XObject /Subtype /Image /Width " +
+      std::to_string(width) + " /Height " + std::to_string(height) +
+      " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length " +
+      std::to_string(n) + " >>\nstream\n");
+    buf.insert(buf.end(), rgb.begin(), rgb.end());
+    put("\nendstream\nendobj\n");
+  }
+
+  off.push_back(buf.size());
+  {
+    const std::string content = "q\n" + std::to_string(width) + " 0 0 " +
+                                std::to_string(height) +
+                                " 0 0 cm\n/Im0 Do\nQ\n";
+    put(
+      "5 0 obj\n<< /Length " + std::to_string(content.size()) +
+      " >>\nstream\n" + content + "endstream\nendobj\n");
+  }
+
+  const size_t xrefPos = buf.size();
+  put("xref\n0 " + std::to_string(nobj + 1) + "\n");
+  put("0000000000 65535 f \n");
+  for (int i = 0; i < nobj; ++i)
+    put(pad10(off[i]) + " 00000 n \n");
+  put(
+    "trailer\n<< /Size " + std::to_string(nobj + 1) +
+    " /Root 1 0 R >>\nstartxref\n" + std::to_string(xrefPos) + "\n%%EOF\n");
+
+  FILE* fp = fopen(path.c_str(), "wb");
+  if (fp == nullptr)
+    return false;
+  fwrite(buf.data(), 1, buf.size(), fp);
+  fclose(fp);
+  return true;
+}
+
 int
 main(int argc, char* argv[])
 {
@@ -373,9 +453,9 @@ main(int argc, char* argv[])
 
     std::string format = "ppm";
     pp.query("format", format);
-    if (format != "ppm" && format != "png")
-      amrex::Abort("Unknown format '" + format + "' (use ppm or png)");
-    const std::string ext = (format == "png") ? ".png" : ".ppm";
+    if (format != "ppm" && format != "png" && format != "pdf")
+      amrex::Abort("Unknown format '" + format + "' (use ppm, png or pdf)");
+    const std::string ext = "." + format;
 
     std::string colormap = "jet";
     pp.query("colormap", colormap);
@@ -452,34 +532,50 @@ main(int argc, char* argv[])
       std::string sliceTag;
       int islice = -1, sliceDir = -1;
       std::string sliceStr;
-      int xslice = -1, yslice = -1, zslice = -1;
-      pp.query("xslice", xslice);
-      pp.query("yslice", yslice);
-      pp.query("zslice", zslice);
-      if (xslice > -1) {
-        islice = xslice;
-        sliceDir = Amrvis::XDIR;
-        sliceStr = "X";
-      }
-      if (yslice > -1) {
-        if (sliceDir != -1)
-          amrex::Abort("Specify only one of xslice/yslice/zslice");
-        islice = yslice;
-        sliceDir = Amrvis::YDIR;
-        sliceStr = "Y";
-      }
-      if (zslice > -1) {
-        if (sliceDir != -1)
-          amrex::Abort("Specify only one of xslice/yslice/zslice");
-        islice = zslice;
-        sliceDir = Amrvis::ZDIR;
-        sliceStr = "Z";
+      const Box& fineDom = probDomain[finestLevel];
+      const char* dirName[3] = {"X", "Y", "Z"};
+      const char* dirPfx[3] = {"x", "y", "z"};
+
+      // A slice plane can be given per direction either as a cell index
+      // (x/y/zslice) or as a physical coordinate (x/y/zsliceCoord), the latter
+      // snapped to the nearest cell of the level in use. At most one direction
+      // may be specified.
+      for (int d = 0; d < 3; ++d) {
+        int idxVal = 0;
+        bool haveThis = false;
+        const std::string idxOpt = std::string(dirPfx[d]) + "slice";
+        const std::string crdOpt = std::string(dirPfx[d]) + "sliceCoord";
+        if (pp.countval(idxOpt.c_str()) > 0) {
+          pp.get(idxOpt.c_str(), idxVal);
+          haveThis = true;
+        }
+        if (pp.countval(crdOpt.c_str()) > 0) {
+          Real coord;
+          pp.get(crdOpt.c_str(), coord);
+          const Real plo = amrData.ProbLo()[d];
+          const Real dx = amrData.DxLevel()[finestLevel][d];
+          // Nearest cell center: center of cell j is plo + (j + 0.5) * dx.
+          idxVal = (int)std::lround((coord - plo) / dx - 0.5);
+          haveThis = true;
+        }
+        if (haveThis) {
+          if (sliceDir != -1)
+            amrex::Abort("Specify only one slice plane (one of x/y/zslice or "
+                         "x/y/zsliceCoord)");
+          sliceDir = d;
+          islice = idxVal;
+          sliceStr = dirName[d];
+        }
       }
       if (sliceDir == -1) { // default: yslice=0
         sliceDir = Amrvis::YDIR;
         islice = 0;
         sliceStr = "Y";
       }
+      // Keep the plane inside the domain (guards out-of-range indices and
+      // coordinates that round just past the boundary).
+      islice = std::max(
+        fineDom.smallEnd(sliceDir), std::min(fineDom.bigEnd(sliceDir), islice));
       tempBox.setSmall(sliceDir, islice);
       tempBox.setBig(sliceDir, islice);
       sliceTag = "_" + sliceStr + std::to_string(islice);
@@ -554,9 +650,13 @@ main(int argc, char* argv[])
           if (!outputDir.empty() && outputDir != ".")
             fname = outputDir + "/" + fname;
 
-          const bool ok = (format == "png")
-                            ? WritePNG(fname, width, height, rgb)
-                            : WritePPM(fname, width, height, rgb);
+          bool ok = false;
+          if (format == "png")
+            ok = WritePNG(fname, width, height, rgb);
+          else if (format == "pdf")
+            ok = WritePDF(fname, width, height, rgb);
+          else
+            ok = WritePPM(fname, width, height, rgb);
           if (!ok)
             amrex::Abort("Could not write image file: " + fname);
           if (verbose)

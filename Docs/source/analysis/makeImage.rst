@@ -10,7 +10,7 @@ image file. It is a quick way to eyeball a field without opening VisIt or
 ParaView, and to batch-generate frames for animations.
 
 The tool is written to be **dependency-free**: it needs nothing beyond what the
-rest of PeleAnalysis already links against. It can write two formats:
+rest of PeleAnalysis already links against. It can write three formats:
 
 * **PPM** (``P6``, the default) — an uncompressed raw raster that every image
   viewer and converter understands.
@@ -18,6 +18,9 @@ rest of PeleAnalysis already links against. It can write two formats:
   needed). The PNG pixel data is stored *uncompressed*, so the files are valid
   but larger than a typical PNG; see `Compressing the output`_ below to shrink
   them.
+* **PDF** — a single page holding the raster, written by a small self-contained
+  encoder. The image is embedded uncompressed and sized so one pixel maps to one
+  PDF point; handy for dropping a field straight into a document.
 
 Usage: ::
 
@@ -41,7 +44,7 @@ Tool Options
    infile    = plt00000 plt00100          # One or more plotfiles (space separated); required
    vars      = temp Y(H2)                 # Space-separated variable list; required
    outputDir = images                     # DEF: current dir; created if it does not exist
-   format    = ppm                        # [ppm, png], DEF: ppm
+   format    = ppm                        # [ppm, png, pdf], DEF: ppm
 
 ``infile`` accepts a list of plotfiles; ``makeImage`` loops over all of them.
 ``vars`` is a space-separated list of variables. Both **stored** components and
@@ -82,20 +85,26 @@ rather than dividing by zero.
 
    #------------------- Level / slice control ------------------------------------------------
    #finestLevel = 0                       # DEF: finest level in the file
-   #yslice = 0                            # 3-D only; DEF (3-D): yslice=0
-   #xslice = 64                           # 3-D only
-   #zslice = 128                          # 3-D only
+   #yslice = 0                            # 3-D only; slice by cell index; DEF (3-D): yslice=0
+   #xslice = 64                           # 3-D only; slice by cell index
+   #zslice = 128                          # 3-D only; slice by cell index
+   #ysliceCoord = 0.01                    # 3-D only; slice by physical coordinate (nearest cell)
+   #xsliceCoord = -0.002                  # 3-D only; slice by physical coordinate (nearest cell)
 
 ``finestLevel`` caps the AMR level used to build the image (the data is sampled
 on the uniform grid of that level); by default the finest level present in the
 file is used, giving the highest-resolution picture.
 
-In a **3-D** build the domain must be reduced to a plane. Specify exactly one of
-``xslice``, ``yslice`` or ``zslice`` as the cell index (at the level used) of
-the plane to extract; the default is ``yslice=0``. The two in-plane directions
-become the image width and height. The slice appears in the output filename,
-e.g. ``plt00100_temp_Y0.png``. In a **2-D** build these options are ignored and
-the whole domain is rendered.
+In a **3-D** build the domain must be reduced to a plane. Specify exactly one
+plane, either by **cell index** with ``xslice``/``yslice``/``zslice`` (index at
+the level used) or by **physical coordinate** with
+``xsliceCoord``/``ysliceCoord``/``zsliceCoord`` (the value is snapped to the
+nearest cell of the level used); the default is ``yslice=0``. Giving more than
+one plane aborts. Coordinates that fall outside the domain are clamped to the
+nearest boundary cell. The two in-plane directions become the image width and
+height, and the slice appears in the output filename, e.g.
+``plt00100_temp_Y0.png``. In a **2-D** build these options are ignored and the
+whole domain is rendered.
 
 Image Orientation
 #################
@@ -111,7 +120,8 @@ Output
 
 One 8-bit RGB image per plotfile/variable, written to ``outputDir`` (default:
 the current directory). PPM files can be opened directly by most image tools;
-PNG files open anywhere.
+PNG and PDF files open anywhere. PNG and PDF embed the pixels uncompressed (see
+below to shrink them).
 
 Compressing the output
 ======================

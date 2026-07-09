@@ -5,7 +5,7 @@ infile = plt00000                          # One or more AMReX plotfiles (space
                                            # separated). One image is written per
                                            # plotfile and variable.
 outputDir = images                         # DEF: current dir; created if needed.
-format = png                               # [ppm, png], DEF: ppm; output format.
+format = png                               # [ppm, png, pdf], DEF: ppm; output format.
 
 #------------------- Variables ------------------------------------------------------------
 vars = temp Y(H2)                          # Space-separated variable list. Stored
@@ -26,7 +26,10 @@ goPastMax = 1                              # [0, 1], DEF: 1; jet only: values ab
 #------------------- Level / slice control ------------------------------------------------
 #finestLevel = 0                           # DEF: finest level in the file; cap the
                                            # AMR level used to build the image.
-# 3-D builds only: pick exactly one slice plane (index at the finest level used).
-#yslice = 0                                # DEF (3-D): yslice=0.
-#xslice = 64
-#zslice = 128
+# 3-D builds only: pick exactly one slice plane, either by cell index (at the
+# finest level used) or by physical coordinate (snapped to the nearest cell).
+#yslice = 0                                # DEF (3-D): yslice=0; by cell index.
+#xslice = 64                               # by cell index.
+#zslice = 128                              # by cell index.
+#ysliceCoord = 0.01                        # by physical coordinate (nearest cell).
+#xsliceCoord = -0.002                      # by physical coordinate (nearest cell).
