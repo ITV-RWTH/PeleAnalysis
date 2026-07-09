@@ -42,6 +42,12 @@ Tool Options
    verbose                                    # Enable verbose output during data loading
 
 `verbose` enables additional console output from the AMReX data services layer during file reading. It takes no value and is activated simply by its presence in the input file or on the command line.
+::
+
+   #------------------- Auxiliary variables --------------------------------------------------
+   Aux_Variables = density                    # DEF: none; variables copied unchanged to output
+
+`Aux_Variables` lists variables that are copied unchanged from the input to the output plot file, appended after ``temp`` and ``dtemp``. This is useful for carrying through fields (such as ``density``) that the tool does not otherwise write. The variables must exist in the input plot file. Default: none.
 
 Output
 ######

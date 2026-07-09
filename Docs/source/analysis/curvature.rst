@@ -58,7 +58,7 @@ Parameters
    Finest AMR level to be processed.
 
 ``Aux_Variables``
-   Variable IDs copied unchanged from input to output plotfile.
+   Names of variables copied unchanged from input to output plotfile.
 
 ``progressName``
    Name of the progress variable.
