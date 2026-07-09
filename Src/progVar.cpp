@@ -6,6 +6,7 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_DataServices.H>
 #include <AMReX_PlotFileUtil.H>
+#include <AMReX_VisMF.H>
 
 using namespace amrex;
 
@@ -86,7 +87,6 @@ main(int argc, char* argv[])
     int printSource = 1;
     pp.query("printSource", printSource);
 
-    DataServices::SetBatchMode();
     // Auxiliary variables: names of variables copied unchanged from the input
     // plotfile to the output plotfile (see Aux_Variables in the documentation).
     int nAuxVar = pp.countval("Aux_Variables");
@@ -95,6 +95,7 @@ main(int argc, char* argv[])
       pp.get("Aux_Variables", auxVar[ivar], ivar);
     }
 
+    DataServices::SetBatchMode();
     Amrvis::FileType fileType(Amrvis::NEWPLT);
 
     DataServices dataServices(plotFileName, fileType);
@@ -120,7 +121,6 @@ main(int argc, char* argv[])
     int nCompIn = amrData.NComp();
     Vector<std::string> inNames = amrData.PlotVarNames();
 
-    // Get ids of relevant species (mass fractions)
     // Resolve the component index of each auxiliary variable in the input file
     Vector<int> auxIdx(nAuxVar, -1);
     for (int ivar = 0; ivar < nAuxVar; ++ivar) {
@@ -130,6 +130,7 @@ main(int argc, char* argv[])
       }
     }
 
+    // Get ids of relevant species (mass fractions)
     Vector<int> idY(nSpec, -1);
     for (int j = 0; j < nSpec; ++j) {
       for (int i = 0; i < (int)inNames.size(); ++i) {
@@ -173,13 +174,13 @@ main(int argc, char* argv[])
     if (printSource)
       outNames.push_back("I_R(" + outname + ")");
 
-    Vector<int> destFillComps(nCompIn);
     // Auxiliary variables are appended, unchanged, after the computed fields
     const int nBaseOut = outNames.size();
     for (int ivar = 0; ivar < nAuxVar; ++ivar) {
       outNames.push_back(auxVar[ivar]);
     }
 
+    Vector<int> destFillComps(nCompIn);
     for (int i = 0; i < nCompIn; ++i)
       destFillComps[i] = i;
 
@@ -247,15 +248,21 @@ main(int argc, char* argv[])
             }
           });
       }
-    }
 
       // Copy auxiliary variables unchanged from the input to the output
       for (int ivar = 0; ivar < nAuxVar; ++ivar) {
         MultiFab::Copy(
           outdata[lev], indata, auxIdx[ivar], nBaseOut + ivar, 1, nGrow);
       }
+    }
 
     std::string outfile(getFileRoot(plotFileName) + outsuffix);
+
+    // Cap the number of plotfile data files via the n_files option (AMReX)
+    int n_files = amrex::VisMF::GetNOutFiles();
+    pp.query("n_files", n_files);
+    amrex::VisMF::SetNOutFiles(n_files);
+
     Print() << "Writing new data to " << outfile << std::endl;
     Vector<int> isteps(Nlev, 0);
     Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});

@@ -6,6 +6,7 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_DataServices.H>
 #include <AMReX_PlotFileUtil.H>
+#include <AMReX_VisMF.H>
 #include <AMReX_BCRec.H>
 #include <AMReX_Interpolater.H>
 
@@ -79,7 +80,6 @@ main(int argc, char* argv[])
     pp.query("finestLevel", finestLevel);
     int Nlev = finestLevel + 1;
 
-    int idYin = -1;
     // Auxiliary variables: names copied unchanged from input to output plotfile
     int nAuxVar = pp.countval("Aux_Variables");
     Vector<std::string> auxVar(nAuxVar);
@@ -87,6 +87,7 @@ main(int argc, char* argv[])
       pp.get("Aux_Variables", auxVar[ivar], ivar);
     }
 
+    int idYin = -1;
     int idTin = -1;
     int idRin = -1;
     Vector<std::string> spec_names;
@@ -137,7 +138,6 @@ main(int argc, char* argv[])
     outNames[idXiout] = "xi";
     outNames[idLamout] = "lambda";
 
-    Vector<std::unique_ptr<MultiFab>> outdata(Nlev);
     // Auxiliary variables are read into the input MultiFab and appended,
     // unchanged, to the output plotfile after the computed fields
     for (int ivar = 0; ivar < nAuxVar; ++ivar) {
@@ -149,6 +149,7 @@ main(int argc, char* argv[])
       outNames[idAuxOut + ivar] = auxVar[ivar];
     }
 
+    Vector<std::unique_ptr<MultiFab>> outdata(Nlev);
     Vector<Geometry> geoms(Nlev);
     amrex::RealBox real_box(
       {AMREX_D_DECL(
@@ -198,7 +199,6 @@ main(int argc, char* argv[])
             tbx, Y_a, T_a, rho_a, D_a, chi_a, mu_a, xi_a, lam_a, ltransparm);
         });
       }
-      Print() << "Derive finished for level " << lev << std::endl;
 
       // Copy auxiliary variables unchanged from the input to the output
       for (int ivar = 0; ivar < nAuxVar; ++ivar) {
@@ -206,9 +206,16 @@ main(int argc, char* argv[])
           *outdata[lev], indata, idAuxLocal + ivar, idAuxOut + ivar, 1, nGrow);
       }
 
+      Print() << "Derive finished for level " << lev << std::endl;
     }
 
     std::string outfile(getFileRoot(plotFileName) + "_D");
+
+    // Cap the number of plotfile data files via the n_files option (AMReX)
+    int n_files = amrex::VisMF::GetNOutFiles();
+    pp.query("n_files", n_files);
+    amrex::VisMF::SetNOutFiles(n_files);
+
     Print() << "Writing new data to " << outfile << std::endl;
     Vector<int> isteps(Nlev, 0);
     Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});

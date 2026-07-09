@@ -5,6 +5,7 @@
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
 #include <AMReX_DataServices.H>
+#include <AMReX_VisMF.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
 #include <PelePhysics.H>
@@ -95,7 +96,6 @@ main(int argc, char* argv[])
     constexpr int idZlocal = 0; // Z out here
     outNames[idZlocal] = "Z";
 
-    Vector<MultiFab> outdata(Nlev);
     // Auxiliary variables are read into the input MultiFab and appended,
     // unchanged, to the output plotfile after the computed field
     for (int ivar = 0; ivar < nAuxVar; ++ivar) {
@@ -107,6 +107,7 @@ main(int argc, char* argv[])
       outNames[idAuxOut + ivar] = auxVar[ivar];
     }
 
+    Vector<MultiFab> outdata(Nlev);
     Vector<Geometry> geoms(Nlev);
     RealBox rb(&(amrData.ProbLo()[0]), &(amrData.ProbHi()[0]));
     constexpr int nGrow = 0;
@@ -198,7 +199,6 @@ main(int argc, char* argv[])
           }
           out_ma[box_no](i, j, k, idZlocal) = (Zloc - Zox) * denom_inv;
         });
-      Print() << "Derive finished for level " << lev << std::endl;
 
       // Copy auxiliary variables unchanged from the input to the output
       for (int ivar = 0; ivar < nAuxVar; ++ivar) {
@@ -206,9 +206,16 @@ main(int argc, char* argv[])
           outdata[lev], indata, idAuxLocal + ivar, idAuxOut + ivar, 1, nGrow);
       }
 
+      Print() << "Derive finished for level " << lev << std::endl;
     }
 
     std::string outfile(getFileRoot(plotFileName) + outsuffix);
+
+    // Cap the number of plotfile data files via the n_files option (AMReX)
+    int n_files = amrex::VisMF::GetNOutFiles();
+    pp.query("n_files", n_files);
+    amrex::VisMF::SetNOutFiles(n_files);
+
     Print() << "Writing new data to " << outfile << std::endl;
     Vector<int> isteps(Nlev, 0);
     Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});
