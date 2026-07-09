@@ -28,6 +28,8 @@
 #include <AMReX_ParmParse.H>
 #include <AMReX_Utility.H>
 
+#include <Colormaps.H>
+
 using namespace amrex;
 
 static void
@@ -46,7 +48,8 @@ print_usage(int, char* argv[])
 
     << "Options:\n"
     << "  format=ppm|png|pdf      Output image format (DEF: ppm)\n"
-    << "  colormap=jet|grayscale  Colormap (DEF: jet)\n"
+    << "  colormap=NAME           jet, grayscale, or a matplotlib colormap "
+       "(see docs); DEF: jet\n"
     << "  reverse=0|1             Reverse the colormap direction (DEF: 0)\n"
     << "  goPastMax=0|1           jet only: extend past the max into "
        "magenta/white (DEF: 1)\n"
@@ -459,9 +462,13 @@ main(int argc, char* argv[])
 
     std::string colormap = "jet";
     pp.query("colormap", colormap);
-    if (colormap != "jet" && colormap != "grayscale")
+    const bool builtinCmap = (colormap == "jet" || colormap == "grayscale");
+    const int cmapIdx =
+      builtinCmap ? -1 : pele_colormaps::colormapIndex(colormap);
+    if (!builtinCmap && cmapIdx < 0)
       amrex::Abort(
-        "Unknown colormap '" + colormap + "' (use jet or grayscale)");
+        "Unknown colormap '" + colormap + "'. Available: jet grayscale " +
+        pele_colormaps::availableColormaps());
 
     std::string outputDir = ".";
     pp.query("outputDir", outputDir);
@@ -632,7 +639,9 @@ main(int argc, char* argv[])
                 t = 1.0 - t;
               const Real c = std::max(Real(0.0), std::min(cmax, t));
               unsigned char r, g, b;
-              if (colormap == "grayscale")
+              if (cmapIdx >= 0)
+                pele_colormaps::sampleColormap(cmapIdx, c, r, g, b);
+              else if (colormap == "grayscale")
                 ColormapGray(c, r, g, b);
               else
                 ColormapJet(c, goPastMax, r, g, b);

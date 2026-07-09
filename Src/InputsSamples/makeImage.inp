@@ -12,7 +12,11 @@ vars = temp Y(H2)                          # Space-separated variable list. Stor
                                            # or derived quantities are both allowed.
 
 #------------------- Colormap -------------------------------------------------------------
-colormap = jet                             # [jet, grayscale], DEF: jet.
+colormap = jet                             # DEF: jet. Built in: jet, grayscale.
+                                           # Also bundled (see docs / Colormaps.H):
+                                           # matplotlib Sequential, Sequential 2 and
+                                           # Diverging maps, e.g. Blues, hot, RdBu,
+                                           # coolwarm, Spectral, ...
 reverse = 0                                # [0, 1], DEF: 0; reverse the colormap.
 goPastMax = 1                              # [0, 1], DEF: 1; jet only: values above
                                            # the max ramp through magenta to white.

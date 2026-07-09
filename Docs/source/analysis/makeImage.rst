@@ -56,19 +56,20 @@ variable name is replaced by ``_``). For example ``plt00100`` and
 ::
 
    #------------------- Colormap -------------------------------------------------------------
-   colormap  = jet                        # [jet, grayscale], DEF: jet
+   colormap  = jet                        # DEF: jet; see the list below
    reverse   = 0                          # [0, 1], DEF: 0; reverse the colormap direction
    goPastMax = 1                          # [0, 1], DEF: 1; jet only (see below)
 
-``colormap=jet`` is the classic blue → cyan → green → yellow → red ramp.
-``colormap=grayscale`` maps low → black and high → white. ``reverse=1`` flips
+Two colormaps are built in: ``jet`` (the classic blue → cyan → green → yellow →
+red ramp) and ``grayscale`` (low → black, high → white). In addition, a set of
+Matplotlib colormaps is bundled (see `Colormaps`_ below). ``reverse=1`` flips
 the direction of whichever colormap is selected.
 
 ``goPastMax`` only affects ``jet``. When ``1`` (default), data values *above*
 the color-range maximum are not clipped to red but continue through magenta to
 white, which makes over-range regions visually obvious. When ``0``, everything
 above the maximum is drawn as a single dark red. ``goPastMax`` is ignored when
-``reverse=1``.
+``reverse=1`` and for all colormaps other than ``jet``.
 ::
 
    #------------------- Color range ----------------------------------------------------------
@@ -105,6 +106,44 @@ nearest boundary cell. The two in-plane directions become the image width and
 height, and the slice appears in the output filename, e.g.
 ``plt00100_temp_Y0.png``. In a **2-D** build these options are ignored and the
 whole domain is rendered.
+
+Colormaps
+#########
+
+Two colormaps are implemented directly in the tool:
+
+* ``jet`` (default) — blue → cyan → green → yellow → red, with the optional
+  ``goPastMax`` overshoot.
+* ``grayscale`` — low → black, high → white.
+
+In addition, a set of Matplotlib colormaps is bundled as lookup tables in
+``Src/Colormaps.H`` (a small, dependency-free, header-only file that other
+PeleAnalysis tools can reuse). Pass any of the names below to ``colormap=`` and
+combine with ``reverse=1`` if you want the opposite direction:
+
+* **Sequential:** ``Greys`` ``Purples`` ``Blues`` ``Greens`` ``Oranges``
+  ``Reds`` ``YlOrBr`` ``YlOrRd`` ``OrRd`` ``PuRd`` ``RdPu`` ``BuPu`` ``GnBu``
+  ``PuBu`` ``YlGnBu`` ``PuBuGn`` ``BuGn`` ``YlGn``
+* **Sequential (2):** ``binary`` ``gist_yarg`` ``gist_gray`` ``gray`` ``bone``
+  ``pink`` ``spring`` ``summer`` ``autumn`` ``winter`` ``cool`` ``Wistia``
+  ``hot`` ``afmhot`` ``gist_heat`` ``copper``
+* **Diverging:** ``PiYG`` ``PRGn`` ``BrBG`` ``PuOr`` ``RdGy`` ``RdBu``
+  ``RdYlBu`` ``RdYlGn`` ``Spectral`` ``coolwarm`` ``bwr`` ``seismic``
+
+These follow the Matplotlib groupings; see the `Matplotlib colormap reference
+<https://matplotlib.org/stable/users/explain/colors/colormaps.html>`_ for what
+each one looks like.
+
+.. note::
+
+   **Licensing.** The bundled color values were sampled from Matplotlib and are
+   redistributed under their original licenses: the ColorBrewer maps (all
+   *Sequential* maps plus ``PiYG``, ``PRGn``, ``BrBG``, ``PuOr``, ``RdGy``,
+   ``RdBu``, ``RdYlBu``, ``RdYlGn`` and ``Spectral``) are © 2002 Cynthia Brewer,
+   Mark Harrower and The Pennsylvania State University under the Apache License
+   2.0; the remaining maps are © the Matplotlib Development Team under the
+   Matplotlib license; ``coolwarm`` is by Kenneth Moreland. The full license
+   texts and the map-to-license mapping are in ``Src/ThirdPartyNotices/``.
 
 Image Orientation
 #################
