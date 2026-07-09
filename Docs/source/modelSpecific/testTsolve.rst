@@ -66,3 +66,7 @@ The output plot file ``<infile>_T`` contains two components at every grid point 
 
 A spatially uniform ``dtemp`` of zero confirms full EOS self-consistency. Large or spatially structured residuals indicate regions where the stored temperature is not consistent with the stored species composition under the compiled EOS.
 
+.. note::
+
+   ``testTsolve`` writes its output through the legacy ``WritePlotFile`` writer, which always writes one data file per MPI rank. The ``n_files`` option available in most other tools therefore does not apply here.
+
