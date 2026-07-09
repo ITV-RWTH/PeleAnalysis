@@ -91,6 +91,7 @@ rather than dividing by zero.
    #zslice = 128                          # 3-D only; slice by cell index
    #ysliceCoord = 0.01                    # 3-D only; slice by physical coordinate (nearest cell)
    #xsliceCoord = -0.002                  # 3-D only; slice by physical coordinate (nearest cell)
+   #zsliceCoord = -0.002                  # 3-D only; slice by physical coordinate (nearest cell)
 
 ``finestLevel`` caps the AMR level used to build the image (the data is sampled
 on the uniform grid of that level); by default the finest level present in the
