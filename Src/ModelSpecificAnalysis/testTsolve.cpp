@@ -188,8 +188,8 @@ main(int argc, char* argv[])
 
     std::string outfile(getFileRoot(plotFileName) + "_T");
 
-    // NOTE: testTsolve uses the legacy WritePlotFile writer (one file per rank),
-    // so the n_files option does not apply here.
+    // NOTE: testTsolve uses the legacy WritePlotFile writer (one file per
+    // rank), so the n_files option does not apply here.
     Print() << "Writing new data to " << outfile << std::endl;
     const bool verb = false;
     WritePlotFile(GetVecOfPtrs(outdata), amrData, outfile, verb, outNames);

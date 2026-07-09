@@ -109,7 +109,7 @@ main(int argc, char* argv[])
       Print() << "Cannot find required data in pltfile" << std::endl;
 
     const int idLeout = 0;
-    const int idAuxLocal = NUM_SPECIES + 2;   // aux vars start here in input
+    const int idAuxLocal = NUM_SPECIES + 2;     // aux vars start here in input
     const int idAuxOut = idLeout + NUM_SPECIES; // aux vars start here in output
     const int nCompIn = NUM_SPECIES + 2 + nAuxVar;
     const int nCompOut = idLeout + NUM_SPECIES + nAuxVar;
