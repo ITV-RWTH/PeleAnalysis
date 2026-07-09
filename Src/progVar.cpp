@@ -87,6 +87,14 @@ main(int argc, char* argv[])
     pp.query("printSource", printSource);
 
     DataServices::SetBatchMode();
+    // Auxiliary variables: names of variables copied unchanged from the input
+    // plotfile to the output plotfile (see Aux_Variables in the documentation).
+    int nAuxVar = pp.countval("Aux_Variables");
+    Vector<std::string> auxVar(nAuxVar);
+    for (int ivar = 0; ivar < nAuxVar; ++ivar) {
+      pp.get("Aux_Variables", auxVar[ivar], ivar);
+    }
+
     Amrvis::FileType fileType(Amrvis::NEWPLT);
 
     DataServices dataServices(plotFileName, fileType);
@@ -113,6 +121,15 @@ main(int argc, char* argv[])
     Vector<std::string> inNames = amrData.PlotVarNames();
 
     // Get ids of relevant species (mass fractions)
+    // Resolve the component index of each auxiliary variable in the input file
+    Vector<int> auxIdx(nAuxVar, -1);
+    for (int ivar = 0; ivar < nAuxVar; ++ivar) {
+      auxIdx[ivar] = amrData.StateNumber(auxVar[ivar]);
+      if (auxIdx[ivar] < 0) {
+        amrex::Abort("Unknown auxiliary variable name: " + auxVar[ivar]);
+      }
+    }
+
     Vector<int> idY(nSpec, -1);
     for (int j = 0; j < nSpec; ++j) {
       for (int i = 0; i < (int)inNames.size(); ++i) {
@@ -157,6 +174,12 @@ main(int argc, char* argv[])
       outNames.push_back("I_R(" + outname + ")");
 
     Vector<int> destFillComps(nCompIn);
+    // Auxiliary variables are appended, unchanged, after the computed fields
+    const int nBaseOut = outNames.size();
+    for (int ivar = 0; ivar < nAuxVar; ++ivar) {
+      outNames.push_back(auxVar[ivar]);
+    }
+
     for (int i = 0; i < nCompIn; ++i)
       destFillComps[i] = i;
 
@@ -225,6 +248,12 @@ main(int argc, char* argv[])
           });
       }
     }
+
+      // Copy auxiliary variables unchanged from the input to the output
+      for (int ivar = 0; ivar < nAuxVar; ++ivar) {
+        MultiFab::Copy(
+          outdata[lev], indata, auxIdx[ivar], nBaseOut + ivar, 1, nGrow);
+      }
 
     std::string outfile(getFileRoot(plotFileName) + outsuffix);
     Print() << "Writing new data to " << outfile << std::endl;

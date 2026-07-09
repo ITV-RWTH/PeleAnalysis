@@ -80,6 +80,13 @@ main(int argc, char* argv[])
     int Nlev = finestLevel + 1;
 
     int idYin = -1;
+    // Auxiliary variables: names copied unchanged from input to output plotfile
+    int nAuxVar = pp.countval("Aux_Variables");
+    Vector<std::string> auxVar(nAuxVar);
+    for (int ivar = 0; ivar < nAuxVar; ++ivar) {
+      pp.get("Aux_Variables", auxVar[ivar], ivar);
+    }
+
     int idTin = -1;
     int idRin = -1;
     Vector<std::string> spec_names;
@@ -100,13 +107,15 @@ main(int argc, char* argv[])
     if (idYin < 0 || idTin < 0 || idRin < 0)
       Print() << "Cannot find required data in pltfile" << std::endl;
 
-    const int nCompIn = NUM_SPECIES + 2;
     const int idDout = 0;
     const int idChiout = idDout + NUM_SPECIES;
     const int idMuout = idChiout + NUM_SPECIES;
     const int idXiout = idMuout + 1;
     const int idLamout = idXiout + 1;
-    const int nCompOut = idLamout + 1;
+    const int idAuxLocal = NUM_SPECIES + 2; // aux vars start here in input
+    const int idAuxOut = idLamout + 1;      // aux vars start here in output
+    const int nCompIn = NUM_SPECIES + 2 + nAuxVar;
+    const int nCompOut = idLamout + 1 + nAuxVar;
 
     Vector<std::string> outNames(nCompOut);
     Vector<std::string> inNames(nCompIn);
@@ -129,6 +138,17 @@ main(int argc, char* argv[])
     outNames[idLamout] = "lambda";
 
     Vector<std::unique_ptr<MultiFab>> outdata(Nlev);
+    // Auxiliary variables are read into the input MultiFab and appended,
+    // unchanged, to the output plotfile after the computed fields
+    for (int ivar = 0; ivar < nAuxVar; ++ivar) {
+      if (amrData.StateNumber(auxVar[ivar]) < 0) {
+        amrex::Abort("Unknown auxiliary variable name: " + auxVar[ivar]);
+      }
+      destFillComps[idAuxLocal + ivar] = idAuxLocal + ivar;
+      inNames[idAuxLocal + ivar] = auxVar[ivar];
+      outNames[idAuxOut + ivar] = auxVar[ivar];
+    }
+
     Vector<Geometry> geoms(Nlev);
     amrex::RealBox real_box(
       {AMREX_D_DECL(
@@ -179,6 +199,13 @@ main(int argc, char* argv[])
         });
       }
       Print() << "Derive finished for level " << lev << std::endl;
+
+      // Copy auxiliary variables unchanged from the input to the output
+      for (int ivar = 0; ivar < nAuxVar; ++ivar) {
+        MultiFab::Copy(
+          *outdata[lev], indata, idAuxLocal + ivar, idAuxOut + ivar, 1, nGrow);
+      }
+
     }
 
     std::string outfile(getFileRoot(plotFileName) + "_D");
