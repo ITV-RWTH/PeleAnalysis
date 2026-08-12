@@ -117,10 +117,14 @@ StreamParticleContainer::SetParticleLocation(const int a_streamLoc)
 static void
 VectorNormalize(Vector<Real>& vec, int dir)
 {
-  static Real eps = 1.e24;
+  // Below eps the vector field cannot be told apart from round-off, so return
+  // the zero vector and let the stream stop rather than follow noise.  Note
+  // that the test used to read (mag < 1.e24): it normalized unconditionally
+  // and divided by zero wherever the field vanished exactly.
+  constexpr Real eps = 1.e-24;
   Real mag = std::sqrt(
     AMREX_D_TERM(vec[0] * vec[0], +vec[1] * vec[1], +vec[2] * vec[2]));
-  if (mag < eps) {
+  if (mag > eps) {
     for (int i = 0; i < AMREX_SPACEDIM; ++i)
       vec[i] *= dir / mag;
   } else {
@@ -271,8 +275,12 @@ StreamParticleContainer::RungeKutta4(
     delta[d] = (k1[d] + k4[d]) * sixth + (k2[d] + k3[d]) * third;
   }
 
-  // cut step length to keep in domain (FIXME: Deal with periodic - hopefully
-  // fixed?)
+  // cut step length to keep in domain.  Only the non-periodic directions are
+  // treated here: in a periodic direction the particle has to be allowed to
+  // leave the domain so that the Redistribute() in SetParticleLocation() wraps
+  // it back in, and InterpDataAtLocation() undoes the wrap to keep the stream
+  // trajectory continuous.  Clipping there instead pins the stream to the
+  // boundary face for the rest of the integration.
   Real scale = 1;
   for (int d = 0; d < AMREX_SPACEDIM; ++d) {
     if ((x[d] + delta[d] <= plo[d] + dx[d]) && (is_per[d] == 0)) {
@@ -290,9 +298,11 @@ StreamParticleContainer::RungeKutta4(
   }
   for (int d = 0; d < AMREX_SPACEDIM; ++d) {
     x[d] += scale * delta[d];
-    x[d] = std::min(
-      phi[d] - 1.e-10,
-      std::max(plo[d] + 1.e-10, x[d])); // Deal with precision issues
+    if (is_per[d] == 0) {
+      x[d] = std::min(
+        phi[d] - 1.e-10,
+        std::max(plo[d] + 1.e-10, x[d])); // Deal with precision issues
+    }
   }
   return true;
 }
