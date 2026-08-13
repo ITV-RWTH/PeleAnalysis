@@ -430,9 +430,9 @@ main(int argc, char* argv[])
   }
 
 #ifdef _OPENMP
-#pragma omp parallel for private(iAvg, iInt, iDerFlag) reduction(            \
-    + : filess, filels, fileEbar, filedelta, numFixedElts, normAreaLS,       \
-          normAreaSS, normAreaEBAR, normAreaDelta)
+#pragma omp parallel for private(iAvg, iInt, iDerFlag) reduction(      \
+    + : filess, filels, fileEbar, filedelta, numFixedElts, normAreaLS, \
+      normAreaSS, normAreaEBAR, normAreaDelta)
 #endif
   for (int iElt = 0; iElt < nElts; iElt++) {
     if (eltValid[iElt] == 0) {
