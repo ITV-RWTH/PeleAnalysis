@@ -1,5 +1,6 @@
 #include <string>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 #include <AMReX_ParmParse.H>
@@ -108,11 +109,12 @@ main(int argc, char* argv[])
   Vector<std::string> variableNames;
   Vector<int> faceData;
   Vector<Vector<Real>> streamData;
+  Vector<int> streamPresent;
 
   // Read file
   readStreamBin(
     infile, nStreams, nElts, nPtsOnStream, nComps, variableNames, faceData,
-    streamData);
+    streamData, streamPresent);
   // report
   Print() << "nStreams      = " << nStreams << std::endl;
   Print() << "nElements     = " << nElts << std::endl;
@@ -122,6 +124,29 @@ main(int argc, char* argv[])
 
   for (int iComp = 0; iComp < nComps; iComp++)
     Print() << "   " << iComp << ": " << variableNames[iComp] << std::endl;
+
+  // Flag elements that reference a seed for which no stream was written.  Their
+  // corner data is all zeros, i.e. a corner sitting at the origin, which would
+  // otherwise enter the statistics as an enormous stream tube.
+  Vector<int> eltValid(nElts, 1);
+  int nInvalidElts = 0;
+  for (int iElt = 0; iElt < nElts; iElt++) {
+    for (int iCorner = 0; iCorner < AMREX_SPACEDIM; iCorner++) {
+      if (streamPresent[faceData[iElt * AMREX_SPACEDIM + iCorner]] == 0) {
+        eltValid[iElt] = 0;
+      }
+    }
+    if (eltValid[iElt] == 0)
+      nInvalidElts++;
+  }
+  if (nInvalidElts > 0) {
+    Print() << "WARNING: " << nInvalidElts << "/" << nElts
+            << " elements reference a seed that produced no stream and are "
+               "excluded from all statistics."
+            << std::endl;
+  }
+  if (nInvalidElts == nElts)
+    Abort("No usable elements: every element references a missing stream");
 
   // let's write a matlab file for each variable
   if (writeStreamsToMatlab) {
@@ -311,9 +336,15 @@ main(int argc, char* argv[])
   Real totalVol = 0.0;
   Real meanRatio = 0.0;
 #ifdef _OPENMP
-#pragma omp parallel for reduction(+ : surfaceArea, totalVol)
+#pragma omp parallel for reduction(+ : surfaceArea, totalVol, meanRatio)
 #endif
   for (int iElt = 0; iElt < nElts; iElt++) {
+    if (eltValid[iElt] == 0) {
+      eltArea[iElt] = 0.;
+      eltVol[iElt] = 0.;
+      eltRatio[iElt] = 0.;
+      continue;
+    }
     // set up triangle ABC
     Array<dim3, AMREX_SPACEDIM> elt1, elt2;
     for (int d1 = 0; d1 < AMREX_SPACEDIM;
@@ -344,7 +375,7 @@ main(int argc, char* argv[])
     eltRatio[iElt] = eltArea[iElt] / eltVol[iElt];
     meanRatio += eltArea[iElt] / eltVol[iElt];
   }
-  meanRatio /= nElts;
+  meanRatio /= (nElts - nInvalidElts);
   Print() << "   ... total surface area = " << surfaceArea << std::endl;
   Print() << "   ... total volume = " << totalVol << std::endl;
 
@@ -399,10 +430,23 @@ main(int argc, char* argv[])
   }
 
 #ifdef _OPENMP
-#pragma omp parallel for reduction( \
-    + : filess, filels, fileEbar, filedelta, numFixedElts)
+#pragma omp parallel for private(iAvg, iInt, iDerFlag) reduction(      \
+    + : filess, filels, fileEbar, filedelta, numFixedElts, normAreaLS, \
+      normAreaSS, normAreaEBAR, normAreaDelta)
 #endif
   for (int iElt = 0; iElt < nElts; iElt++) {
+    if (eltValid[iElt] == 0) {
+      // no usable stream tube here: mark every output as missing rather than
+      // writing a zero that would be read as a real measurement
+      const Real qnan = std::numeric_limits<Real>::quiet_NaN();
+      for (int i = 0; i < nAvg; i++)
+        surfAvg[iElt][i] = qnan;
+      for (int i = 0; i < nInt; i++)
+        surfInt[iElt][i] = qnan;
+      for (int i = 0; i < nDerOut; i++)
+        surfDer[iElt][i] = qnan;
+      continue;
+    }
     // get thread-local stream index, data and element area
     int3 localSIdx = sIdx[iElt];
     Array<Vector<Real>, AMREX_SPACEDIM> localStreamData;
@@ -578,9 +622,14 @@ main(int argc, char* argv[])
   Vector<int> outOfBounds(nElts);
   int numOOB = 0;
 #ifdef _OPENMP
-#pragma omp parallel for
+#pragma omp parallel for reduction(+ : numOOB)
 #endif
   for (int iElt = 0; iElt < nElts; iElt++) {
+    if (eltValid[iElt] == 0) {
+      outOfBounds[iElt] = 1;
+      numOOB += 1;
+      continue;
+    }
     int3 localSIdx = sIdx[iElt];
     Array<Vector<Real>, AMREX_SPACEDIM> localStreamData;
     for (int d = 0; d < AMREX_SPACEDIM; d++) {
@@ -997,7 +1046,8 @@ readStreamBin(
   int& nComps,
   std::vector<std::string>& variableNames,
   Vector<int>& faceData,
-  Vector<Vector<Real>>& streamData)
+  Vector<Vector<Real>>& streamData,
+  Vector<int>& streamPresent)
 {
   // Open header file
   std::string headerName = infile + "/Header";
@@ -1005,6 +1055,12 @@ readStreamBin(
   std::ifstream ifs(headerName.c_str());
   std::istream* is =
     (infile == "-" ? (std::istream*)(&std::cin) : (std::istream*)(&ifs));
+
+  // partStream writes the Header last, so a missing or unreadable one means it
+  // did not get that far.  Without this the counts below are read off a failed
+  // stream, i.e. they are whatever was on the stack.
+  if ((infile != "-") && !ifs.good())
+    Abort("Could not open " + headerName + " (did partStream complete?)");
 
   // read dummy header line
   std::string dummy;
@@ -1026,6 +1082,9 @@ readStreamBin(
   // number of components
   ifs >> nComps;
   Print() << "nComps = " << nComps << std::endl;
+
+  if ((nFiles <= 0) || (nStreams <= 0) || (nPtsOnStream <= 0) || (nComps <= 0))
+    Abort(headerName + " is incomplete or corrupt");
 
   // next line
   std::getline(ifs, dummy);
@@ -1052,12 +1111,21 @@ readStreamBin(
   //
   // give the streams a home
   //
-  streamData.resize(nStreams + 1);
-  for (int iStream = 0; iStream <= nStreams; iStream++)
-    streamData[iStream].resize(nPtsOnStream * nComps);
+  // streamData is indexed by the surface node id carried in faceData, whereas
+  // nStreams only counts the streams partStream actually wrote.  The two differ
+  // whenever a seed produced no stream (e.g. a node outside the domain, whose
+  // particles AMReX invalidates and drops), so size the array from the largest
+  // node id or the reads below run off the end of it.
+  int maxNodeId = 0;
+  for (int i = 0; i < fds; i++)
+    maxNodeId = std::max(maxNodeId, faceData[i]);
+  const int nSlots = std::max(nStreams, maxNodeId);
 
-  // keep fread happy
-  size_t read_size;
+  streamData.resize(nSlots + 1);
+  for (int iStream = 0; iStream <= nSlots; iStream++)
+    streamData[iStream].resize(nPtsOnStream * nComps);
+  streamPresent.clear();
+  streamPresent.resize(nSlots + 1, 0);
 
   //
   // now loop over binary files
@@ -1068,22 +1136,32 @@ readStreamBin(
     std::string rootName = infile + "/str_";
     std::string fileName = Concatenate(rootName, iFile) + ".bin";
     FILE* file = fopen(fileName.c_str(), "r");
+    if (file == nullptr)
+      Abort("Could not open " + fileName);
 
     int nFileStreams;
-    read_size = fread(&(nFileStreams), sizeof(int), 1, file);
+    if (fread(&(nFileStreams), sizeof(int), 1, file) != 1)
+      Abort("Could not read the stream count from " + fileName);
 
     // loop over particle streams as written by pti (i.e. mangled order)
     for (int pindex = 0; pindex < nFileStreams; pindex++) {
       // use the particle id to load data into right memory destination
       int iStream;
-      read_size = fread(&(iStream), sizeof(int), 1, file); // id
+      if (fread(&(iStream), sizeof(int), 1, file) != 1) // id
+        Abort("Could not read a stream id from " + fileName);
+      if (iStream < 1 || iStream > nSlots)
+        Abort("Stream id outside the surface node range in " + fileName);
+      streamPresent[iStream] = 1;
 
       for (int iComp = 0; iComp < nComps; iComp++) {
         // by loading into [iStream] index, we're unmangling the parrallel
         // particles
         int offset = iComp * nPtsOnStream;
-        read_size = fread(
-          &(streamData[iStream][offset]), sizeof(Real), nPtsOnStream, file);
+        if (
+          fread(
+            &(streamData[iStream][offset]), sizeof(Real), nPtsOnStream, file) !=
+          static_cast<size_t>(nPtsOnStream))
+          Abort("Truncated stream data in " + fileName);
       }
     }
 
