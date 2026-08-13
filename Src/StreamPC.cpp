@@ -658,9 +658,12 @@ StreamParticleContainer::WriteStreamAsBinary(
   }
 
   // Need to count the total number of streams to be written
-  // by all ptiters on all levels on this processor
+  // by all ptiters on all levels on this processor.  nStreams is only an upper
+  // bound: a stream whose partner particle is not in the same tile cannot be
+  // written, so the count actually written is nStreamsCheck.
   int nStreams = 0;
   int nStreamsCheck = 0;
+  int nUnpaired = 0;
 
   for (int lev = 0; lev < Nlev; ++lev) {
     for (MyParIter pti(*this, lev); pti.isValid(); ++pti) {
@@ -680,7 +683,8 @@ StreamParticleContainer::WriteStreamAsBinary(
   // std::string headName = Concatenate(rootName,myProc) + ".head";
   FILE* file = fopen(fileName.c_str(), "w");
   // FILE *head=fopen(headName.c_str(),"w");
-  //  total number of streams in file
+  //  total number of streams in file; rewritten once the streams have been
+  //  written because unpaired ones have to be skipped
   fwrite(&(nStreams), sizeof(int), 1, file);
 
   int minId = 100000000;
@@ -712,12 +716,24 @@ StreamParticleContainer::WriteStreamAsBinary(
 
         if ((pId > 0) && (dir == 1)) {
           // write info about this stream and its pair
-          int pindexPair = pid_to_pindex[pairId];
+          auto itPair = pid_to_pindex.find(pairId);
+          if (itPair == pid_to_pindex.end()) {
+            // The partner is not in this tile.  Skip the stream: the map lookup
+            // used to fall through to particle 0 here and write this line
+            // paired with an unrelated one.  Both halves of a pair sit on the
+            // same seed point after SetParticleLocation(0), so they should
+            // always land in the same tile; if this fires, particles have gone
+            // missing and the count printed by partStream will say so.
+            nUnpaired++;
+            continue;
+          }
+          int pindexPair = itPair->second;
           ParticleType& pPair = aos[pindexPair];
           int pIdPair = pPair.id();
           int pairIdPair = pPair.idata(2);
 
-          // sanity check
+          // sanity check: the map is keyed on the id, so this can only fail if
+          // the pairing itself is corrupt rather than merely incomplete
           if ((pIdPair != pairId) || (pId != pairIdPair)) {
             std::cout << pIdPair << std::endl;
             std::cout << pairId << std::endl;
@@ -763,20 +779,28 @@ StreamParticleContainer::WriteStreamAsBinary(
   ParallelDescriptor::ReduceIntMin(minId);
   ParallelDescriptor::ReduceIntMax(maxId);
 
-  if (nStreams != nStreamsCheck)
-    std::cout << "(nStreams!=nStreamsCheck) : " << nStreams
-              << " != " << nStreamsCheck << std::endl;
-
+  // the stream count at the head of the file was only an upper bound: rewrite
+  // it now that the unpaired streams have been skipped
+  std::fseek(file, 0, SEEK_SET);
+  fwrite(&(nStreamsCheck), sizeof(int), 1, file);
   fclose(file);
 
   // Write header file with everything consistent across all processors
-  ParallelDescriptor::ReduceIntSum(nStreams);
+  ParallelDescriptor::ReduceIntSum(nStreamsCheck);
+  ParallelDescriptor::ReduceIntSum(nUnpaired);
+  if (nUnpaired > 0) {
+    Print() << "WARNING: " << nUnpaired
+            << " streams were skipped because their partner particle was not "
+               "in the same tile; the surface elements using them cannot be "
+               "evaluated."
+            << std::endl;
+  }
   if (ParallelDescriptor::IOProcessor()) {
     fileName = outFile + "/Header";
     std::ofstream ofs(fileName.c_str());
     ofs << "Even odder-ball replacement for sampled streams" << std::endl;
-    ofs << nProcs << std::endl;   // translates to number of files to read
-    ofs << nStreams << std::endl; // total number of streams
+    ofs << nProcs << std::endl;        // translates to number of files to read
+    ofs << nStreamsCheck << std::endl; // total number of streams
     ofs << 2 * nPtsOnStrm - 1 << std::endl; // number of points
     ofs << fcomp << std::endl;              // number of variables
     for (int iComp = 0; iComp < fcomp; ++iComp)
