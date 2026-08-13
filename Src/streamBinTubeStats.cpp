@@ -1056,6 +1056,12 @@ readStreamBin(
   std::istream* is =
     (infile == "-" ? (std::istream*)(&std::cin) : (std::istream*)(&ifs));
 
+  // partStream writes the Header last, so a missing or unreadable one means it
+  // did not get that far.  Without this the counts below are read off a failed
+  // stream, i.e. they are whatever was on the stack.
+  if ((infile != "-") && !ifs.good())
+    Abort("Could not open " + headerName + " (did partStream complete?)");
+
   // read dummy header line
   std::string dummy;
   std::getline(ifs, dummy);
@@ -1076,6 +1082,9 @@ readStreamBin(
   // number of components
   ifs >> nComps;
   Print() << "nComps = " << nComps << std::endl;
+
+  if ((nFiles <= 0) || (nStreams <= 0) || (nPtsOnStream <= 0) || (nComps <= 0))
+    Abort(headerName + " is incomplete or corrupt");
 
   // next line
   std::getline(ifs, dummy);
