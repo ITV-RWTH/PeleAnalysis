@@ -249,6 +249,23 @@ main(int argc, char* argv[])
     Print() << "Initialising particles..." << std::endl;
     spc.InitParticles(locs);
 
+    // AMReX silently invalidates and drops particles it cannot place on any
+    // grid (a position outside the domain that no periodic shift can rescue).
+    // A dropped particle leaves its partner unpaired and its stream cannot be
+    // written, so report the population before and after the integration: that
+    // distinguishes a bad seed from something going wrong along the stream.
+    const Long nPartExpected = 2 * static_cast<Long>(nStreamPairs);
+    auto reportParticleCount = [&](const std::string& when) {
+      const Long nPart = spc.TotalNumberOfParticles(true, false);
+      Print() << "Valid particles " << when << ": " << nPart << " / "
+              << nPartExpected;
+      if (nPart != nPartExpected) {
+        Print() << "  <-- " << (nPartExpected - nPart) << " LOST";
+      }
+      Print() << std::endl;
+    };
+    reportParticleCount("after seeding");
+
     // Check if particles initialised fine
     if (spc.OK()) {
       Print() << "SPC is happy with initialisation :-)" << std::endl;
@@ -277,6 +294,8 @@ main(int argc, char* argv[])
       // interpolate all data
       spc.InterpDataAtLocation(step + 1, vectorField);
     }
+
+    reportParticleCount("after integration");
 
     // check in again
     if (spc.OK()) {
