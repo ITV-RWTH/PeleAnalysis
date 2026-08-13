@@ -245,6 +245,36 @@ main(int argc, char* argv[])
       Abort("Writing stream binary without surface definition!");
     }
     int nStreamPairs = locs.size();
+
+    // Check the seeds against the domain before handing them to AMReX.  A seed
+    // outside the domain in a non-periodic direction cannot be placed on any
+    // grid, so the particle is invalidated and dropped without a word, and its
+    // partner is left unpaired.  In a periodic direction the shift rescues it.
+    {
+      Vector<Real> locMin(AMREX_SPACEDIM, 1.e30);
+      Vector<Real> locMax(AMREX_SPACEDIM, -1.e30);
+      Vector<int> nOut(AMREX_SPACEDIM, 0);
+      for (int n = 0; n < nStreamPairs; ++n) {
+        for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+          locMin[d] = std::min(locMin[d], locs[n][d]);
+          locMax[d] = std::max(locMax[d], locs[n][d]);
+          if ((locs[n][d] < pf.probLo()[d]) || (locs[n][d] > pf.probHi()[d])) {
+            nOut[d]++;
+          }
+        }
+      }
+      Print() << "Seed locations (" << nStreamPairs << " nodes):" << std::endl;
+      for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+        Print() << "   dir " << d << ": [" << locMin[d] << ", " << locMax[d]
+                << "]  domain [" << pf.probLo()[d] << ", " << pf.probHi()[d]
+                << "]  is_per " << pp_is_per[d] << "  outside: " << nOut[d];
+        if ((nOut[d] > 0) && (pp_is_per[d] == 0)) {
+          Print() << "  <-- THESE SEEDS WILL BE DROPPED";
+        }
+        Print() << std::endl;
+      }
+    }
+
     // Initialise particles
     Print() << "Initialising particles..." << std::endl;
     spc.InitParticles(locs);
