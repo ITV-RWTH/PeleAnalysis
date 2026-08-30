@@ -1,0 +1,8 @@
+infiles = surf_sphere_const.mef
+xvar = const_field
+yvar = Z
+nBins = 10
+xmin = 3.0
+xmax = 4.0
+xvar_out = cf_t4
+yvar_out = Z_t4
