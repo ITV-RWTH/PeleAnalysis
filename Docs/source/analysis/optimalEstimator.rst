@@ -299,7 +299,11 @@ Convergence Control
 ~~~~~~~~~~~~~~~~~~~
 
 Training stops when the validation loss stops improving, and the weights from
-the best epoch — not the last — are the ones written to disk.
+the best epoch — not the last — are the ones written to disk. "Best" means the
+lowest validation loss seen over the whole run: every epoch that improves on it,
+by however little, replaces the snapshot. That is deliberately a different
+question from whether the run has stalled, which is what ``min_delta`` and the
+two patience counters below decide.
 
 Progress is measured with the coefficient of determination
 
@@ -325,8 +329,18 @@ are volume-weighted, so the ratio is unaffected by the weighting.
    ``nEpochs``. Default: ``50``.
 
 ``min_delta``
-   Smallest improvement in :math:`R^2` that counts as progress.
+   Smallest improvement in :math:`R^2` that counts as progress, for the purpose
+   of the ``patience`` and ``lr_patience`` counters only. It does **not** gate
+   which weights are kept — that is always the lowest validation loss seen.
    Default: ``1e-3``.
+
+   Note that this is an absolute improvement in :math:`R^2`, while the headroom
+   remaining is :math:`1 - R^2`. Once a run passes :math:`R^2 = 1 -`
+   ``min_delta`` (0.999 by default) no further improvement can be large enough
+   to count, so such a run always spends its last ``patience`` epochs marked as
+   stalled and then stops. That is intended: it makes ``min_delta`` a
+   "close enough to perfect" stopping criterion as well as a plateau detector.
+   The weights written out are still the best ones found during those epochs.
 
 ``lr_patience``, ``lr_factor``, ``min_lr``
    After ``lr_patience`` epochs without improvement the learning rate is
@@ -436,9 +450,11 @@ over the MPI ranks, and makes the two numbers on the line above the same
 statistic.
 
 Training ends either at ``nEpochs`` or when the validation loss plateaus (see
-*Convergence Control* above). The weights are then rolled back to the best
-epoch, and the network is written to ``<model_path>.pt`` with the normalisation
-bounds in ``<minmax_path>.bin``.
+*Convergence Control* above). The weights are then rolled back to the epoch of
+lowest validation loss, and the network is written to ``<model_path>.pt`` with
+the normalisation bounds in ``<minmax_path>.bin``. The ``Restored weights from
+epoch N`` line at the end of the run reports that epoch and its :math:`R^2`,
+which is therefore the best :math:`R^2` in the epoch log.
 
 Under MPI each rank normalises its loss by the weight of the mini-batch summed
 over *all* ranks, so its gradient is that rank's share of the global gradient
