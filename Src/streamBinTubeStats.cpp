@@ -1163,10 +1163,11 @@ writeSurfaceFromStreamTecplot(
 
   for (int iElt = 0; iElt < nElts; iElt++) {
     int offset = iElt * static_cast<int>(AMREX_SPACEDIM);
-    os << faceData[offset];
-    for (int iCorner = 1; iCorner < AMREX_SPACEDIM; iCorner++)
-      os << " " << faceData[offset + iCorner];
-    os << std::endl;
+    os << faceData[offset] << " " << faceData[offset + 1]
+#if AMREX_SPACEDIM == 3
+       << " " << faceData[offset + 2]
+#endif
+       << std::endl;
   }
 
   os.close();
