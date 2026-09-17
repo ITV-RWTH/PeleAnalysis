@@ -148,18 +148,23 @@ main(int argc, char* argv[])
   if (nInvalidElts == nElts)
     Abort("No usable elements: every element references a missing stream");
 
+  // nStreams counts the streams that were written; the writers below need
+  // every surface node (missing ones come out as zeros) or the connectivity
+  // in faceData runs past the node list
+  const int nNodes = static_cast<int>(streamData.size()) - 1;
+
   // let's write a matlab file for each variable
   if (writeStreamsToMatlab) {
     Print() << "Writing streams as matlab files..." << std::endl;
     writeStreamsMatlab(
-      infile, nStreams, nPtsOnStream, nComps, variableNames, streamData);
+      infile, nNodes, nPtsOnStream, nComps, variableNames, streamData);
   }
 
   // let's output a surface
   if (writeTecplotSurfaceFromStream) {
     Print() << "Writing a tecplot surface..." << std::endl;
     writeSurfaceFromStreamTecplot(
-      infile, nStreams, nElts, nPtsOnStream, nComps, variableNames, faceData,
+      infile, nNodes, nElts, nPtsOnStream, nComps, variableNames, faceData,
       streamData);
   }
 
@@ -406,6 +411,9 @@ main(int argc, char* argv[])
   // TODO: Only the same if steps are taken in physical space, not prog_var
   // space
   for (int iElt = 0; iElt < nElts - 1; iElt++) {
+    // a missing stream is all zeros and would give ds = 0 without complaint
+    if ((eltValid[iElt] == 0) || (eltValid[iElt + 1] == 0))
+      continue;
     Real s1 = 0.0;
     Real s2 = 0.0;
     for (int d = 0; d < AMREX_SPACEDIM; d++) {

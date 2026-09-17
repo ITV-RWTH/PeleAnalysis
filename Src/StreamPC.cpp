@@ -415,13 +415,19 @@ StreamParticleContainer::InterpDataAtLocation(
               Real xnew = soa.GetRealData(idx)[pindex];
               Real xold = soa.GetRealData(idxOld)[pindex];
               Real delta = xnew - xold;
-              if (fabs(delta) > dx[d]) { // has been adjusted for periodicity
-                // printf("%i %i %e %e %e",pindex,d,xnew,xold,delta);
+              // A wrap by Redistribute() changes delta by exactly +-Lx, so
+              // anything beyond half a domain length is a wrap and nothing
+              // else can be (a step is at most 0.95 dx of the level it was
+              // taken on).  The test used to be |delta| > dx of the level the
+              // particle sits on *now*, without an is_per guard: a cSpace step
+              // taken on a coarse level and landing on a finer one exceeded
+              // that and was "unwrapped" by Lx, also in non-periodic
+              // directions.
+              if ((is_per[d] != 0) && (fabs(delta) > 0.5 * Lx[d])) {
                 if (delta < 0.)
                   delta += Lx[d];
                 else
                   delta -= Lx[d];
-                // printf(" --> %e\n",delta);
               }
               // store periodicity-adjusted copy of location at idx+SPACEDIM
               Real sold = soa.GetRealData(idxOld + AMREX_SPACEDIM)[pindex];
