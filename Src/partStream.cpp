@@ -1,6 +1,7 @@
 #include <AMReX_ParmParse.H>
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_FillPatchUtil.H>
+#include <AMReX_BCUtil.H>
 #include <StreamPC.H>
 
 using namespace amrex;
@@ -214,7 +215,24 @@ main(int argc, char* argv[])
     Real time = 0;
     PhysBCFunctNoOp f;
     PCInterp cbi;
-    BCRec bc;
+    // Interior in the periodic directions, zeroth-order extrapolation at the
+    // physical boundaries: there is nothing better to extrapolate from, and the
+    // alternative is to leave those ghost cells uninitialised.  A seed sitting
+    // within half a cell of a non-periodic boundary has an interpolation
+    // stencil that reaches outside the domain, so it used to pick up whatever
+    // was in memory there.
+    Vector<BCRec> bcs(nComp);
+    for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+      for (int n = 0; n < nComp; ++n) {
+        if (is_per[d] != 0) {
+          bcs[n].setLo(d, BCType::int_dir);
+          bcs[n].setHi(d, BCType::int_dir);
+        } else {
+          bcs[n].setLo(d, BCType::foextrap);
+          bcs[n].setHi(d, BCType::foextrap);
+        }
+      }
+    }
     AMREX_ALWAYS_ASSERT(nGrow >= 1);
     Vector<MultiFab> vectorField(Nlev);
     for (int lev = 0; lev < Nlev; ++lev) {
@@ -228,10 +246,13 @@ main(int argc, char* argv[])
           FillPatchTwoLevels(
             vectorField[lev], time, {&pfdata[lev - 1][d]}, {time},
             {&pfdata[lev][d]}, {time}, 0, d, 1, geoms[lev - 1], geoms[lev], f,
-            0, f, 0, ratios[lev - 1] * IntVect::Unit, &cbi, {bc}, 0);
+            0, f, 0, ratios[lev - 1] * IntVect::Unit, &cbi, {bcs[d]}, 0);
         }
       }
       vectorField[lev].FillBoundary(geoms[lev].periodicity());
+      // FillPatch leaves the cells outside a non-periodic physical boundary
+      // alone; fill them here.  A no-op when the geometry is fully periodic.
+      FillDomainBoundary(vectorField[lev], geoms[lev], bcs);
     }
 
     int Nsteps = 50;

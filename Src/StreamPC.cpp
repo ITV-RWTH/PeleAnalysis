@@ -385,8 +385,11 @@ StreamParticleContainer::InterpDataAtLocation(
           Vector<Real> ntrpvOut(fcomp); // components in infile
 
           // interpolate all data to particle location
-          InterpolateVector(
-            x, v, dx, plo, phi, ntrpvOut, fcomp); // components in infile
+          if (!InterpolateVector(
+                x, v, dx, plo, phi, ntrpvOut, fcomp)) // components in infile
+            Abort("StreamParticleContainer::InterpDataAtLocation: the "
+                  "interpolation stencil left the grown box; the data at this "
+                  "location would be undefined.");
 
           // copy the interpolated data to the particle
           // first DIM components are particle location
