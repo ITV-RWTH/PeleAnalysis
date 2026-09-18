@@ -1,0 +1,37 @@
+# Like gen_stream_3d.inp, but the vector field vanishes for x > 0.9.  Streams
+# must stop there instead of following a zero vector.
+amr.n_cell = 32 32 32
+amr.max_grid_size = 16
+amr.max_level = 0
+
+geometry.coord_sys = 0
+geometry.prob_lo = 0.0 0.0 0.0
+geometry.prob_hi = 1.0 1.0 1.0
+geometry.is_periodic = 1 1 1
+
+plotfile_name = plt_stream_3d_stop
+
+field.names = c ux uy uz temp q
+
+c.type = plane_smooth
+c.axis = 0
+c.position = 0.8
+c.value_left = 0.0
+c.value_right = 1.0
+c.smooth_width = 0.2
+
+# 1 below x = 0.9, exactly 0 above it
+ux.type = plane_step
+ux.axis = 0
+ux.position = 0.9
+ux.value_left = 1.0
+ux.value_right = 0.0
+
+uy.type = constant
+uy.value = 0.0
+uz.type = constant
+uz.value = 0.0
+temp.type = constant
+temp.value = 300.0
+q.type = constant
+q.value = 1.0

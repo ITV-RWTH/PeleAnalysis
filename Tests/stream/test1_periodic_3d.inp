@@ -1,0 +1,16 @@
+# Streams crossing a periodic boundary.  20 steps in each direction at
+# hRK = 0.5 give 39 points, i.e. 38 intervals of dx/2 = 1/64: every stream is
+# 0.59375 long.
+infile = plt_stream_3d
+outfile = str_3d
+isoFile = surf_3d.mef
+vectorField = ux uy uz
+vars = temp q
+is_per = 1 1 1
+finestLevel = 0
+nGrow = 3
+Nsteps = 20
+hRK = 0.5
+cSpace = 0
+writeStreamBin = 1
+streamBinfile = str_3d

@@ -1,0 +1,40 @@
+# Periodic base case: constant vector field u = (1,0,0) and a plane iso field.
+# 32 cells per direction on [0,1]^3, so dx = 1/32 and the streams stepped with
+# hRK = 0.5 advance by 1/64 each step.
+amr.n_cell = 32 32 32
+amr.max_grid_size = 16
+amr.max_level = 0
+
+geometry.coord_sys = 0
+geometry.prob_lo = 0.0 0.0 0.0
+geometry.prob_hi = 1.0 1.0 1.0
+geometry.is_periodic = 1 1 1
+
+plotfile_name = plt_stream_3d
+
+field.names = c ux uy uz temp q
+
+# progress variable: the 0.5 isosurface is the plane x = 0.8.  In a periodic
+# x-direction the field also jumps back across the boundary, so a second sheet
+# sits at the wrap: total surface area 2.
+c.type = plane_smooth
+c.axis = 0
+c.position = 0.8
+c.value_left = 0.0
+c.value_right = 1.0
+c.smooth_width = 0.2
+
+ux.type = constant
+ux.value = 1.0
+uy.type = constant
+uy.value = 0.0
+uz.type = constant
+uz.value = 0.0
+
+# streamBinTubeStats always looks for a variable called temp
+temp.type = constant
+temp.value = 300.0
+
+# constant unit scalar: its integral over a stream tube is the stream length
+q.type = constant
+q.value = 1.0

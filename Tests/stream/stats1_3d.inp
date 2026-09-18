@@ -1,0 +1,11 @@
+# Statistics for the periodic 3D case.  With q = 1 the tube integral of q is
+# the stream length, so every element must report q_volInt = 0.59375.
+infile = str_3d
+is_per = 1 1 1
+domain_size = 1.0 1.0 1.0
+avgComps = q
+intComps = q
+writeSurface = 1
+writeBasic = 0
+writeTecplotSurfaceFromStream = 1
+writeStreamsToMatlab = 1
