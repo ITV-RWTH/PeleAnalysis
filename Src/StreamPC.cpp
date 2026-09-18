@@ -29,7 +29,7 @@ StreamParticleContainer::StreamParticleContainer(
   ResizeRuntimeRealComp(sizeOfRealStreamData, true);
 }
 
-void
+Long
 StreamParticleContainer::InitParticles(const Vector<Vector<Real>>& locs)
 {
   BL_PROFILE("StreamParticleContainer::InitParticles");
@@ -37,6 +37,7 @@ StreamParticleContainer::InitParticles(const Vector<Vector<Real>>& locs)
   const int nProc = ParallelDescriptor::NProcs();
   const int myProc = ParallelDescriptor::MyProc();
   int nLocs = locs.size();
+  Long nPairsCreated = 0;
   auto& particle_tile = DefineAndReturnParticleTile(Nlev - 1, myProc, 0);
   for (int n = 0; n < nLocs; n++) {
     // lets just initialise on a random processor and redistribute afterwards
@@ -80,9 +81,11 @@ StreamParticleContainer::InitParticles(const Vector<Vector<Real>>& locs)
       for (int i = 0; i < NumRuntimeRealComps(); i++) {
         particle_tile.push_back_real(i, i < AMREX_SPACEDIM ? locs[n][i] : 0);
       }
+      nPairsCreated++;
     }
   }
   Redistribute();
+  return nPairsCreated;
 }
 
 void

@@ -269,53 +269,82 @@ main(int argc, char* argv[])
 
     // Check the seeds against the domain before handing them to AMReX.  A seed
     // outside the domain in a non-periodic direction cannot be placed on any
-    // grid, so the particle is invalidated and dropped without a word, and its
-    // partner is left unpaired.  In a periodic direction the shift rescues it.
+    // grid, so AMReX invalidates the particle and drops it without a word,
+    // leaving its partner unpaired and the surface elements that use the seed
+    // without a stream.  In a periodic direction the shift rescues it.
+    // The bound tested here is AMReX's roundoff domain, the same one
+    // locateParticle() uses: it sits just inside probLo/probHi, so a seed
+    // exactly on a non-periodic face is dropped although it passes a plain
+    // comparison against probHi.
     {
+      const auto& rlo = spc.Geom(0).RoundOffLo();
+      const auto& rhi = spc.Geom(0).RoundOffHi();
       Vector<Real> locMin(AMREX_SPACEDIM, 1.e30);
       Vector<Real> locMax(AMREX_SPACEDIM, -1.e30);
       Vector<int> nOut(AMREX_SPACEDIM, 0);
+      int nDropped = 0;
       for (int n = 0; n < nStreamPairs; ++n) {
+        bool dropped = false;
         for (int d = 0; d < AMREX_SPACEDIM; ++d) {
           locMin[d] = std::min(locMin[d], locs[n][d]);
           locMax[d] = std::max(locMax[d], locs[n][d]);
-          if ((locs[n][d] < pf.probLo()[d]) || (locs[n][d] > pf.probHi()[d])) {
+          if (pp_is_per[d] != 0)
+            continue;
+          if ((locs[n][d] < rlo[d]) || (locs[n][d] > rhi[d])) {
             nOut[d]++;
+            dropped = true;
           }
         }
+        if (dropped)
+          nDropped++;
       }
       Print() << "Seed locations (" << nStreamPairs << " nodes):" << std::endl;
       for (int d = 0; d < AMREX_SPACEDIM; ++d) {
         Print() << "   dir " << d << ": [" << locMin[d] << ", " << locMax[d]
-                << "]  domain [" << pf.probLo()[d] << ", " << pf.probHi()[d]
-                << "]  is_per " << pp_is_per[d] << "  outside: " << nOut[d];
-        if ((nOut[d] > 0) && (pp_is_per[d] == 0)) {
-          Print() << "  <-- THESE SEEDS WILL BE DROPPED";
+                << "]  domain [" << rlo[d] << ", " << rhi[d] << "]  is_per "
+                << pp_is_per[d] << "  outside: " << nOut[d];
+        if (nOut[d] > 0) {
+          Print() << "  <-- OUTSIDE DOMAIN (non-periodic direction)";
         }
         Print() << std::endl;
+      }
+      // Abort() ends the whole job (MPI_Abort), so a rank detecting this on
+      // its own cannot leave the others waiting in a collective.
+      if (nDropped > 0) {
+        Abort(
+          "partStream: " + std::to_string(nDropped) + " of " +
+          std::to_string(nStreamPairs) +
+          " seed points lie outside the domain in a non-periodic direction "
+          "(see the table above).  Their streams would be missing from the "
+          "output and the surface elements using them could not be evaluated. "
+          " Check that 'is_per' matches the geometry of 'infile', and that the "
+          "seed surface was generated for the same domain.");
       }
     }
 
     // Initialise particles
     Print() << "Initialising particles..." << std::endl;
-    spc.InitParticles(locs);
+    const Long nPairsCreated = spc.InitParticles(locs);
 
-    // AMReX silently invalidates and drops particles it cannot place on any
-    // grid (a position outside the domain that no periodic shift can rescue).
-    // A dropped particle leaves its partner unpaired and its stream cannot be
-    // written, so report the population before and after the integration: that
-    // distinguishes a bad seed from something going wrong along the stream.
-    const Long nPartExpected = 2 * static_cast<Long>(nStreamPairs);
-    auto reportParticleCount = [&](const std::string& when) {
+    // Every particle that was created has to survive: one that is lost leaves
+    // its partner unpaired and its stream cannot be written.  The expectation
+    // is what InitParticles actually created rather than 2*nStreamPairs, since
+    // for oneSeedPerCell the seed list is per rank while InitParticles keeps
+    // only every nProc-th pair.
+    Long nPartExpected = 2 * nPairsCreated;
+    ParallelDescriptor::ReduceLongSum(nPartExpected);
+    auto checkParticleCount = [&](const std::string& when) {
       const Long nPart = spc.TotalNumberOfParticles(true, false);
       Print() << "Valid particles " << when << ": " << nPart << " / "
-              << nPartExpected;
+              << nPartExpected << std::endl;
       if (nPart != nPartExpected) {
-        Print() << "  <-- " << (nPartExpected - nPart) << " LOST";
+        Abort(
+          "partStream: " + std::to_string(nPartExpected - nPart) +
+          " particle(s) lost " + when +
+          ".  Every seed must produce a complete stream.");
       }
-      Print() << std::endl;
     };
-    reportParticleCount("after seeding");
+    checkParticleCount("after seeding");
 
     // Check if particles initialised fine
     if (spc.OK()) {
@@ -346,7 +375,7 @@ main(int argc, char* argv[])
       spc.InterpDataAtLocation(step + 1, vectorField);
     }
 
-    reportParticleCount("after integration");
+    checkParticleCount("after integration");
 
     // check in again
     if (spc.OK()) {
@@ -357,8 +386,6 @@ main(int argc, char* argv[])
     Print() << "Checking if we broke things afterwards..." << std::endl;
     spc.InspectParticles(nStreamPairs);
 #endif
-    // check we didn't break them again
-    spc.OK();
 
     if (writeParticles) {
       Print() << "Writing particles in plotfile to " << particlefile
