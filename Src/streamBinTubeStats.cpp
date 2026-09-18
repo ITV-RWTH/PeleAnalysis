@@ -1,6 +1,5 @@
 #include <string>
 #include <iostream>
-#include <limits>
 #include <vector>
 
 #include <AMReX_ParmParse.H>
@@ -125,33 +124,41 @@ main(int argc, char* argv[])
   for (int iComp = 0; iComp < nComps; iComp++)
     Print() << "   " << iComp << ": " << variableNames[iComp] << std::endl;
 
-  // Flag elements that reference a seed for which no stream was written.  Their
-  // corner data is all zeros, i.e. a corner sitting at the origin, which would
-  // otherwise enter the statistics as an enormous stream tube.
-  Vector<int> eltValid(nElts, 1);
-  int nInvalidElts = 0;
-  for (int iElt = 0; iElt < nElts; iElt++) {
-    for (int iCorner = 0; iCorner < AMREX_SPACEDIM; iCorner++) {
-      if (streamPresent[faceData[iElt * AMREX_SPACEDIM + iCorner]] == 0) {
-        eltValid[iElt] = 0;
-      }
-    }
-    if (eltValid[iElt] == 0)
-      nInvalidElts++;
-  }
-  if (nInvalidElts > 0) {
-    Print() << "WARNING: " << nInvalidElts << "/" << nElts
-            << " elements reference a seed that produced no stream and are "
-               "excluded from all statistics."
-            << std::endl;
-  }
-  if (nInvalidElts == nElts)
-    Abort("No usable elements: every element references a missing stream");
-
   // nStreams counts the streams that were written; the writers below need
-  // every surface node (missing ones come out as zeros) or the connectivity
-  // in faceData runs past the node list
+  // every surface node (the connectivity in faceData would otherwise run past
+  // the node list)
   const int nNodes = static_cast<int>(streamData.size()) - 1;
+
+  // Every node the connectivity refers to must have a stream.  Data for a
+  // missing one is all zeros, i.e. a corner sitting at the origin, which would
+  // enter the statistics as an enormous stream tube.
+  {
+    Vector<char> nodeMissing(nNodes + 1, 0);
+    int nMissingNodes = 0;
+    int nBadElts = 0;
+    for (int iElt = 0; iElt < nElts; iElt++) {
+      bool bad = false;
+      for (int iCorner = 0; iCorner < AMREX_SPACEDIM; iCorner++) {
+        const int node = faceData[iElt * AMREX_SPACEDIM + iCorner];
+        if (streamPresent[node] == 0) {
+          bad = true;
+          if (nodeMissing[node] == 0) {
+            nodeMissing[node] = 1;
+            nMissingNodes++;
+          }
+        }
+      }
+      if (bad)
+        nBadElts++;
+    }
+    if (nBadElts > 0) {
+      Abort(
+        "streamBinTubeStats: " + std::to_string(nMissingNodes) +
+        " surface node(s) in " + infile + " have no stream, affecting " +
+        std::to_string(nBadElts) + "/" + std::to_string(nElts) +
+        " elements.  The stream data is incomplete; rerun partStream.");
+    }
+  }
 
   // let's write a matlab file for each variable
   if (writeStreamsToMatlab) {
@@ -344,12 +351,6 @@ main(int argc, char* argv[])
 #pragma omp parallel for reduction(+ : surfaceArea, totalVol, meanRatio)
 #endif
   for (int iElt = 0; iElt < nElts; iElt++) {
-    if (eltValid[iElt] == 0) {
-      eltArea[iElt] = 0.;
-      eltVol[iElt] = 0.;
-      eltRatio[iElt] = 0.;
-      continue;
-    }
     // set up triangle ABC
     Array<dim3, AMREX_SPACEDIM> elt1, elt2;
     for (int d1 = 0; d1 < AMREX_SPACEDIM;
@@ -380,7 +381,7 @@ main(int argc, char* argv[])
     eltRatio[iElt] = eltArea[iElt] / eltVol[iElt];
     meanRatio += eltArea[iElt] / eltVol[iElt];
   }
-  meanRatio /= (nElts - nInvalidElts);
+  meanRatio /= nElts;
   Print() << "   ... total surface area = " << surfaceArea << std::endl;
   Print() << "   ... total volume = " << totalVol << std::endl;
 
@@ -411,9 +412,6 @@ main(int argc, char* argv[])
   // TODO: Only the same if steps are taken in physical space, not prog_var
   // space
   for (int iElt = 0; iElt < nElts - 1; iElt++) {
-    // a missing stream is all zeros and would give ds = 0 without complaint
-    if ((eltValid[iElt] == 0) || (eltValid[iElt + 1] == 0))
-      continue;
     Real s1 = 0.0;
     Real s2 = 0.0;
     for (int d = 0; d < AMREX_SPACEDIM; d++) {
@@ -443,18 +441,6 @@ main(int argc, char* argv[])
       normAreaSS, normAreaEBAR, normAreaDelta)
 #endif
   for (int iElt = 0; iElt < nElts; iElt++) {
-    if (eltValid[iElt] == 0) {
-      // no usable stream tube here: mark every output as missing rather than
-      // writing a zero that would be read as a real measurement
-      const Real qnan = std::numeric_limits<Real>::quiet_NaN();
-      for (int i = 0; i < nAvg; i++)
-        surfAvg[iElt][i] = qnan;
-      for (int i = 0; i < nInt; i++)
-        surfInt[iElt][i] = qnan;
-      for (int i = 0; i < nDerOut; i++)
-        surfDer[iElt][i] = qnan;
-      continue;
-    }
     // get thread-local stream index, data and element area
     int3 localSIdx = sIdx[iElt];
     Array<Vector<Real>, AMREX_SPACEDIM> localStreamData;
@@ -633,11 +619,6 @@ main(int argc, char* argv[])
 #pragma omp parallel for reduction(+ : numOOB)
 #endif
   for (int iElt = 0; iElt < nElts; iElt++) {
-    if (eltValid[iElt] == 0) {
-      outOfBounds[iElt] = 1;
-      numOOB += 1;
-      continue;
-    }
     int3 localSIdx = sIdx[iElt];
     Array<Vector<Real>, AMREX_SPACEDIM> localStreamData;
     for (int d = 0; d < AMREX_SPACEDIM; d++) {
