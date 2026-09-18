@@ -58,7 +58,8 @@ void readStreamBin(
   int& nComps,
   std::vector<std::string>& variableNames,
   Vector<int>& faceData,
-  Vector<Vector<Real>>& streamData);
+  Vector<Vector<Real>>& streamData,
+  Vector<int>& streamPresent);
 
 void writeStreamsMatlab(
   std::string infile,
