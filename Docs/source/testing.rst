@@ -37,12 +37,18 @@ Available suites
    * - :doc:`arithmetics <testing/arithmetics>`
      - Binary field arithmetic (add, subtract, multiply, divide)
      - 15 assertions; round-trip value verification; 3D serial + MPI
+   * - :doc:`stream <testing/stream>`
+     - Stream construction and stream tube statistics
+     - Whole chain against analytic values; periodicity, vanishing field,
+       boundary interpolation, four abort paths; 2D + 3D serial + 3D MPI
+       (2 and 4 ranks)
 
 .. toctree::
    :hidden:
 
    testing/jpdf
    testing/arithmetics
+   testing/stream
 
 Adding a new suite
 ##################

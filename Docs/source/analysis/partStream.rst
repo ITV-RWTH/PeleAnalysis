@@ -192,11 +192,43 @@ Output formats
    particlefile = plt00000_particles          # DEF: outfile + "_particles"; Name of writeParticles output file/dir
    writeStreams = 0                           # [0, 1], DEF: 0; Write streamlines in Tecplot ascii format.
    streamfile = plt00000_stream               # DEF: outfile + "_stream"; Name of writeStreams output file/dir
-   writeStreamBin                             # [0, 1], DEF: 0; Write streamlines as binary.
+   writeStreamBin = 1                         # [0, 1], DEF: 1; Write streamlines as binary.
    streamBinfile = plt00000_streamBin         # DEF: outfile + "_streamBin"; Name of writeStreamBin output file/dir
 
 .. note::
 
    When ``writeParticles`` is enabled, the particle plotfile is written through the AMReX particle I/O layer, whose data-file count is controlled by the native ``particles.particles_nfiles`` option (read directly by AMReX) rather than the ``n_files`` option used by the grid-based tools.
+
+Notes
+~~~~~
+
+Every seed must lie inside the domain of ``infile``. A seed outside it in a
+non-periodic direction cannot be placed on any grid, so its stream would be
+missing from the output and the surface elements built on that seed could not
+be evaluated. ``partStream`` therefore prints the seed range per direction
+against the domain and aborts if any seed falls outside, rather than dropping
+it. The bound it tests is the one AMReX itself uses when it places particles,
+which sits a rounding error inside ``prob_hi``: a seed exactly on a
+non-periodic face aborts as well. In a periodic direction seeds outside the
+domain are shifted back in and are fine. The number of particles is checked
+again after seeding and after the integration, and any loss is an error.
+
+``is_per`` is not read from the plotfile. It has to describe the geometry the
+data was produced with, and it has to agree with the ``is_per`` used for
+:doc:`isosurface <isosurface>` when the seed surface was made and with the
+``is_per`` and ``domain_size`` given to
+:doc:`streamBinTubeStats <streamBinTubeStats>`. A direction declared
+non-periodic here that is in fact periodic will abort at seed time.
+
+Cells outside a non-periodic physical boundary are filled by zeroth-order
+extrapolation, so a seed within half a cell of such a boundary interpolates
+against the boundary value. Streams still stop one cell short of a
+non-periodic boundary, unchanged.
+
+Testing
+~~~~~~~
+
+A functional test suite covering this tool and ``streamBinTubeStats`` is
+provided in ``Tests/stream/``. See :doc:`/testing/stream` for the test matrix.
 
 
