@@ -15,8 +15,10 @@ plotfile_name = plt_stream_3d
 field.names = c ux uy uz temp q
 
 # progress variable: the 0.5 isosurface is the plane x = 0.8.  In a periodic
-# x-direction the field also jumps back across the boundary, so a second sheet
-# sits at the wrap: total surface area 2.
+# x-direction the field also jumps back across the boundary, which isosurface
+# renders as a second sheet at x = 0.5 (it averages the periodic ghost
+# coordinate without the domain shift; see TESTING.md).  Two sheets of unit
+# extent: total surface area 2.
 c.type = plane_smooth
 c.axis = 0
 c.position = 0.8

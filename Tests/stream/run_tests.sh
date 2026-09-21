@@ -376,10 +376,14 @@ else
 fi
 check_file "T1 stream Header" "str_3d/Header"
 
-if grep -q "LOST" ps_3d.log; then
-    fail "T1 no particles lost"
-else
+# Every seed makes a pair, so after integration the valid count must equal
+# twice the number of seeds.  partStream prints "Valid particles <when>: n / N"
+# and aborts when they differ, so the line must be there with n == N.
+if awk '/^Valid particles after integration:/ { ok = ($5 == $7); found = 1 }
+        END { exit !(found && ok) }' ps_3d.log; then
     pass "T1 no particles lost"
+else
+    fail "T1 no particles lost — see testrun/ps_3d.log"
 fi
 
 if "$SBTS3D" "$T/stats1_3d.inp" > sbts_3d.log 2>&1; then
@@ -428,9 +432,10 @@ all_finite "T2 no NaN or Inf in the surface file" "str_3d_stop_binVolInt.dat"
 # corner, which showed up as positions far away from where the field vanished.
 matrix_max_below "T2 no stream runs past the vanishing field" \
     "str_3d_stop/X.dat" 0.95
-# The seeds on the second (wrapped) sheet never reach the region where the
-# field vanishes, so their tubes keep the full length; the ones approaching
-# x = 0.9 from below must be shorter, and none may exceed the full length.
+# The seeds on the second sheet (at x = 0.5, see TESTING.md) never reach the
+# region where the field vanishes, so their tubes keep the full length; the
+# ones approaching x = 0.9 from below must be shorter, and none may exceed the
+# full length.
 col_range_within "T2 tubes at the vanishing field are shorter" \
     "str_3d_stop_binVolInt.dat" "q_volInt" "$STREAM_LENGTH" 0.59375001
 

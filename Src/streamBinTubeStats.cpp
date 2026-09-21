@@ -1091,6 +1091,12 @@ readStreamBin(
   std::getline(ifs, dummy);
   faceData.resize(fds);
   ifs.read((char*)faceData.dataPtr(), sizeof(int) * faceData.size());
+  if (!ifs)
+    Abort(headerName + " ends before the connectivity is complete");
+  // node ids count from 1 and index streamData below
+  for (int i = 0; i < fds; i++)
+    if (faceData[i] < 1)
+      Abort(headerName + " holds a connectivity entry below 1 (corrupt)");
   nElts = fds / static_cast<int>(AMREX_SPACEDIM);
   Print() << "nElts = " << nElts << std::endl;
 
