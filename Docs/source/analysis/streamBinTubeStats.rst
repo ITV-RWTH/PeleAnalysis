@@ -73,3 +73,27 @@ Tool Options
 
 
 
+Notes
+#####
+
+Every surface node referenced by the connectivity must have a stream in the
+input directory. Data for a missing one reads back as zeros, i.e. a tube corner
+at the origin, which would enter the statistics as an enormous stream tube, so
+the tool aborts naming how many nodes and elements are affected instead of
+dropping them. A stream set is normally complete, since
+:doc:`partStream <partStream>` refuses to produce one that is not; an
+incomplete directory means the run that wrote it did not finish.
+
+``is_per`` and ``domain_size`` have to match the case the streams were built
+for: they are what lets the area and volume of a tube crossing a periodic
+boundary be computed correctly. ``domain_size`` is required in every periodic
+direction.
+
+The tool reads the ``Header`` and the ``str_*.bin`` files written by
+``partStream``; a missing or truncated file is reported rather than used.
+
+Testing
+#######
+
+A functional test suite covering this tool and ``partStream`` is provided in
+``Tests/stream/``. See :doc:`/testing/stream` for the test matrix.

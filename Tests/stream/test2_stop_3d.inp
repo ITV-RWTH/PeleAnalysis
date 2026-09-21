@@ -1,0 +1,15 @@
+# Same seeds, but on the plotfile whose vector field vanishes for x > 0.9.
+# The streams must stop there rather than divide by a zero magnitude.
+infile = plt_stream_3d_stop
+outfile = str_3d_stop
+isoFile = surf_3d.mef
+vectorField = ux uy uz
+vars = temp q
+is_per = 1 1 1
+finestLevel = 0
+nGrow = 3
+Nsteps = 20
+hRK = 0.5
+cSpace = 0
+writeStreamBin = 1
+streamBinfile = str_3d_stop
