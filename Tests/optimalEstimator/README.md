@@ -4,6 +4,52 @@ Not a full suite in the sense of `Tests/jpdf` — CI is build-only and has no
 libtorch, so nothing here runs automatically. These are checks to run by hand
 after touching the training tool.
 
+## `check_best_epoch.sh`
+
+Asserts that the network written to disk is the one from the best epoch: the R²
+on the closing `Restored weights from epoch N` line must equal the best R²
+anywhere in the epoch log.
+
+```sh
+# build both executables first
+cd ../../Src
+make EBASE=generateTestPlt DIM=2
+make EBASE=optimalEstimatorTraining DIM=2
+
+# generate the plotfile, then run the check
+cd ../Tests/optimalEstimator
+../../Src/generateTestPlt2d.gnu.ex gen_oe_high_r2.inp
+./check_best_epoch.sh ../../Src/optimalEstimatorTraining2d.gnu.ex plt_oe_high_r2
+```
+
+It runs two fits against that plotfile:
+
+- **high-R²** — `targ` is an exact deterministic function of `feat` (both are
+  functions of `x`, and `feat` is strictly monotone in `x` over the whole
+  domain), so the irreducible error is zero and the fit runs up past
+  R² = 0.999. The check fails if it does not get there, because the point is to
+  cross that threshold;
+- **low-R²** — `noise` varies only in `y` and `targ` only in `x`, so no
+  estimator beats the unconditional mean and R² stays near 0.
+
+Both must restore their best epoch. This is a regression check: the snapshot and
+the early-stopping counter used to share the condition
+
+```
+if (val_loss < best_val - min_delta_abs)      // min_delta_abs = min_delta * targVar
+```
+
+so once `best_val` fell below `min_delta_abs` the threshold went negative and no
+non-negative loss could satisfy it again — the snapshot froze permanently. In R²
+terms that is R² > 1 − `min_delta`, 0.999 by default. A converged run then
+discarded every improvement made over its last `patience` epochs and wrote out a
+worse estimator, which inflated the irreducible error it exists to measure — and
+by a different amount for each feature set, so it corrupted the comparison
+between them too. The high-R² case reproduces that; the low-R² case is there to
+show the two regimes are not being conflated.
+
+Environment overrides: `NEURONS`, `NEPOCHS`, `TOL`.
+
 ## `check_mpi_invariance.sh`
 
 Asserts that the training trajectory does not depend on the MPI rank count.
