@@ -13,19 +13,33 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Usage:\n"
-            << "  " << argv[0]
-            << " infile=FILE binComp=ID avgComps=ID1 ID2 [OPTIONS]\n\n"
+  std::cerr
+    << "Usage:\n"
+    << "  " << argv[0]
+    << " infile=FILE binComp=N avgComps=N binMin=VAL binMax=VAL  [OPTIONS]\n\n"
 
-            << "Required arguments:\n"
-            << "  infile=FILE1 FILE2 List of AMReX plotfiles\n"
-            << "  binComp=ID  	     ID of variable to condition on\n"
-            << "  avgComps=ID1 ID2   IDs of components to average\n\n"
+    << "Required arguments:\n"
+    << "  infile=FILE        AMReX plotfile\n"
+    << "  binComp=N          Conditioning variable (component index)\n"
+    << "  avgComps=N [N ...] Component(s) to average\n"
+    << "  binMin=VAL         Lower bin range\n"
+    << "  binMax=VAL         Upper bin range\n\n"
 
-            << "Options:\n"
-            << "  -h, --help         Show this help message\n\n"
-            << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
-            << "the documentation.\n";
+    << "Options:\n"
+    << "  nBins=N            Number of bins (default: 64)\n"
+    << "  finestLevel=N      Finest AMR level to read (default: finest in "
+       "plotfile)\n"
+    << "  outSuffix=STRING   Suffix appended to output file names (default: "
+       "none)\n"
+    << "  bounds=xlo ylo zlo xhi yhi zhi   Restrict to a sub-domain (default: "
+       "full domain)\n"
+    << "  writeBinMinMax=0/1 Also write per-bin min/max values (default: 0)\n"
+    << "  aja=0/1            Write header to a separate .key file for "
+       "gnuplot/matlab (default: 0)\n"
+    << "  verbose=0/1/2      Verbosity level (default: 0)\n"
+    << "  -h, --help         Show this help message\n\n"
+    << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+    << "the documentation.\n";
 
   std::exit(1);
 }

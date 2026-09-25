@@ -8,15 +8,18 @@ PeleAnalysis documentation
 
    basics/data
    basics/template
+   basics/analysis_util
 
 .. toctree::
    :maxdepth: 2
    :caption: Analysis:
 
    analysis/amrToFE
+   analysis/arithmetics
    analysis/avgPlotfiles
    analysis/avgToPlane
    analysis/checkIso
+   analysis/ciao2plt
    analysis/combinePlts
    analysis/conditionalMean
    analysis/convert2hdf5
@@ -30,8 +33,11 @@ PeleAnalysis documentation
    analysis/integral
    analysis/isosurface
    analysis/jpdf
+   analysis/makeImage
    analysis/makePlotfile
+   analysis/optimalEstimator
    analysis/partStream
+   analysis/progVar
    analysis/qCriterion
    analysis/regridPlt
    analysis/rmsVel
@@ -43,10 +49,12 @@ PeleAnalysis documentation
    analysis/trimMEFgen
    analysis/turbfile
 
+
 .. toctree::
    :maxdepth: 2
    :caption: Model Specific:
 
+   modelSpecific/computeMixtureFraction
    modelSpecific/plotQPD
    modelSpecific/plotTransportCoeff
    modelSpecific/plotTYtoLe
@@ -54,7 +62,13 @@ PeleAnalysis documentation
    modelSpecific/plotYtoX
    modelSpecific/testQPDtools
    modelSpecific/testTsolve
-   
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Testing:
+
+   testing
 
 README.rst:
 ^^^^^^^^^^^

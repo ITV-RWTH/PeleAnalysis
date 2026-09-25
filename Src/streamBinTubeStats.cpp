@@ -593,9 +593,9 @@ main(int argc, char* argv[])
       startTemp[d] =
         localStreamData[d][nPtsOnStream * tempIdx + nPtsOnStream - 1];
     }
-    if (
-      endTemp[0] <= startTemp[0] || endTemp[1] <= startTemp[1] ||
-      endTemp[2] <= startTemp[2]) {
+    if (AMREX_D_TERM(
+          endTemp[0] <= startTemp[0], || endTemp[1] <= startTemp[1],
+          || endTemp[2] <= startTemp[2])) {
       outOfBounds[iElt] = 1;
       numOOB += 1;
     } else {
@@ -1145,8 +1145,12 @@ writeSurfaceFromStreamTecplot(
     vars += " " + variableNames[iComp];
   os << vars << std::endl;
 
-  os << "ZONE T=\"streamBinTubeSurface\""
-     << " N=" << nStreams << " E=" << nElts << " F=FEPOINT ET= TRIANGLE"
+  os << "ZONE T=\"streamBinTubeSurface\"" << " N=" << nStreams << " E=" << nElts
+#if AMREX_SPACEDIM == 2
+     << " F=FEPOINT ET=LINSEG"
+#else
+     << " F=FEPOINT ET=TRIANGLE"
+#endif
      << std::endl;
 
   int iPt = (nPtsOnStream - 1) / 2;
@@ -1159,8 +1163,11 @@ writeSurfaceFromStreamTecplot(
 
   for (int iElt = 0; iElt < nElts; iElt++) {
     int offset = iElt * static_cast<int>(AMREX_SPACEDIM);
-    os << faceData[offset] << " " << faceData[offset + 1] << " "
-       << faceData[offset + 2] << std::endl;
+    os << faceData[offset] << " " << faceData[offset + 1]
+#if AMREX_SPACEDIM == 3
+       << " " << faceData[offset + 2]
+#endif
+       << std::endl;
   }
 
   os.close();
@@ -1204,8 +1211,8 @@ writeSurfaceTecplot(
     vars += " " + derComps[iDer];
   os << vars << std::endl;
 
-  os << "ZONE T=\"streamBinTubeSurface\""
-     << " N=" << nElts * AMREX_SPACEDIM << " E=" << nElts
+  os << "ZONE T=\"streamBinTubeSurface\"" << " N=" << nElts * AMREX_SPACEDIM
+     << " E=" << nElts
 #if AMREX_SPACEDIM == 2
      << " F=FEPOINT ET=LINSEG"
 #else
@@ -1241,12 +1248,12 @@ writeSurfaceTecplot(
   int fds = nElts * static_cast<int>(AMREX_SPACEDIM);
 
   for (int iElt = 1; iElt < fds;) {
-    os << iElt << " ";
-    ++iElt;
-    os << iElt++ << " ";
-    ++iElt;
-    os << iElt++ << std::endl;
-    ++iElt;
+    os << iElt++;
+    os << " " << iElt++;
+#if AMREX_SPACEDIM == 3
+    os << " " << iElt++;
+#endif
+    os << std::endl;
   }
 
   os.close();
