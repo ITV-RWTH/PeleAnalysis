@@ -17,13 +17,14 @@ print_usage(int, char* argv[])
 {
   std::cerr
     << "Usage:\n"
-    << "  " << argv[0] << " infile=FILE vars=LIST [OPTIONS]\n\n"
+    << "  " << argv[0] << " infile=FILE [OPTIONS]\n\n"
 
     << "Required arguments:\n"
-    << "  infile=FILE        AMReX plotfile\n"
-    << "  vars=LIST          Comma-separated list of variables to filter\n\n"
+    << "  infile=FILE        AMReX plotfile\n\n"
 
     << "Options:\n"
+    << "  variables=LIST     Space-separated names of the variables to filter\n"
+    << "                     (default: every variable in the file)\n"
     << "  -h, --help         Show this help message\n\n"
     << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
     << "the documentation.\n";
