@@ -26,6 +26,7 @@ PeleAnalysis documentation
    analysis/curvature
    analysis/diffPlts
    analysis/dumpFABslice
+   analysis/favreAvgPlotfiles
    analysis/filterPlt
    analysis/flattenAMRFile
    analysis/generateTestPlt
