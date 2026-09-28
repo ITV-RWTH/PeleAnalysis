@@ -35,6 +35,7 @@ TARGETS = \
     isosurface \
     jpdf \
     makePlotfile \
+    partScatter \
     partStream \
     qCriterion \
     regridPlt \

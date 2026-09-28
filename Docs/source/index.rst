@@ -37,6 +37,7 @@ PeleAnalysis documentation
    analysis/makeImage
    analysis/makePlotfile
    analysis/optimalEstimator
+   analysis/partScatter
    analysis/partStream
    analysis/progVar
    analysis/qCriterion
