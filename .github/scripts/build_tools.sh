@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build every tool listed as "#EBASE = <tool>" in ./GNUmakefile (tools behind a
-# double "##" are ignored) and fail on the first compilation error.
+# double "##" are ignored). Every tool is attempted; the script exits non-zero
+# and lists the failing tools if any of them did not compile.
 #
 # Usage (from Src/ or Src/ModelSpecificAnalysis/):
 #   build_tools.sh <extra make args...>
@@ -37,6 +38,7 @@ fi
 SKIP=" $(echo ${SKIP}) "
 
 EBASE_OPTIONS=$(grep -oP '^#(?!#)\s*EBASE\s*=\s*\K[^ ]+' GNUmakefile)
+FAILED=""
 
 for TYPE in ${EBASE_OPTIONS}; do
   if [[ "${SKIP}" == *" ${TYPE} "* ]]; then
@@ -49,6 +51,11 @@ for TYPE in ${EBASE_OPTIONS}; do
   make realclean > /dev/null 2>&1
   if [ "${RESULT}" -ne 0 ]; then
     echo "ERROR: Compilation failed for ${TYPE} (DIM=${DIM}, USE_EB=${USE_EB}, BACKEND=${BACKEND})."
-    exit "${RESULT}"
+    FAILED="${FAILED} ${TYPE}"
   fi
 done
+
+if [ -n "${FAILED}" ]; then
+  echo "ERROR: Compilation failed (DIM=${DIM}, USE_EB=${USE_EB}, BACKEND=${BACKEND}) for:${FAILED}"
+  exit 1
+fi
