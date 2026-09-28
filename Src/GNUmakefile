@@ -53,7 +53,6 @@ USE_CUDA      = FALSE
 #EBASE   = qCriterion
 #EBASE   = regridPlt
 #EBASE   = rmsVel
-#EBASE   = rmsVel
 #EBASE   = sequentialFilterPlt
 #EBASE   = scaleMEF
 #EBASE   = stream2plt
