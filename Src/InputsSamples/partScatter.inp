@@ -1,0 +1,46 @@
+# Example input file for partScatter
+# This tool samples structure functions: from each seed location it fires a set of
+# evenly distributed rays and records (value(r) - value(seed))^order along each ray.
+# Requires DIM = 3.
+
+#------------------- INPUT CONTROL --------------------------------------------------------
+infile = plt00000                          # Plot file to sample
+vars = x_velocity y_velocity z_velocity    # Variables to sample along the rays
+orders = 2 2 2                             # Exponent applied to each entry of vars.
+                                           # Requires exactly one value per entry of vars.
+
+#------------------- OUTPUT CONTROL -------------------------------------------------------
+outfile = plt00000                         # DEF: infile; Name base of output files
+writeParticles = 0                         # [0, 1], DEF: 0; Write particles as plt file
+particlefile = plt00000_particles          # DEF: outfile + "_particles"; Name of writeParticles output file/dir
+writeStreams = 0                           # [0, 1], DEF: 0; Write rays in Tecplot ascii format
+streamfile = plt00000_stream               # DEF: outfile + "_stream"; Name of writeStreams output file/dir
+writeStreamBin = 1                         # [0, 1], DEF: 1; Write rays as binary
+streamBinfile = plt00000_streamBin         # DEF: outfile + "_streamBin"; Name of writeStreamBin output file/dir
+
+#------------------- GRID CONTROL ---------------------------------------------------------
+is_per = 1 1 0                             # Sets case periodicity. Requires AMREX_SPACEDIM ints.
+nGrow = 3                                  # DEF: 3; Grow cells. Must be >= 1.
+
+#------------------- RAY OPTIONS ----------------------------------------------------------
+Nsteps = 50                                # DEF: 50; Number of points recorded along each ray,
+                                           # including the seed point.
+stepSize = 0.1                             # DEF: 0.1; Step along the ray as a fraction of the
+                                           # finest-level cell size. Must be in [0, 0.5].
+particlesPerLoc = 100                      # DEF: 1; Number of rays fired from each seed location.
+plane = -1                                 # DEF: -1; If < 0, ray directions are spread over the
+                                           # sphere (Fibonacci lattice). Set to 0, 1 or 2 to instead
+                                           # spread them over the circle normal to that axis.
+
+#------------------- SEED POINTS ----------------------------------------------------------
+# Exactly one of the following four seeding modes must be given.
+oneSeedPerCell = 0                         # [0, 1], DEF: 0; If 1, places one seed in each cell not
+                                           # covered by a finer level. Very expensive in 3D.
+isoFile = plt00000_surf.mef                # DEF: None; If provided, places one seed at each node of
+                                           # the surface. Its connectivity is copied into the
+                                           # writeStreamBin Header.
+seedLoc = 0.1 0.0 0.3                      # DEF: None; If provided, places a single seed there.
+seedRakeNum = 10                           # DEF: None; If provided, places seedRakeNum evenly spaced
+                                           # seeds along the segment seedRakeL -- seedRakeR. Must be >= 2.
+seedRakeL = 0.0 0.0 0.0                    # Left endpoint for seedRake. Requires AMREX_SPACEDIM real.
+seedRakeR = 0.5 0.5 0.5                    # Right endpoint for seedRake. Requires AMREX_SPACEDIM real.

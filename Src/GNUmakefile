@@ -48,12 +48,14 @@ USE_CUDA      = FALSE
 #EBASE   = jpdf
 #EBASE   = makeImage
 #EBASE   = makePlotfile
+#EBASE   = partScatter
 #EBASE   = partStream
 #EBASE   = progVar
 #EBASE   = qCriterion
 #EBASE   = regridPlt
 #EBASE   = rmsVel
 #EBASE   = scaleMEF
+#EBASE   = sequentialFilterPlt
 #EBASE   = stream2plt
 #EBASE   = streamBinTubeStats
 #EBASE   = subPlt
@@ -87,6 +89,12 @@ ifeq ($(EBASE),partStream)
   USE_PARTICLES = TRUE
   CEXE_headers += StreamPC.H
   CEXE_sources += StreamPC.cpp
+endif
+
+ifeq ($(EBASE),partScatter)
+  USE_PARTICLES = TRUE
+  CEXE_headers += ScatterPC.H
+  CEXE_sources += ScatterPC.cpp
 endif
 
 ifeq ($(EBASE),stream2plt)

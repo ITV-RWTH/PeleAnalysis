@@ -36,7 +36,7 @@ On most HPC systems, serial and parallel HDF5 use the same library names
 systems that give the parallel build distinct names (e.g., ``libhdf5_par``),
 override ``LIBRARIES`` manually in ``GNUmakefile``.
 
-.. code-block:: makefile
+.. code-block:: bash
 
    # Serial
    make EBASE=ciao2plt HDF5_DIR=/path/to/hdf5-serial

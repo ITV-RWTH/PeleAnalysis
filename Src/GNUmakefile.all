@@ -35,11 +35,13 @@ TARGETS = \
     isosurface \
     jpdf \
     makePlotfile \
+    partScatter \
     partStream \
     qCriterion \
     regridPlt \
     rmsVel \
     scaleMEF \
+    sequentialFilterPlt \
     stream2plt \
     streamBinTubeStats \
     subPlt \
