@@ -824,7 +824,7 @@ main(int argc, char* argv[])
       // Every rank sees the same reduced val_loss, and best_val and ref_val
       // follow from it by the same recursion everywhere, so all ranks take the
       // same branches here and stay in lockstep. 
-      
+
       // Keep the best weights. 
       if (val_loss < best_val || best_epoch < 0) {
         // best_epoch < 0 keeps something to fall back on even if val_loss is
