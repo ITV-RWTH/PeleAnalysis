@@ -65,10 +65,7 @@ print_usage(int, char* argv[])
        "0 disables (DEF: 50)\n"
     << "  min_delta=F             Smallest improvement in R2 that counts as "
        "progress,\n"
-    << "                          for the patience counters only; the weights "
-       "kept\n"
-    << "                          are always the lowest-loss ones (DEF: "
-       "1e-3)\n"
+    << "                          (DEF: 1e-3)\n"
     << "  lr_patience=N           Reduce the rate after N flat epochs; 0 "
        "disables (DEF: 20)\n"
     << "  lr_factor=F             Learning-rate multiplier on a plateau "
@@ -824,21 +821,11 @@ main(int argc, char* argv[])
       const Real val_loss = evaluate(val_x, val_y, val_w);
       const Real r2 = 1.0 - val_loss / targVar;
 
-      // Which weights to keep, and whether the run has stalled, are two
-      // different questions and are asked separately.
-      //
       // Every rank sees the same reduced val_loss, and best_val and ref_val
       // follow from it by the same recursion everywhere, so all ranks take the
-      // same branches here and stay in lockstep.
-
-      // Keep the genuinely best weights: any improvement at all counts. Gating
-      // this on min_delta_abs as well used to freeze the snapshot for good once
-      // best_val fell below min_delta_abs - the threshold best_val -
-      // min_delta_abs then being negative and unreachable by any non-negative
-      // loss - which is R2 > 1 - min_delta, i.e. 0.999 by default. Runs that
-      // converged well then wrote out an estimator up to `patience` epochs
-      // worse than the one training had actually found, inflating the
-      // irreducible error they exist to measure.
+      // same branches here and stay in lockstep. 
+      
+      // Keep the best weights. 
       if (val_loss < best_val || best_epoch < 0) {
         // best_epoch < 0 keeps something to fall back on even if val_loss is
         // NaN from the first epoch, when every comparison below is false.
@@ -847,10 +834,7 @@ main(int argc, char* argv[])
         snapshot();
       }
 
-      // When to stop and when to drop the learning rate: this is what
-      // min_delta gates, as documented - the smallest improvement in R2 that
-      // counts as progress. ref_val follows exactly the recursion best_val
-      // used to, so the stopping and learning-rate schedules are unchanged.
+      // When to stop.
       if (val_loss < ref_val - min_delta_abs) {
         ref_val = val_loss;
         bad_epochs = 0;
