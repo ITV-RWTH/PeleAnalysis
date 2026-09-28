@@ -152,9 +152,6 @@ main(int argc, char** argv)
     print_usage(argc, argv);
   }
 
-  // ---------------------------------------------------------------------
-  // ParmParse
-  // ---------------------------------------------------------------------
   amrex::ParmParse pp;
 
   std::string infile = "";
@@ -167,8 +164,7 @@ main(int argc, char** argv)
   pp.get("infile", infile);
   pp.query("max_filter_level", finestLevel);
   pp.query("filter_type", les_filter_type);
-  // Only the box filter is implemented here; fail loudly rather than
-  // silently box-filtering when another PeleC filter type is requested.
+  // Fail loudly rather than silently box-filtering for other PeleC types
   if (les_filter_type != 1) {
     amrex::Abort("sequentialFilterPlt only implements the box filter "
                  "(filter_type = 1); use filterPlt for the other types");

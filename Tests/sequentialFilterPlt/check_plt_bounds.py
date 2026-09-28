@@ -1,27 +1,25 @@
 #!/usr/bin/env python3
-"""
-check_plt_bounds.py <plt_dir> <var_name> <lower> <upper>
-
-Reads every cell of <var_name> across all AMR levels of an AMReX plotfile and
-asserts that each value is finite and lies in [lower, upper].  Unlike
-check_plt_range.py in Tests/generateTestPlt, NaN or Inf is always a failure.
-Exits 0 on success, 1 on failure.
-"""
+"""check_plt_bounds.py <plt_dir> <var> <lower> <upper>: fail unless every cell is finite and in range."""
 import math
 import os
 import re
 import struct
 import sys
 
+LITTLE_ENDIAN = "8 7 6 5 4 3 2 1"
+BIG_ENDIAN = "1 2 3 4 5 6 7 8"
+
 
 def parse_fab_hdr(line):
-    little = "8 7 6 5 4 3 2 1" in line
-    triples = re.findall(r"\((-?\d+),(-?\d+),(-?\d+)\)", line)
-    if len(triples) < 2:
-        raise ValueError(f"Cannot parse box from FAB header: {line!r}")
-    lo = tuple(int(x) for x in triples[0])
-    hi = tuple(int(x) for x in triples[1])
-    return lo, hi, little
+    order = re.search(r"\),\((\d+), \(([\d ]+)\)\)\)", line)
+    boxes = re.findall(r"\((-?\d+),(-?\d+),(-?\d+)\)", line)
+    if not order or len(boxes) < 2:
+        raise ValueError(f"Cannot parse FAB header: {line!r}")
+    if order.group(1) != "8" or order.group(2) not in (LITTLE_ENDIAN, BIG_ENDIAN):
+        raise ValueError(f"Only 8-byte IEEE reals are supported: {line!r}")
+    lo = tuple(int(x) for x in boxes[0])
+    hi = tuple(int(x) for x in boxes[1])
+    return lo, hi, order.group(2) == LITTLE_ENDIAN
 
 
 def main():

@@ -151,9 +151,7 @@ main(int argc, char** argv)
   }
   amrex::Print() << "Done!" << std::endl;
 
-  // fillPatchFromPlt doesn't fill ghost cells, so fill those now
-  // Note: domain boundary cells will be FOExtraped because we don't know
-  // anything better to do
+  // fillPatchFromPlt leaves ghost cells empty; domain boundaries are FOExtraped
   amrex::Print() << "FillPatching data..." << std::endl;
   amrex::Vector<amrex::BCRec> dummyBCRec(ncomp_filter);
   for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
