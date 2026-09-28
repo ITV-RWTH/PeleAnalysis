@@ -26,6 +26,7 @@ PeleAnalysis documentation
    analysis/curvature
    analysis/diffPlts
    analysis/dumpFABslice
+   analysis/favreAvgPlotfiles
    analysis/filterPlt
    analysis/flattenAMRFile
    analysis/generateTestPlt
@@ -42,6 +43,7 @@ PeleAnalysis documentation
    analysis/regridPlt
    analysis/rmsVel
    analysis/scaleMEF
+   analysis/sequentialFilterPlt
    analysis/stream2plt
    analysis/streamBinTubeStats
    analysis/subPlt

@@ -27,6 +27,7 @@ Output artefacts (plotfiles, build logs) are written to `testrun/` and are not t
 | T2 | `gen_t2_const.inp` | All cells of a `constant` field equal 7.0 |
 | T3 | `gen_t3_degenerate.inp` | Five degenerate configurations all produce 5.0 everywhere: direct constant, sphere far outside domain, ring with radii outside domain, double-plane with positions outside domain, sine with zero amplitude |
 | T4 | `gen_t4_planes.inp` | `plane_step` on x, y, z axes each produces range exactly [0, 1] |
+| T16 | `gen_t16_linear.inp` | `linear` along x, y, z and all three combined: min and max equal the field at the first and last cell centre (1/32 and 31/32 on 16³) |
 
 ### Phase 4 — AMR structural
 

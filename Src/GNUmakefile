@@ -53,6 +53,7 @@ USE_CUDA      = FALSE
 #EBASE   = qCriterion
 #EBASE   = regridPlt
 #EBASE   = rmsVel
+#EBASE   = sequentialFilterPlt
 #EBASE   = scaleMEF
 #EBASE   = stream2plt
 #EBASE   = streamBinTubeStats
@@ -74,7 +75,6 @@ USE_CUDA      = FALSE
 ##EBASE   = multMEF
 ##EBASE   = sliceMEF
 ##EBASE   = smoothMEF
-
 
 
 CEXE_sources += $(EBASE).cpp
