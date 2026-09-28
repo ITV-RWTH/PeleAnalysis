@@ -232,7 +232,6 @@ main(int argc, char* argv[])
         pfdata[lev][n] = pf.get(lev, inVarNames[n]);
       }
     }
-    // does this just need hardcoding?
     int nGrow = 3;
     pp.query("nGrow", nGrow);
 
