@@ -60,7 +60,9 @@ print_usage(int, char* argv[])
     << "                               axis line, not from a point.\n"
     << "  sine                         Separable sin*cos*sin wave\n"
     << "                               frequency=Fx [Fy Fz]  phase=Px [Py Pz]\n"
-    << "                               amplitude=A  offset=B\n\n"
+    << "                               amplitude=A  offset=B\n"
+    << "  linear                       offset + Gx*x + Gy*y + Gz*z\n"
+    << "                               gradient=Gx [Gy Gz]  offset=B\n\n"
 
     << "AMR options (multilevel):\n"
     << "  amr.max_level=N              Maximum refinement level (default 0)\n"
@@ -108,7 +110,8 @@ enum class FieldType {
   RingSmooth,
   CylinderStep,
   CylinderSmooth,
-  Sine
+  Sine,
+  Linear
 };
 
 // Structure to hold field configuration
@@ -140,6 +143,9 @@ struct FieldConfig
   GpuArray<Real, AMREX_SPACEDIM> phase = {AMREX_D_DECL(0.0, 0.0, 0.0)};
   Real amplitude = 1.0;
   Real offset = 0.0;
+
+  // Linear parameters (offset is shared with sine)
+  GpuArray<Real, AMREX_SPACEDIM> gradient = {AMREX_D_DECL(0.0, 0.0, 0.0)};
 };
 
 // Enum for refinement criterion types
@@ -187,7 +193,8 @@ parseFieldType(const std::string& type_str)
     {"spherical_shell_smooth", FieldType::RingSmooth},
     {"cylinder_step", FieldType::CylinderStep},
     {"cylinder_smooth", FieldType::CylinderSmooth},
-    {"sine", FieldType::Sine}};
+    {"sine", FieldType::Sine},
+    {"linear", FieldType::Linear}};
 
   auto it = type_map.find(type_str);
   if (it != type_map.end()) {
@@ -458,6 +465,13 @@ evaluateField(
                                std::cos(arg_y) * std::sin(arg_z);
     break;
   }
+
+  case FieldType::Linear:
+    result = config.offset + config.gradient[0] * x + config.gradient[1] * y;
+#if AMREX_SPACEDIM == 3
+    result += config.gradient[2] * z;
+#endif
+    break;
   }
 
   return result;
@@ -896,6 +910,16 @@ main(int argc, char* argv[])
             config.phase[dim] = pp_phase[dim];
           }
           ppf.query("amplitude", config.amplitude);
+          ppf.query("offset", config.offset);
+          break;
+        }
+
+        case FieldType::Linear: {
+          Vector<Real> pp_gradient(AMREX_SPACEDIM, 0.0);
+          ppf.queryarr("gradient", pp_gradient);
+          for (int dim = 0; dim < static_cast<int>(pp_gradient.size()); ++dim) {
+            config.gradient[dim] = pp_gradient[dim];
+          }
           ppf.query("offset", config.offset);
           break;
         }

@@ -87,18 +87,18 @@ plt_differ() {
     fi
 }
 
-# level_identical <desc> <pltA> <pltB> <level>  — every variable bit-identical on one level
-level_identical() {
-    local desc="$1" a="$2" b="$3" lev="$4"
+# level_agree <desc> <pltA> <pltB> <level> <tol>  — every variable within tol on one level
+level_agree() {
+    local desc="$1" a="$2" b="$3" lev="$4" tol="$5"
     if [[ ! -d "$a" || ! -d "$b" ]]; then
         fail "$desc — plotfile missing: $a or $b"; return
     fi
     local out bad
     out=$("$FCOMPARE" "$a" "$b" 2>&1 || true)
-    bad=$(echo "$out" | awk -v lev="$lev" '
+    bad=$(echo "$out" | awk -v lev="$lev" -v tol="$tol" '
         /^ *level = / { inlev = ($3 == lev); if (inlev) found = 1; next }
         inlev && /</ { print "NaN or missing: " $1 }
-        inlev && NF == 3 && $2 + 0 != 0 { print $1 " differs by " $2 }
+        inlev && NF == 3 && $2 + 0 > tol + 0 { print $1 " differs by " $2 }
         inlev && NF == 3 { nvar++ }
         END { if (!found || nvar == 0) print "level " lev " not compared" }')
     if [[ -z "$bad" ]]; then pass "$desc"; else fail "$desc — $bad"; fi
@@ -231,7 +231,7 @@ rm -rf "$RUN_DIR"
 mkdir -p "$RUN_DIR"
 cd "$RUN_DIR"
 
-for name in single single_periodic full_rr2 full_rr4 nested_rr4 tight_3lev; do
+for name in single single_periodic full_rr2 full_rr4 nested_rr4 tight_3lev tight_3lev_linear; do
     "$GEN3D" "$SCRIPT_DIR/gen_$name.inp" > /dev/null 2>&1 || true
     check_file "plt_$name" "plt_$name/Header"
 done
@@ -272,8 +272,8 @@ plt_differ "T8 plt_single base_fgr=8 differs from its input" seq_single_8 plt_si
 section "Phase 4: Filter width per level"
 
 run_seq infile=plt_full_rr2 base_fgr=8 same_fgr_all_levels=true outfile=seq_full_rr2_8_true
-level_identical "T9 level 1: base_fgr=4 scaled by ref_ratio 2 equals base_fgr=8 kept" \
-    seq_full_rr2_4_false seq_full_rr2_8_true 1
+level_agree "T9 level 1: base_fgr=4 scaled by ref_ratio 2 equals base_fgr=8 kept" \
+    seq_full_rr2_4_false seq_full_rr2_8_true 1 0
 plt_differ "T10 same_fgr_all_levels changes level 1" seq_full_rr2_4_false seq_full_rr2_4_true
 
 # --- Phase 5: Wide filters on tightly nested levels ---
@@ -295,21 +295,33 @@ for fgr in 2 8; do
     check_bounds  "T18 filterPlt base_fgr=$fgr sph stays in [0, 1]" filt_tight_$fgr sph 0 1
 done
 
+# Filter and interpolation keep a linear field exactly (level 0 differs at the domain edge)
+for fgr in 2 8 16; do
+    run_seq infile=plt_tight_3lev_linear base_fgr=$fgr outfile=seq_lin_$fgr amrex.init_snan=1
+    filt filt_lin_$fgr infile=plt_tight_3lev_linear base_fgr=$fgr amrex.init_snan=1
+    for lev in 1 2; do
+        level_agree "T19 base_fgr=$fgr linear field unchanged on level $lev" \
+            plt_tight_3lev_linear seq_lin_$fgr $lev "$EQ_TOL"
+        level_agree "T20 filterPlt base_fgr=$fgr linear field unchanged on level $lev" \
+            plt_tight_3lev_linear filt_lin_$fgr $lev "$EQ_TOL"
+    done
+done
+
 # --- Phase 6: Output metadata and options ---
 section "Phase 6: Output metadata and options"
 
 run_seq infile=plt_nested_rr4 outfile=seq_nested_rr4
 filt filt_nested_rr4 infile=plt_nested_rr4
-same_amr_layout "T19 sequentialFilterPlt keeps ref_ratio 4 and the AMR layout" plt_nested_rr4 seq_nested_rr4
-same_amr_layout "T20 filterPlt keeps ref_ratio 4 and the AMR layout"           plt_nested_rr4 filt_nested_rr4
-same_amr_layout "T21 sequentialFilterPlt keeps the 3-level layout"             plt_tight_3lev seq_tight_8
+same_amr_layout "T21 sequentialFilterPlt keeps ref_ratio 4 and the AMR layout" plt_nested_rr4 seq_nested_rr4
+same_amr_layout "T22 filterPlt keeps ref_ratio 4 and the AMR layout"           plt_nested_rr4 filt_nested_rr4
+same_amr_layout "T23 sequentialFilterPlt keeps the 3-level layout"             plt_tight_3lev seq_tight_8
 
 mkdir -p default_name
 (cd default_name && "$SEQ3D" infile=../plt_single > /dev/null 2>&1) || true
-check_dir "T22 default output name <infile>_filtered" default_name/plt_single_filtered
+check_dir "T24 default output name <infile>_filtered" default_name/plt_single_filtered
 
-check_dir "T23 max_filter_level=1 writes Level_1"         seq_tight_8_lev01/Level_1
-no_dir    "T23 max_filter_level=1 does not write Level_2" seq_tight_8_lev01/Level_2
+check_dir "T25 max_filter_level=1 writes Level_1"         seq_tight_8_lev01/Level_1
+no_dir    "T25 max_filter_level=1 does not write Level_2" seq_tight_8_lev01/Level_2
 
 run_seq infile=plt_single base_fgr=8 variables=sph outfile=seq_sph
 run_seq infile=plt_single base_fgr=8 "variables=cst sph" outfile=seq_cst_sph
@@ -317,33 +329,33 @@ for spec in "seq_sph sph" "seq_cst_sph cst sph"; do
     set -- $spec
     plt=$1; shift
     if [[ -d "$plt" && "$(header_vars "$plt")" == "$* " ]]; then
-        pass "T24 $plt writes exactly: $*"
+        pass "T26 $plt writes exactly: $*"
     else
-        fail "T24 $plt should write exactly '$*'"
+        fail "T26 $plt should write exactly '$*'"
     fi
-    compare_plt 0 "T25 $plt equals the same variables of a full run" "$plt" seq_single_8
+    compare_plt 0 "T27 $plt equals the same variables of a full run" "$plt" seq_single_8
 done
 
 run_seq infile=plt_single base_fgr=32 max_grid_size=8 outfile=seq_mgs8
 run_seq infile=plt_single base_fgr=32 outfile=seq_mgs_default
-plt_identical "T26 max_grid_size=8 below the filter width, single level" seq_mgs8 seq_mgs_default --allow_diff_grids
+plt_identical "T28 max_grid_size=8 below the filter width, single level" seq_mgs8 seq_mgs_default --allow_diff_grids
 run_seq infile=plt_tight_3lev base_fgr=8 max_grid_size=8 outfile=seq_tight_mgs8
-plt_identical "T27 max_grid_size=8, 3 levels" seq_tight_mgs8 seq_tight_8_nosnan --allow_diff_grids
+plt_identical "T29 max_grid_size=8, 3 levels" seq_tight_mgs8 seq_tight_8_nosnan --allow_diff_grids
 
 run_seq infile=plt_tight_3lev base_fgr=8 interp_type=0 outfile=seq_pc amrex.init_snan=1
-no_nan       "T28 interp_type=0 no NaN" seq_pc
-check_bounds "T28 interp_type=0 sph stays in [0, 1]" seq_pc sph 0 1
+no_nan       "T30 interp_type=0 no NaN" seq_pc
+check_bounds "T30 interp_type=0 sph stays in [0, 1]" seq_pc sph 0 1
 
 # --- Phase 7: Error handling ---
 section "Phase 7: Error handling"
 
-run_aborts "T29 filter_type=2"           "$SEQ3D" infile=plt_single filter_type=2 outfile=err1
-no_dir     "T29 no output on abort"      err1
-run_aborts "T30 odd base_fgr=3"          "$SEQ3D" infile=plt_single base_fgr=3 outfile=err2
-run_aborts "T31 base_fgr=0"              "$SEQ3D" infile=plt_single base_fgr=0 outfile=err3
-run_aborts "T32 unknown variable"        "$SEQ3D" infile=plt_single "variables=sph nope" outfile=err4
-run_aborts "T33 missing infile argument" "$SEQ3D" outfile=err5
-run_aborts "T34 nonexistent infile"      "$SEQ3D" infile=no_such_plt outfile=err6
+run_aborts "T31 filter_type=2"           "$SEQ3D" infile=plt_single filter_type=2 outfile=err1
+no_dir     "T31 no output on abort"      err1
+run_aborts "T32 odd base_fgr=3"          "$SEQ3D" infile=plt_single base_fgr=3 outfile=err2
+run_aborts "T33 base_fgr=0"              "$SEQ3D" infile=plt_single base_fgr=0 outfile=err3
+run_aborts "T34 unknown variable"        "$SEQ3D" infile=plt_single "variables=sph nope" outfile=err4
+run_aborts "T35 missing infile argument" "$SEQ3D" outfile=err5
+run_aborts "T36 nonexistent infile"      "$SEQ3D" infile=no_such_plt outfile=err6
 
 # --- Phase 8: OpenMP ---
 section "Phase 8: OpenMP"
@@ -352,10 +364,10 @@ if [[ -z "$SEQ3D_OMP" || -z "$FILT3D_OMP" ]]; then
     skip "OpenMP tests (OMP executables not found)"
 else
     OMP_NUM_THREADS=4 "$SEQ3D_OMP" infile=plt_tight_3lev base_fgr=8 outfile=seq_omp > /dev/null 2>&1 || true
-    plt_identical "T35 sequentialFilterPlt 4 threads matches serial" seq_omp seq_tight_8_nosnan
+    plt_identical "T37 sequentialFilterPlt 4 threads matches serial" seq_omp seq_tight_8_nosnan
     OMP_NUM_THREADS=4 "$FILT3D_OMP" infile=plt_single base_fgr=8 max_grid_size=32 > /dev/null 2>&1 \
         && mv plt_single_filtered filt_omp || true
-    plt_identical "T36 filterPlt 4 threads matches serial" filt_omp filt_single_8
+    plt_identical "T38 filterPlt 4 threads matches serial" filt_omp filt_single_8
 fi
 
 # --- Phase 9: MPI ---
@@ -369,10 +381,10 @@ else
     for NP in 2 4; do
         $MPI_CMD -np $NP "$SEQ3D_MPI" infile=plt_single base_fgr=8 \
             outfile=seq_mpi${NP}_single > /dev/null 2>&1 || true
-        plt_identical "T37 $NP ranks, single level matches serial" seq_mpi${NP}_single seq_single_8
+        plt_identical "T39 $NP ranks, single level matches serial" seq_mpi${NP}_single seq_single_8
         $MPI_CMD -np $NP "$SEQ3D_MPI" infile=plt_tight_3lev base_fgr=8 max_grid_size=8 \
             outfile=seq_mpi${NP}_tight amrex.init_snan=1 > /dev/null 2>&1 || true
-        plt_identical "T38 $NP ranks, 3 levels matches serial" seq_mpi${NP}_tight seq_tight_8_nosnan --allow_diff_grids
+        plt_identical "T40 $NP ranks, 3 levels matches serial" seq_mpi${NP}_tight seq_tight_8_nosnan --allow_diff_grids
     done
 fi
 
