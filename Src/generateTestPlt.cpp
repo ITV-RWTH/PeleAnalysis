@@ -467,10 +467,9 @@ evaluateField(
   }
 
   case FieldType::Linear:
-    result = config.offset + config.gradient[0] * x + config.gradient[1] * y;
-#if AMREX_SPACEDIM == 3
-    result += config.gradient[2] * z;
-#endif
+    result = config.offset AMREX_D_TERM(
+      +config.gradient[0] * x, +config.gradient[1] * y,
+      +config.gradient[2] * z);
     break;
   }
 
