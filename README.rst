@@ -17,7 +17,7 @@ Using this command will automatically like your PeleAnalysis Repository to the r
 
 
 Testing
--------
+^^^^^^^
 Functional regression tests live in the ``Tests/`` directory.
 Each subdirectory provides a self-contained ``run_tests.sh`` for one tool (not complete yet)::
 
@@ -27,7 +27,7 @@ Each subdirectory provides a self-contained ``run_tests.sh`` for one tool (not c
 See the `Testing documentation <https://itv-rwth.github.io/PeleAnalysis/testing.html>`_ for the full list of available suites and expected outputs.
 
 Documentation
--------------
+^^^^^^^^^^^^^
 Documentation for the analysis routines exists in the Docs directory. To build the documentation::
 
     cd Docs
@@ -36,7 +36,7 @@ Documentation for the analysis routines exists in the Docs directory. To build t
 You can also view the compiled documentation on https://itv-rwth.github.io/PeleAnalysis/
 
 Acknowledgment
---------------
+^^^^^^^^^^^^^^
 This research was supported by the Exascale Computing Project (ECP), Project
 Number: 17-SC-20-SC, a collaborative effort of two DOE organizations -- the
 Office of Science and the National Nuclear Security Administration --

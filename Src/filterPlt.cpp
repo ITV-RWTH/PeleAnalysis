@@ -17,15 +17,16 @@ print_usage(int, char* argv[])
 {
   std::cerr
     << "Usage:\n"
-    << "  " << argv[0] << " infile=FILE vars=LIST [OPTIONS]\n\n"
+    << "  " << argv[0] << " infile=FILE [OPTIONS]\n\n"
 
     << "Required arguments:\n"
-    << "  infile=FILE        AMReX plotfile\n"
-    << "  vars=LIST          Comma-separated list of variables to filter\n\n"
+    << "  infile=FILE        AMReX plotfile\n\n"
 
     << "Options:\n"
+    << "  variables=LIST     Space-separated names of the variables to filter\n"
+    << "                     (default: every variable in the file)\n"
     << "  -h, --help         Show this help message\n\n"
-    << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+    << "Visit PeleAnalysis/Src/InputsSamples for examples or refer to "
     << "the documentation.\n";
 
   std::exit(1);
@@ -36,22 +37,6 @@ getFileRoot(const std::string& infile)
 {
   std::vector<std::string> tokens = amrex::Tokenize(infile, std::string("/"));
   return tokens[tokens.size() - 1];
-}
-
-void
-write_plotfile(
-  const std::string& plotfilename,
-  int nlevels,
-  const amrex::Vector<const amrex::MultiFab*>& mf,
-  const amrex::Vector<std::string>& varnames,
-  const amrex::Vector<amrex::Geometry>& geom,
-  amrex::Real time,
-  const amrex::Vector<int>& level_steps)
-{
-
-  amrex::Vector<amrex::IntVect> ref_ratio(nlevels - 1, {AMREX_D_DECL(2, 2, 2)});
-  amrex::WriteMultiLevelPlotfile(
-    plotfilename, nlevels, mf, varnames, geom, time, level_steps, ref_ratio);
 }
 
 int
@@ -125,6 +110,7 @@ main(int argc, char** argv)
   amrex::Vector<amrex::MultiFab> indata(Nlev);
   amrex::Vector<amrex::MultiFab> outdata(Nlev);
   amrex::Vector<amrex::Geometry> level_geometries;
+  amrex::Vector<amrex::IntVect> ref_ratio;
 
   // Load the data from the Pltfile
   amrex::Print() << "Reading data..." << std::endl;
@@ -133,6 +119,9 @@ main(int argc, char** argv)
     amrex::Print() << "on level " << lev << std::endl;
 
     // Initialize filter stuff
+    if (lev > 0) {
+      ref_ratio.emplace_back(plt_file_data[0]->getRefRatio(lev - 1));
+    }
     if ((!same_fgr_all_levels) && (lev > 0)) {
       les_filter_fgr_lev *= plt_file_data[0]->getRefRatio(lev - 1);
     }
@@ -162,9 +151,7 @@ main(int argc, char** argv)
   }
   amrex::Print() << "Done!" << std::endl;
 
-  // fillPatchFromPlt doesn't fill ghost cells, so fill those now
-  // Note: domain boundary cells will be FOExtraped because we don't know
-  // anything better to do
+  // fillPatchFromPlt leaves ghost cells empty; domain boundaries are FOExtraped
   amrex::Print() << "FillPatching data..." << std::endl;
   amrex::Vector<amrex::BCRec> dummyBCRec(ncomp_filter);
   for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
@@ -180,41 +167,28 @@ main(int argc, char** argv)
       }
     }
   }
+  amrex::InterpBase* mapper = &amrex::mf_pc_interp;
+  if (interp_type == 1) {
+    mapper = &amrex::mf_cell_cons_interp;
+  }
+  amrex::Vector<amrex::Vector<amrex::MultiFab*>> smf(Nlev);
+  amrex::Vector<amrex::Vector<amrex::Real>> stime(Nlev, {0.0});
+  amrex::Vector<amrex::PhysBCFunct<
+    amrex::GpuBndryFuncFab<pele::physics::pltfilemanager::FillExtDirDummy>>>
+    bndry_func;
+  for (int lev = 0; lev < Nlev; ++lev) {
+    smf[lev] = {&indata[lev]};
+    bndry_func.emplace_back(
+      level_geometries[lev], dummyBCRec,
+      pele::physics::pltfilemanager::FillExtDirDummy{});
+  }
   for (int lev = 0; lev < Nlev; ++lev) {
     amrex::Print() << "on level " << lev << std::endl;
-    if (lev == 0) {
-      amrex::PhysBCFunct<
-        amrex::GpuBndryFuncFab<pele::physics::pltfilemanager::FillExtDirDummy>>
-        bndry_func(
-          level_geometries[lev], {dummyBCRec},
-          pele::physics::pltfilemanager::FillExtDirDummy{});
-      amrex::FillPatchSingleLevel(
-        indata[lev], indata[lev].nGrowVect(), 0.0, {&(indata[lev])}, {0.0}, 0,
-        0, ncomp_filter, level_geometries[lev], bndry_func, 0);
-    } else {
-      amrex::InterpBase* mapper;
-      if (interp_type == 1) {
-        mapper = &amrex::mf_cell_cons_interp;
-      } else {
-        mapper = &amrex::mf_pc_interp;
-      }
-      amrex::PhysBCFunct<
-        amrex::GpuBndryFuncFab<pele::physics::pltfilemanager::FillExtDirDummy>>
-        crse_bndry_func(
-          level_geometries[lev - 1], {dummyBCRec},
-          pele::physics::pltfilemanager::FillExtDirDummy{});
-      amrex::PhysBCFunct<
-        amrex::GpuBndryFuncFab<pele::physics::pltfilemanager::FillExtDirDummy>>
-        fine_bndry_func(
-          level_geometries[lev], {dummyBCRec},
-          pele::physics::pltfilemanager::FillExtDirDummy{});
-      FillPatchTwoLevels(
-        indata[lev], indata[lev].nGrowVect(), 0.0, {&(indata[lev - 1])}, {0.0},
-        {&(indata[lev])}, {0.0}, 0, 0, ncomp_filter, level_geometries[lev - 1],
-        level_geometries[lev], crse_bndry_func, 0, fine_bndry_func, 0,
-        amrex::IntVect(plt_file_data[0]->getRefRatio(lev - 1)), mapper,
-        {dummyBCRec}, 0);
-    }
+    // Unlike FillPatchTwoLevels, this also uses levels below lev-1 where needed
+    amrex::FillPatchNLevels(
+      indata[lev], lev, indata[lev].nGrowVect(), 0.0, smf, stime, 0, 0,
+      ncomp_filter, level_geometries, bndry_func, 0, ref_ratio, mapper,
+      dummyBCRec, 0);
   }
   amrex::Print() << "Done!" << std::endl;
 
@@ -222,12 +196,15 @@ main(int argc, char** argv)
   for (int lev = 0; lev < Nlev; ++lev) {
     amrex::Print() << "on level " << lev << std::endl;
 
+#ifdef AMREX_USE_OMP
+#pragma omp parallel if (amrex::Gpu::notInLaunchRegion())
+#endif
     for (amrex::MFIter mfi(indata[lev], amrex::TilingIfNotGPU()); mfi.isValid();
          ++mfi) {
 
       amrex::FArrayBox& fab_in = (indata[lev])[mfi];
       amrex::FArrayBox& fab_out = (outdata[lev])[mfi];
-      const amrex::Box& box = mfi.validbox();
+      const amrex::Box& box = mfi.tilebox();
 
       les_filter[lev].apply_filter(box, fab_in, fab_out);
     }
@@ -242,9 +219,10 @@ main(int argc, char** argv)
   pp.query("n_files", n_files);
   amrex::VisMF::SetNOutFiles(n_files);
 
-  write_plotfile(
+  amrex::WriteMultiLevelPlotfile(
     outfile, Nlev, amrex::GetVecOfConstPtrs(outdata), variableNames,
-    level_geometries, plt_file_data[0]->getTime(), amrex::Vector<int>(Nlev, 0));
+    level_geometries, plt_file_data[0]->getTime(), amrex::Vector<int>(Nlev, 0),
+    ref_ratio);
   amrex::Print() << "Done!" << std::endl;
 
   amrex::Finalize();
