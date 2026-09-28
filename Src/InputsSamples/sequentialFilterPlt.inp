@@ -16,8 +16,6 @@ base_fgr = 2                              # DEF: 2, the desired filter to grid r
 same_fgr_all_levels = false               # DEF: false, if true the same filter to grid ratio is kept on all levels (rather than absolute filter width)
 
 max_grid_size = 32                        # DEF: the grids of the input pltfile are used
-                                          # unchanged; set this to re-box the data. Must be at
-                                          # least the filter width (base_fgr on the base level,
-                                          # scaled by the refinement ratio on finer levels
-                                          # unless same_fgr_all_levels = true)
+                                          # unchanged; set this to re-box the data (e.g. for
+                                          # load balance). Does not change the result
 interp_type = 1                           # DEF: 1, determines the type of interpolation when FillPatching: 0 -> piecewise constant, 1 -> cell cons linear

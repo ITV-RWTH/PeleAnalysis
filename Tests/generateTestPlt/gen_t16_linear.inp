@@ -1,0 +1,24 @@
+# T16 — linear fields along each axis and combined; cell centres are 1/32 ... 31/32
+amr.n_cell = 16 16 16
+amr.max_grid_size = 16
+geometry.coord_sys = 0
+geometry.prob_lo = 0.0 0.0 0.0
+geometry.prob_hi = 1.0 1.0 1.0
+geometry.is_periodic = 0 0 0
+plotfile_name = plt_t16_linear
+
+field.names = lx ly lz lxyz
+
+lx.type = linear
+lx.gradient = 1.0 0.0 0.0
+
+ly.type = linear
+ly.gradient = 0.0 2.0 0.0
+ly.offset = 1.0
+
+lz.type = linear
+lz.gradient = 0.0 0.0 -1.0
+
+lxyz.type = linear
+lxyz.gradient = 1.0 1.0 1.0
+lxyz.offset = -0.5

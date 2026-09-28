@@ -39,7 +39,7 @@ Help: ::
 
 Example: ::
 
-   ./sequentialFilterPlt3d.gnu.MPI.ex ./InputSamples/sequentialFilterPlt.inp
+   ./sequentialFilterPlt3d.gnu.MPI.ex ./InputsSamples/sequentialFilterPlt.inp
 
 Tool Options
 #############
@@ -87,10 +87,9 @@ ratio fixed, so the filter width shrinks with the cell size on finer levels.
 
 `max_grid_size` is optional here, unlike in :doc:`filterPlt`: if it is not set,
 the ``BoxArray`` of the input plot file is used as is. Set it to re-box the data,
-for instance to improve load balance. It must be at least as large as the filter
-width on the finest level filtered, since each pass grows the boxes by half the
-filter width in one direction. `interp_type` selects the interpolator used to
-fill fine-level ghost cells from the underlying coarse level.
+for instance to improve load balance. It does not change the result, and it may
+be smaller than the filter width. `interp_type` selects the interpolator used to
+fill fine-level ghost cells from the underlying coarse levels.
 
 Notes
 #############
@@ -101,11 +100,15 @@ are one-sided estimates. Periodic directions are detected from the plot file
 geometry and wrap around as expected.
 
 At coarse/fine interfaces each of the three passes fills fine-level ghost cells
-by interpolating from the coarse level, which at that point already holds the
-result of the preceding passes. Filtering and interpolation do not commute
-exactly, so values within a filter width of a coarse/fine interface are close
-to, but not bitwise identical to, what :doc:`filterPlt` produces with the same
-settings. Away from level boundaries the two tools agree.
+by interpolating from the coarser levels, which at that point already hold the
+result of the preceding passes. Where a wide filter reaches beyond the next
+coarser level, even coarser levels are used. Filtering and interpolation do not
+commute exactly, so values within a filter width of a coarse/fine interface are
+close to, but not bitwise identical to, what :doc:`filterPlt` produces with the
+same settings. Away from level boundaries the two tools agree. With
+`same_fgr_all_levels` set to ``true`` the coarse data used for the fine ghost
+cells was filtered at a larger physical width than the fine level, so the
+difference near the interface grows accordingly.
 
 The coarse levels of the output are not averaged down from the finer levels;
 each level is filtered from its own data, as in :doc:`filterPlt`.

@@ -23,7 +23,7 @@ Help: ::
 
 Example: ::
 
-   ./filterPlt3d.gnu.MPI.ex ./InputSamples/filterPlt.inp
+   ./filterPlt3d.gnu.MPI.ex ./InputsSamples/filterPlt.inp
 
 The output is written to the base name of `infile` with ``_filtered`` appended,
 in the current working directory; there is no ``outfile`` option. For a filter
