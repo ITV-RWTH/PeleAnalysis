@@ -137,11 +137,6 @@ ifeq ($(EBASE),decimateMEF) #make qslim first!
    NEED_QSLIM = TRUE
 endif
 
-ifeq ($(USE_EB), TRUE)
-   EB_DIR := $(PELE_ANALYSIS_HOME)/Src/EBUserDefined
-   CXXFLAGS += -I$(EB_DIR)
-endif
-
 Blocs := .
 
 include $(PELE_ANALYSIS_HOME)/Tools/GNUmake/Make.Analysis

@@ -56,7 +56,7 @@ integrate(
     auto const& mask_ma  = mask_mf[lev].const_arrays();
     auto const& volume_ma = volume.const_arrays();
 #ifdef AMREX_USE_EB
-    auto const& vfrac_ma = vfrac_mf[lev]->const_arrays();
+    auto const& vfrac_ma = vfrac_mf[lev].const_arrays();
 #endif
 
     int ratio_x = integrate_x ? 1 : ratio;

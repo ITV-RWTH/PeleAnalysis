@@ -26,6 +26,8 @@ endif
 
 ifeq ($(USE_EB),TRUE)
   Adirs +=  EB
+  # User-replaceable EB geometry (PeleLMeX_EBUserDefined.H, pelelmex_prob_parm.H)
+  INCLUDE_LOCATIONS += $(PELE_ANALYSIS_HOME)/Src/EBUserDefined
 endif
 
 Bpack += $(foreach dir, $(Adirs), $(AMREX_HOME)/Src/$(dir)/Make.package)
