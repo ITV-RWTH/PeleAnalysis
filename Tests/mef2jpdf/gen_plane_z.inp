@@ -1,0 +1,14 @@
+amr.n_cell = 32 32 32
+amr.max_grid_size = 32
+geometry.prob_lo = 0.0 0.0 0.0
+geometry.prob_hi = 1.0 1.0 1.0
+geometry.is_periodic = 0 0 0
+geometry.coord_sys = 0
+plotfile_name = plt_plane_z
+
+field.names = z_iso
+z_iso.type = plane_step
+z_iso.axis = 2
+z_iso.position = 0.5
+z_iso.value_left = 1.0
+z_iso.value_right = 0.0

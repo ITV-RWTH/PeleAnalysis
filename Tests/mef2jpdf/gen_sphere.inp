@@ -1,0 +1,14 @@
+amr.n_cell = 32 32 32
+amr.max_grid_size = 32
+geometry.prob_lo = 0.0 0.0 0.0
+geometry.prob_hi = 1.0 1.0 1.0
+geometry.is_periodic = 0 0 0
+geometry.coord_sys = 0
+plotfile_name = plt_sphere
+
+field.names = sphere_step
+sphere_step.type = sphere_step
+sphere_step.center = 0.5 0.5 0.5
+sphere_step.radius = 0.4
+sphere_step.value_inside = 1.0
+sphere_step.value_outside = 0.0

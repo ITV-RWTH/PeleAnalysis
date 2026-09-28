@@ -1,0 +1,8 @@
+infile = plt_cylinder
+isoCompName = z_iso
+isoVal = 0.5
+outfile_base = surf_cylinder
+comps = sine_x
+writeSurf = 1
+surfFormat = MEF
+is_per = 0 0 0
