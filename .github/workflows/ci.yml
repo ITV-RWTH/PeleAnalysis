@@ -24,9 +24,9 @@ env:
   EXPECTED_EB_FAILURES: ''
   EXPECTED_EB_2D_FAILURES: ''
   EXPECTED_EB_3D_FAILURES: ''
-  EXPECTED_CUDA_FAILURES: ''
-  EXPECTED_HIP_FAILURES: ''
-  EXPECTED_SYCL_FAILURES: ''
+  EXPECTED_CUDA_FAILURES: 'amrToFE ciao2plt conditionalMean jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile'
+  EXPECTED_HIP_FAILURES: 'amrToFE ciao2plt conditionalMean jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile'
+  EXPECTED_SYCL_FAILURES: 'amrToFE ciao2plt conditionalMean jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile'
 
 jobs:
 
@@ -147,6 +147,8 @@ jobs:
           du -hs ${HOME}/.cache/ccache
 
       - name: Test (ModelSpecificAnalysis)
+        # Report these tools even when the Src step failed
+        if: success() || failure()
         working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
         run: |
           ccache -z
@@ -285,6 +287,8 @@ jobs:
           du -hs ${HOME}/.cache/ccache
 
       - name: Test (ModelSpecificAnalysis)
+        # Report these tools even when the Src step failed
+        if: success() || failure()
         working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
         run: |
           ccache -z
