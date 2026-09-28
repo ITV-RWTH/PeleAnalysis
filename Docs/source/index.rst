@@ -42,6 +42,7 @@ PeleAnalysis documentation
    analysis/regridPlt
    analysis/rmsVel
    analysis/scaleMEF
+   analysis/sequentialFilterPlt
    analysis/stream2plt
    analysis/streamBinTubeStats
    analysis/subPlt
