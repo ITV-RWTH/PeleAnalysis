@@ -1145,9 +1145,8 @@ writeSurfaceFromStreamTecplot(
     vars += " " + variableNames[iComp];
   os << vars << std::endl;
 
-  os << "ZONE T=\"streamBinTubeSurface\""
-     << " N=" << nStreams << " E=" << nElts << " F=FEPOINT ET= TRIANGLE"
-     << std::endl;
+  os << "ZONE T=\"streamBinTubeSurface\"" << " N=" << nStreams << " E=" << nElts
+     << " F=FEPOINT ET= TRIANGLE" << std::endl;
 
   int iPt = (nPtsOnStream - 1) / 2;
   for (int iStream = 1; iStream <= nStreams; iStream++) {
@@ -1204,8 +1203,8 @@ writeSurfaceTecplot(
     vars += " " + derComps[iDer];
   os << vars << std::endl;
 
-  os << "ZONE T=\"streamBinTubeSurface\""
-     << " N=" << nElts * AMREX_SPACEDIM << " E=" << nElts
+  os << "ZONE T=\"streamBinTubeSurface\"" << " N=" << nElts * AMREX_SPACEDIM
+     << " E=" << nElts
 #if AMREX_SPACEDIM == 2
      << " F=FEPOINT ET=LINSEG"
 #else
