@@ -6,7 +6,7 @@
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
 
-//#include <AMReX_BLFort.H>
+// #include <AMReX_BLFort.H>
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_FillPatchUtil.H>
 #include <AMReX_VisMF.H>
@@ -1407,9 +1407,9 @@ main(int argc, char* argv[])
     int nodeCtr = 0;
 
     Vector<MultiFab> states(Nlev);
-    #ifdef AMREX_USE_EB
+#ifdef AMREX_USE_EB
     Vector<MultiFab> vFdata(Nlev);
-    #endif
+#endif
     Vector<DistributionMapping> dmaps(Nlev);
 
     for (int lev = 0; lev < Nlev; ++lev) {
@@ -1419,7 +1419,7 @@ main(int argc, char* argv[])
       const Box& gpdomain = geoms[lev].growPeriodicDomain(nGrow[lev]);
 
       // Define data holders
-      dmaps[lev] = pf.DistributionMap(lev); //DistributionMapping(grids[lev]);
+      dmaps[lev] = pf.DistributionMap(lev); // DistributionMapping(grids[lev]);
       BoxArray gba = BoxArray(grids[lev]).grow(nGrow[lev]);
 
       states[lev].define(
@@ -1429,16 +1429,18 @@ main(int argc, char* argv[])
           new MultiFab(grids[lev], dmaps[lev], 1, nGrow[lev]));
       }
 
-      // Define and load "volFrac" for usage inside the mask 
-      #ifdef AMREX_USE_EB
-        Print() << "Reading volFrac from plotfile data at level " << lev << "..." << std::endl;
-        vFdata[lev].define(grids[lev],dmaps[lev],1,nGrow[lev]);
-        vFdata[lev].setVal(0.0);
-        const MultiFab& src = pf.get(lev, "volFrac");
-        MultiFab::Copy(vFdata[lev], src, 0, 0, 1, 0);
-        vFdata[lev].FillBoundary(geoms[lev].periodicity());
-        Print() << "...done reading the plotfile data at level " << lev << "..." << std::endl;
-      #endif
+// Define and load "volFrac" for usage inside the mask
+#ifdef AMREX_USE_EB
+      Print() << "Reading volFrac from plotfile data at level " << lev << "..."
+              << std::endl;
+      vFdata[lev].define(grids[lev], dmaps[lev], 1, nGrow[lev]);
+      vFdata[lev].setVal(0.0);
+      const MultiFab& src = pf.get(lev, "volFrac");
+      MultiFab::Copy(vFdata[lev], src, 0, 0, 1, 0);
+      vFdata[lev].FillBoundary(geoms[lev].periodicity());
+      Print() << "...done reading the plotfile data at level " << lev << "..."
+              << std::endl;
+#endif
       // Get cell center coordinates
       const auto geomdata = geoms[lev].data();
 #ifdef AMREX_USE_OMP
@@ -1528,7 +1530,7 @@ main(int argc, char* argv[])
               << "..." << std::endl;
 
       // Populate the list of elements of the isosurface
-      for (MFIter mfi(states[lev],TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+      for (MFIter mfi(states[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
 
         const auto& sfab = states[lev][mfi];
 
@@ -1537,19 +1539,20 @@ main(int argc, char* argv[])
         const auto& gbox = mask.box();
         const auto g1box = grow(mfi.validbox(), 1);
 
-        mask.setVal<amrex::RunOn::Device>(1.0); // Setting mask to level 1 initially
+        mask.setVal<amrex::RunOn::Device>(
+          1.0); // Setting mask to level 1 initially
 
-        #ifdef AMREX_USE_EB
-          //Setting Mask for EB to -1 to exclude Cells with volFrac = 0 
-          Array4<Real> const& volFracBox = vFdata[lev].array(mfi);
-          Array4<Real> maskArray = mask.array();
+#ifdef AMREX_USE_EB
+                // Setting Mask for EB to -1 to exclude Cells with volFrac = 0
+        Array4<Real> const& volFracBox = vFdata[lev].array(mfi);
+        Array4<Real> maskArray = mask.array();
 
-          AMREX_PARALLEL_FOR_3D(gbox, i, j, k, {
-              if (volFracBox(i, j, k) == 0) {
-                  maskArray(i, j, k) = -1.0;
-              }
-          });
-        #endif
+        AMREX_PARALLEL_FOR_3D(gbox, i, j, k, {
+          if (volFracBox(i, j, k) == 0) {
+            maskArray(i, j, k) = -1.0;
+          }
+        });
+#endif
 
         if (lev < finestLevel && !build_distance_function) {
           const auto fratio = pf.refRatio(lev);
