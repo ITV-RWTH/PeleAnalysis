@@ -102,8 +102,9 @@ Available criterion types
 
    #------------------- Output ----------------------------------------------------------
    plotfile_name = pltTestFile            # DEF: pltTestFile; Name of the output plot file
+   n_files = 64                           # DEF: AMReX default; cap on the number of plotfile data files
 
-The output is a standard AMReX multilevel plot file (one level when ``amr.max_level = 0``) readable by any tool in the PeleAnalysis suite or visualised with VisIt or ParaView.
+The output is a standard AMReX multilevel plot file (one level when ``amr.max_level = 0``) readable by any tool in the PeleAnalysis suite or visualised with VisIt or ParaView. ``n_files`` caps the number of binary files used for the plotfile data (AMReX ``VisMF::SetNOutFiles``); AMReX clamps it to the number of MPI ranks, so a serial run always writes a single data file.
 ::
 
    #------------------- Fields ----------------------------------------------------------
@@ -165,6 +166,8 @@ Available field types
      - Smoothly blended transition based on radial distance from an infinite axis line (3D Cartesian)
    * - ``sine``
      - Sinusoidal field: offset + amplitude * sin(2π f_x x) * cos(2π f_y y) * sin(2π f_z z)
+   * - ``linear``
+     - Linear field: offset + G_x x + G_y y + G_z z
 
 .. note::
 
@@ -234,3 +237,13 @@ Type-specific parameters
    myField.offset    = 0.0               # DEF: 0.0; Additive offset
 
    # Result: offset + amplitude * sin(2π f_x x + φ_x) * cos(2π f_y y + φ_y) * sin(2π f_z z + φ_z)
+
+**linear** ::
+
+   myField.gradient = 1.0 -2.0 3.0       # DEF: 0.0 0.0 0.0; Gradient per dimension
+   myField.offset   = 0.5                # DEF: 0.0; Value at the origin
+
+   # Result: offset + G_x x + G_y y + G_z z
+
+A linear field is reproduced exactly by symmetric filters and by conservative linear
+interpolation, so it gives an exact reference for testing tools that filter or interpolate.

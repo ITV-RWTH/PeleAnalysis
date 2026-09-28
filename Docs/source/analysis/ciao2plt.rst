@@ -36,7 +36,7 @@ On most HPC systems, serial and parallel HDF5 use the same library names
 systems that give the parallel build distinct names (e.g., ``libhdf5_par``),
 override ``LIBRARIES`` manually in ``GNUmakefile``.
 
-.. code-block:: makefile
+.. code-block:: bash
 
    # Serial
    make EBASE=ciao2plt HDF5_DIR=/path/to/hdf5-serial
@@ -51,6 +51,7 @@ Tool Options
    #------------------- IO CONTROL -----------------------------------------------------------
    infile  = SJ_H2_000000.h5                  # Input CIAO HDF5 file (required)
    outfile = plt_SJ_H2_000000                 # DEF: plt_<stem>; output plotfile directory
+   n_files = 64                               # DEF: AMReX default; cap on the number of plotfile data files (VisMF), clamped to the MPI rank count
 
 ``infile`` is the only required argument. ``outfile`` defaults to ``plt_`` followed
 by the input filename stem (extension stripped, directory stripped), e.g.

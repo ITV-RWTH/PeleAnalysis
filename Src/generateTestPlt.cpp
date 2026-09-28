@@ -2,6 +2,7 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_PlotFileUtil.H>
+#include <AMReX_VisMF.H>
 #include <AMReX_TagBox.H>
 #include <AMReX_Cluster.H>
 #include <algorithm>
@@ -59,7 +60,9 @@ print_usage(int, char* argv[])
     << "                               axis line, not from a point.\n"
     << "  sine                         Separable sin*cos*sin wave\n"
     << "                               frequency=Fx [Fy Fz]  phase=Px [Py Pz]\n"
-    << "                               amplitude=A  offset=B\n\n"
+    << "                               amplitude=A  offset=B\n"
+    << "  linear                       offset + Gx*x + Gy*y + Gz*z\n"
+    << "                               gradient=Gx [Gy Gz]  offset=B\n\n"
 
     << "AMR options (multilevel):\n"
     << "  amr.max_level=N              Maximum refinement level (default 0)\n"
@@ -107,7 +110,8 @@ enum class FieldType {
   RingSmooth,
   CylinderStep,
   CylinderSmooth,
-  Sine
+  Sine,
+  Linear
 };
 
 // Structure to hold field configuration
@@ -139,6 +143,9 @@ struct FieldConfig
   GpuArray<Real, AMREX_SPACEDIM> phase = {AMREX_D_DECL(0.0, 0.0, 0.0)};
   Real amplitude = 1.0;
   Real offset = 0.0;
+
+  // Linear parameters (offset is shared with sine)
+  GpuArray<Real, AMREX_SPACEDIM> gradient = {AMREX_D_DECL(0.0, 0.0, 0.0)};
 };
 
 // Enum for refinement criterion types
@@ -186,7 +193,8 @@ parseFieldType(const std::string& type_str)
     {"spherical_shell_smooth", FieldType::RingSmooth},
     {"cylinder_step", FieldType::CylinderStep},
     {"cylinder_smooth", FieldType::CylinderSmooth},
-    {"sine", FieldType::Sine}};
+    {"sine", FieldType::Sine},
+    {"linear", FieldType::Linear}};
 
   auto it = type_map.find(type_str);
   if (it != type_map.end()) {
@@ -457,6 +465,12 @@ evaluateField(
                                std::cos(arg_y) * std::sin(arg_z);
     break;
   }
+
+  case FieldType::Linear:
+    result = config.offset AMREX_D_TERM(
+      +config.gradient[0] * x, +config.gradient[1] * y,
+      +config.gradient[2] * z);
+    break;
   }
 
   return result;
@@ -898,6 +912,16 @@ main(int argc, char* argv[])
           ppf.query("offset", config.offset);
           break;
         }
+
+        case FieldType::Linear: {
+          Vector<Real> pp_gradient(AMREX_SPACEDIM, 0.0);
+          ppf.queryarr("gradient", pp_gradient);
+          for (int dim = 0; dim < static_cast<int>(pp_gradient.size()); ++dim) {
+            config.gradient[dim] = pp_gradient[dim];
+          }
+          ppf.query("offset", config.offset);
+          break;
+        }
         }
       }
     } else {
@@ -1003,6 +1027,11 @@ main(int argc, char* argv[])
     // Write multilevel plot file
     std::string plotfile_name = "pltTestFile";
     pp.query("plotfile_name", plotfile_name);
+
+    // Cap the number of plotfile data files via the n_files option (AMReX)
+    int n_files = amrex::VisMF::GetNOutFiles();
+    pp.query("n_files", n_files);
+    amrex::VisMF::SetNOutFiles(n_files);
 
     Vector<int> isteps(Nlev, 0);
     Vector<IntVect> refRatios(Nlev - 1);

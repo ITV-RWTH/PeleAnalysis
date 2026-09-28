@@ -1,0 +1,21 @@
+# Example input file for sequentialFilterPlt
+
+#------------------- IO CONTROL -----------------------------------------------------------
+infile = plt00000                         # pltfile to filter
+outfile = plt00000_filtered               # DEF: "<infile>_filtered", name of output file
+n_files = 64                              # DEF: AMReX default; max number of plotfile data
+                                          # files written (VisMF), clamped to the MPI rank count
+
+#------------------- Operation control ----------------------------------------------------
+variables = temp HeatRelease              # DEF: all possible, list of variable names to filter
+max_filter_level = 4                      # DEF: 1000, max level to consider for filtering
+filter_type = 1                           # DEF: 1, filter type as defined in PeleC. Only the
+                                          # box filter (1) is implemented by this tool; use
+                                          # filterPlt for the other types
+base_fgr = 2                              # DEF: 2, the desired filter to grid ratio on the base level, must be even
+same_fgr_all_levels = false               # DEF: false, if true the same filter to grid ratio is kept on all levels (rather than absolute filter width)
+
+max_grid_size = 32                        # DEF: the grids of the input pltfile are used
+                                          # unchanged; set this to re-box the data (e.g. for
+                                          # load balance). Does not change the result
+interp_type = 1                           # DEF: 1, determines the type of interpolation when FillPatching: 0 -> piecewise constant, 1 -> cell cons linear

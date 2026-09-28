@@ -38,6 +38,7 @@ USE_EB        = FALSE
 #EBASE   = curvature
 #EBASE   = diffPlts
 #EBASE   = dumpFABslice
+#EBASE   = favreAvgPlotfiles
 #EBASE   = filterPlt
 #EBASE   = flattenAMRFile
 #EBASE   = generateTestPlt
@@ -46,11 +47,14 @@ USE_EB        = FALSE
 #EBASE   = isoMEF
 #EBASE   = isosurface
 #EBASE   = jpdf
+#EBASE   = makeImage
 #EBASE   = makePlotfile
 #EBASE   = partStream
+#EBASE   = progVar
 #EBASE   = qCriterion
 #EBASE   = regridPlt
 #EBASE   = rmsVel
+#EBASE   = sequentialFilterPlt
 #EBASE   = scaleMEF
 #EBASE   = stream2plt
 #EBASE   = streamBinTubeStats
@@ -59,6 +63,11 @@ USE_EB        = FALSE
 #EBASE   = surfDATtoMEF
 #EBASE   = trimMEFgen
 #EBASE   = turbfile
+
+# tools requiring an external PyTorch/libtorch installation.  Kept behind a double ##
+# so CI (which has no libtorch) skips them; see Docs optimalEstimator for build notes.
+##EBASE   = optimalEstimatorTraining
+##EBASE   = optimalEstimatorInfer
 
 # tools that need review/combining/fixing/work.  Comment with double ## t escape from CI
 ##EBASE   = combineMEF
@@ -69,10 +78,9 @@ USE_EB        = FALSE
 ##EBASE   = smoothMEF
 
 
-
 CEXE_sources += $(EBASE).cpp
 
-ifeq ($(EBASE),$(filter $(EBASE), template)) # add targets that need utils as space-separated list
+ifeq ($(EBASE),$(filter $(EBASE), template favreAvgPlotfiles)) # add targets that need utils as space-separated list
    USE_UTILS = TRUE
 endif
 
@@ -89,6 +97,14 @@ endif
 
 ifeq ($(EBASE),$(filter $(EBASE), isosurface buildDistance))
    NEED_DISTANCE = TRUE
+endif
+
+# Either load a PyTorch module / activate an environment providing torch,
+# or run "make pytorch" first to fetch a standalone libtorch.
+ifeq ($(EBASE),$(filter $(EBASE), optimalEstimatorTraining optimalEstimatorInfer))
+  NEED_PYTORCH = TRUE
+  CEXE_headers += optimalEstimatorANN.H
+  CEXE_sources += optimalEstimatorANN.cpp
 endif
 
 ifeq ($(EBASE),convert2hdf5)

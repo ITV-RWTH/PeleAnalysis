@@ -6,6 +6,7 @@
 #include <AMReX_DataServices.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
+#include <AMReX_VisMF.H>
 
 using namespace amrex;
 
@@ -13,10 +14,10 @@ static void
 print_usage(int, char* argv[])
 {
   std::cerr << "Usage:\n"
-            << "  " << argv[0] << " infile=LIST outfile=FILE [OPTIONS]\n\n"
+            << "  " << argv[0] << " infiles=LIST outfile=FILE [OPTIONS]\n\n"
 
             << "Required arguments:\n"
-            << "  infile=LIST        List of AMReX plotfiles to combine\n"
+            << "  infiles=LIST       List of AMReX plotfiles to combine\n"
             << "  outfile=FILE       Output combined plotfile\n\n"
 
             << "Options:\n"
@@ -166,6 +167,11 @@ main(int argc, char* argv[])
   }
 
   // write pltfile
+  // Cap the number of plotfile data files via the n_files option (AMReX)
+  int n_files = amrex::VisMF::GetNOutFiles();
+  pp.query("n_files", n_files);
+  amrex::VisMF::SetNOutFiles(n_files);
+
   Vector<int> isteps(Nlev, 0);
   Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});
   amrex::WriteMultiLevelPlotfile(

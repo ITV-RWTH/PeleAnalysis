@@ -26,6 +26,7 @@ PeleAnalysis documentation
    analysis/curvature
    analysis/diffPlts
    analysis/dumpFABslice
+   analysis/favreAvgPlotfiles
    analysis/filterPlt
    analysis/flattenAMRFile
    analysis/generateTestPlt
@@ -33,12 +34,16 @@ PeleAnalysis documentation
    analysis/integral
    analysis/isosurface
    analysis/jpdf
+   analysis/makeImage
    analysis/makePlotfile
+   analysis/optimalEstimator
    analysis/partStream
+   analysis/progVar
    analysis/qCriterion
    analysis/regridPlt
    analysis/rmsVel
    analysis/scaleMEF
+   analysis/sequentialFilterPlt
    analysis/stream2plt
    analysis/streamBinTubeStats
    analysis/subPlt
@@ -51,6 +56,7 @@ PeleAnalysis documentation
    :maxdepth: 2
    :caption: Model Specific:
 
+   modelSpecific/computeMixtureFraction
    modelSpecific/plotQPD
    modelSpecific/plotTransportCoeff
    modelSpecific/plotTYtoLe

@@ -268,6 +268,13 @@ check_plt_range "T4 px range [0,1]" "plt_t4_planes" "px" 0.0 1.0
 check_plt_range "T4 py range [0,1]" "plt_t4_planes" "py" 0.0 1.0
 check_plt_range "T4 pz range [0,1]" "plt_t4_planes" "pz" 0.0 1.0
 
+echo "  T16 — linear fields: range spans the first and last cell centre..."
+"$GEN3D" "$SCRIPT_DIR/gen_t16_linear.inp" > /dev/null 2>&1
+check_plt_range "T16 lx = x"               "plt_t16_linear" "lx"    0.03125  0.96875
+check_plt_range "T16 ly = 1 + 2y"          "plt_t16_linear" "ly"    1.0625   2.9375
+check_plt_range "T16 lz = -z"              "plt_t16_linear" "lz"   -0.96875 -0.03125
+check_plt_range "T16 lxyz = x + y + z - 0.5" "plt_t16_linear" "lxyz" -0.40625  2.40625
+
 # ---------------------------------------------------------------------------
 # Phase 4 — AMR structural tests
 # ---------------------------------------------------------------------------

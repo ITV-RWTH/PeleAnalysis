@@ -72,7 +72,7 @@ main (int   argc,
     bool do_smooth            = false;
     Real smooth_time          = 1.0e-7;
     int nAuxVar               = 0;
-    int n_files               = 4; 
+    int n_files               = amrex::VisMF::GetNOutFiles();
 
     
     // ---------------------------------------------------------------------
@@ -82,7 +82,7 @@ main (int   argc,
 
     // IO
     pp.query("verbose",verbose);
-    pp.query("amr.n_files",n_files);  // Changes how many files the written pltfile contains
+    pp.query("n_files",n_files);  // Cap on the number of plotfile data files (VisMF)
     std::string plotFileName;
     pp.get("infile",plotFileName);
     std::string outfile(getFileRoot(plotFileName) + "_K");

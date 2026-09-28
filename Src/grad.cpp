@@ -6,6 +6,7 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
+#include <AMReX_VisMF.H>
 #include <AMReX_MLMG.H>
 
 // Non-EB Solver
@@ -70,7 +71,7 @@ main(int argc, char* argv[])
     int finestLevel           = 1000;
     int nAuxVar               = 0;
     int verbose               = 1;
-    int n_files               = 4;
+    int n_files               = amrex::VisMF::GetNOutFiles();
 
     //------------------------------------------------------------------------------------------
     // ParmParse
@@ -94,7 +95,7 @@ main(int argc, char* argv[])
 
     pp.query("finestLevel",finestLevel);
 
-    pp.query("amr.n_files",n_files);  // Changes how many files the written pltfile contains
+    pp.query("n_files",n_files);  // Cap on the number of plotfile data files (VisMF)
 
     std::string outfile(getFileRoot(infile) + "_gt");
     pp.query("outfile",outfile);  // Ability to change pltfile path and name

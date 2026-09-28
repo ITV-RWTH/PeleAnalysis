@@ -1,0 +1,20 @@
+# Same layout as gen_tight_3lev.inp with one linear field, which filtering must not change
+amr.n_cell = 32 32 32
+amr.max_grid_size = 32
+amr.max_level = 2
+amr.ref_ratio = 2 2
+amr.blocking_factor = 4
+amr.n_error_buf = 1 1
+amr.grid_eff = 0.7
+geometry.coord_sys = 0
+geometry.prob_lo = 0.0 0.0 0.0
+geometry.prob_hi = 1.0 1.0 1.0
+geometry.is_periodic = 0 0 0
+plotfile_name = plt_tight_3lev_linear
+amr.refinement_indicators = mybox
+amr.mybox.in_box_lo = 0.4 0.4 0.4
+amr.mybox.in_box_hi = 0.6 0.6 0.6
+field.names = lin
+lin.type = linear
+lin.gradient = 1.0 -2.0 3.0
+lin.offset = 0.5

@@ -67,7 +67,7 @@ main (int   argc,
     Real sL               = 1.0; // laminar flame speed
     int do_soret          = 0;   
     int do_wbar           = 1;
-    int n_files           = 4; 
+    int n_files           = amrex::VisMF::GetNOutFiles();
 
 
 
@@ -82,7 +82,7 @@ main (int   argc,
 
     pp.query("verbose",verbose);
     
-    pp.query("amr.n_files",n_files);  // Changes how many files the written pltfile contains
+    pp.query("n_files",n_files);  // Cap on the number of plotfile data files (VisMF)
 
     std::string plotFileName; pp.get("infile",plotFileName);
     PlotFileData pf(plotFileName);
