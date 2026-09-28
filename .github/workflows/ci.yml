@@ -85,7 +85,7 @@ jobs:
           # Tools known to only support specific dimensions.
           # List tools here instead of relying on static_assert grep.
           # Format: space-separated tool names.
-          echo "EXPECTED_2D_FAILURES=qCriterion" >> $GITHUB_ENV
+          echo "EXPECTED_2D_FAILURES=qCriterion sequentialFilterPlt" >> $GITHUB_ENV
           echo "EXPECTED_3D_FAILURES=''" >> $GITHUB_ENV
 
       - name: Install Ccache
