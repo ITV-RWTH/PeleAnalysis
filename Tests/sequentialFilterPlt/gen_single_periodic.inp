@@ -1,0 +1,22 @@
+# Single level, 64^3, periodic in all directions
+amr.n_cell = 64 64 64
+amr.max_grid_size = 32
+geometry.coord_sys = 0
+geometry.prob_lo = 0.0 0.0 0.0
+geometry.prob_hi = 1.0 1.0 1.0
+geometry.is_periodic = 1 1 1
+plotfile_name = plt_single_periodic
+field.names = sine_f sph cst
+sine_f.type = sine
+sine_f.frequency = 2.0 1.0 3.0
+sine_f.phase = 0.1 0.2 0.3
+sine_f.amplitude = 1.0
+sine_f.offset = 0.0
+sph.type = sphere_smooth
+sph.center = 0.45 0.5 0.55
+sph.radius = 0.2
+sph.value_inside = 1.0
+sph.value_outside = 0.0
+sph.smooth_width = 0.05
+cst.type = constant
+cst.value = 3.5
