@@ -614,10 +614,12 @@ if ( do_smooth ) {
         poisson.setDomainBC(lo_bc, hi_bc);
 
 
+        // Coarse BC data must outlive setLevelBC, which reads it
+        MultiFab ProgVarCoarse;
         if ( lev > 0 ) {
-            MultiFab* ProgVarCoarse = new MultiFab(state[lev-1]->boxArray(), state[lev-1]->DistributionMap(), 1, state[lev-1]->nGrow()); 
-            MultiFab::Copy(*ProgVarCoarse, *state[lev-1], idprogvar, 0, 1, nGrow);
-            poisson.setCoarseFineBC(ProgVarCoarse,2);
+            ProgVarCoarse.define(state[lev-1]->boxArray(), state[lev-1]->DistributionMap(), 1, state[lev-1]->nGrow());
+            MultiFab::Copy(ProgVarCoarse, *state[lev-1], idprogvar, 0, 1, nGrow);
+            poisson.setCoarseFineBC(&ProgVarCoarse,2);
         }
         
         MultiFab ProgVar(ba, dmap[lev], 1, nGrow); 
@@ -743,23 +745,19 @@ if ( do_smooth ) {
             #endif
 
            poisson2.setDomainBC(lo_bc, hi_bc);
-           if ( lev > 0 ) { 
-                
-                MultiFab* FlameNormalIdimCoarse = new MultiFab(flame_normal[lev-1]->boxArray(),
-                                                            flame_normal[lev-1]->DistributionMap(),
-                                                            1, 0); 
-                                                       
-                MultiFab::Copy(*FlameNormalIdimCoarse, *flame_normal[lev-1], idim, 0, 1, 0);
-                poisson2.setCoarseFineBC(FlameNormalIdimCoarse,2);
-           } 
+           // Coarse BC data must outlive setLevelBC, which reads it
+           MultiFab FlameNormalIdimCoarse;
+           if ( lev > 0 ) {
+                FlameNormalIdimCoarse.define(flame_normal[lev-1]->boxArray(),
+                                             flame_normal[lev-1]->DistributionMap(),
+                                             1, 0);
+                MultiFab::Copy(FlameNormalIdimCoarse, *flame_normal[lev-1], idim, 0, 1, 0);
+                poisson2.setCoarseFineBC(&FlameNormalIdimCoarse,2);
+           }
 
-
-
-           
-            MultiFab* FlameNormalIdim = new MultiFab(ba, dmap[lev], 1, 1);
-            
-           MultiFab::Copy(*FlameNormalIdim, *flame_normal[lev], idim, 0, 1, 1);
-           poisson2.setLevelBC(0,FlameNormalIdim);
+           MultiFab FlameNormalIdim(ba, dmap[lev], 1, 1);
+           MultiFab::Copy(FlameNormalIdim, *flame_normal[lev], idim, 0, 1, 1);
+           poisson2.setLevelBC(0,&FlameNormalIdim);
             
            MLMG mlmg2(poisson2);
 
@@ -774,14 +772,14 @@ if ( do_smooth ) {
                     faceg[1].define(convert(ba, IntVect::TheDimensionVector(1)), dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]); ,
                     faceg[2].define(convert(ba, IntVect::TheDimensionVector(2)), dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]); );
 
-                mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {FlameNormalIdim}, MLMG::Location::FaceCentroid);
+                mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {&FlameNormalIdim}, MLMG::Location::FaceCentroid);
         #else
                 AMREX_D_TERM(
                     faceg[0].define(convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0); ,
                     faceg[1].define(convert(ba, IntVect::TheDimensionVector(1)), dmap[lev], 1, 0); ,
                     faceg[2].define(convert(ba, IntVect::TheDimensionVector(2)), dmap[lev], 1, 0); );
 
-                mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {FlameNormalIdim}, MLMG::Location::FaceCenter);
+                mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {&FlameNormalIdim}, MLMG::Location::FaceCenter);
         #endif
                 
 
@@ -863,35 +861,37 @@ if ( do_smooth ) {
                 #endif
 
               poisson2.setDomainBC(lo_bc, hi_bc);
+              // Coarse BC data must outlive setLevelBC, which reads it
+              MultiFab gradIdimCoarse;
               if ( lev > 0 ) {
-                  MultiFab* gradIdimCoarse = new MultiFab(cell_normal[lev-1]->boxArray(),
-                                                          cell_normal[lev-1]->DistributionMap(),
-                                                          1, 0); 
-                  MultiFab::Copy(*gradIdimCoarse, *cell_normal[lev-1], idim, 0, 1, 0);
-                  poisson2.setCoarseFineBC(gradIdimCoarse,2);
+                  gradIdimCoarse.define(cell_normal[lev-1]->boxArray(),
+                                        cell_normal[lev-1]->DistributionMap(),
+                                        1, 0);
+                  MultiFab::Copy(gradIdimCoarse, *cell_normal[lev-1], idim, 0, 1, 0);
+                  poisson2.setCoarseFineBC(&gradIdimCoarse,2);
               }
-              MultiFab* gradIdim = new MultiFab(ba, dmap[lev], 1, 1); 
-              MultiFab::Copy(*gradIdim, *cell_normal[lev], idim, 0, 1, 1);
-              poisson2.setLevelBC(0,gradIdim);
+              MultiFab gradIdim(ba, dmap[lev], 1, 1);
+              MultiFab::Copy(gradIdim, *cell_normal[lev], idim, 0, 1, 1);
+              poisson2.setLevelBC(0,&gradIdim);
 
               MLMG mlmg2(poisson2);
 
               std::array<MultiFab,AMREX_SPACEDIM> faceg;
 
         #ifdef AMREX_USE_EB
-            AMREX_D_TERM(   
-                face_gradient[0].define(convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]); ,
-                face_gradient[1].define(convert(ba, IntVect::TheDimensionVector(1)), dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]); ,
-                face_gradient[2].define(convert(ba, IntVect::TheDimensionVector(2)), dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]); );
+            AMREX_D_TERM(
+                faceg[0].define(convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]); ,
+                faceg[1].define(convert(ba, IntVect::TheDimensionVector(1)), dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]); ,
+                faceg[2].define(convert(ba, IntVect::TheDimensionVector(2)), dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]); );
 
-            mlmg.getFluxes({amrex::GetArrOfPtrs(face_gradient)}, {&ProgVar}, MLMG::Location::FaceCentroid);
+            mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {&gradIdim}, MLMG::Location::FaceCentroid);
 
 
         #else
               AMREX_D_TERM(faceg[0].define(convert(ba,IntVect::TheDimensionVector(0)), dmap[lev], 1, 0); ,
                            faceg[1].define(convert(ba,IntVect::TheDimensionVector(1)), dmap[lev], 1, 0); ,
                            faceg[2].define(convert(ba,IntVect::TheDimensionVector(2)), dmap[lev], 1, 0); );
-              mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)},{gradIdim});
+              mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)},{&gradIdim});
         #endif      
 
               // Get cell centered d C / d idim _x_y_z
@@ -1005,20 +1005,19 @@ if ( do_smooth ) {
                 poisson2.setDomainBC(lo_bc, hi_bc);
 
 
+              // Coarse BC data must outlive setLevelBC, which reads it
+              MultiFab velIdimCoarse;
               if ( lev > 0 ) {
-                MultiFab* velIdimCoarse = new MultiFab(state[lev-1]->boxArray(),
-                                                        state[lev-1]->DistributionMap(),
-                                                        1, 0); 
-            
-                MultiFab::Copy(*velIdimCoarse, *state[lev-1], idVst+idim, 0, 1, 0);
-                poisson2.setCoarseFineBC(velIdimCoarse,2);
+                velIdimCoarse.define(state[lev-1]->boxArray(),
+                                     state[lev-1]->DistributionMap(),
+                                     1, 0);
+                MultiFab::Copy(velIdimCoarse, *state[lev-1], idVst+idim, 0, 1, 0);
+                poisson2.setCoarseFineBC(&velIdimCoarse,2);
               }
 
-
-            MultiFab* velIdim = new MultiFab(ba, dmap[lev], 1, 1); 
-              
-            MultiFab::Copy(*velIdim, *state[lev], idVst+idim, 0, 1, 1);
-            poisson2.setLevelBC(0,velIdim);
+            MultiFab velIdim(ba, dmap[lev], 1, 1);
+            MultiFab::Copy(velIdim, *state[lev], idVst+idim, 0, 1, 1);
+            poisson2.setLevelBC(0,&velIdim);
 
             MLMG mlmg2(poisson2);
 
@@ -1030,7 +1029,7 @@ if ( do_smooth ) {
                     faceg[1].define(convert(ba, IntVect::TheDimensionVector(1)), dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]); ,
                     faceg[2].define(convert(ba, IntVect::TheDimensionVector(2)), dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]); );
 
-                    mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {velIdim}, MLMG::Location::FaceCentroid);
+                    mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {&velIdim}, MLMG::Location::FaceCentroid);
 
                     // Get cell centered d u_idim / d _x_y(_z)
                     MultiFab cell_avgg(ba, dmap[lev], AMREX_SPACEDIM, 0, MFInfo(), *eb_factory[lev]);
@@ -1042,7 +1041,7 @@ if ( do_smooth ) {
                     faceg[1].define(convert(ba, IntVect::TheDimensionVector(1)), dmap[lev], 1, 0); ,
                     faceg[2].define(convert(ba, IntVect::TheDimensionVector(2)), dmap[lev], 1, 0); );
                     
-                    mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)},{velIdim});
+                    mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)},{&velIdim});
 
                     // Get cell centered d u_idim / d _x_y(_z)
                     MultiFab cell_avgg(ba, dmap[lev], AMREX_SPACEDIM, 0);
