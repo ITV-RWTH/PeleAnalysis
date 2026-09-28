@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """check_plt_bounds.py <plt_dir> <var> <lower> <upper>: fail unless every cell is finite and in range."""
+
 import math
 import os
 import re

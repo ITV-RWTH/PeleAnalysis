@@ -35,15 +35,21 @@ print_usage(int, char* argv[])
     << "  infile=FILE              AMReX plotfile\n\n"
 
     << "Options:\n"
-    << "  outfile=FILE             Output plotfile (default: <infile>_filtered)\n"
+    << "  outfile=FILE             Output plotfile (default: "
+       "<infile>_filtered)\n"
     << "  variables=LIST           Space-separated names of the variables to\n"
-    << "                           filter (default: every variable in the file)\n"
-    << "  base_fgr=N               Even filter-to-grid ratio on level 0 (default: 2)\n"
-    << "  same_fgr_all_levels=BOOL Keep the ratio instead of the physical width\n"
+    << "                           filter (default: every variable in the "
+       "file)\n"
+    << "  base_fgr=N               Even filter-to-grid ratio on level 0 "
+       "(default: 2)\n"
+    << "  same_fgr_all_levels=BOOL Keep the ratio instead of the physical "
+       "width\n"
     << "                           on finer levels (default: false)\n"
     << "  max_filter_level=N       Finest level to filter (default: all)\n"
-    << "  max_grid_size=N          Re-box the input grids (default: unchanged)\n"
-    << "  interp_type=N            0: piecewise constant, 1: conservative linear\n"
+    << "  max_grid_size=N          Re-box the input grids (default: "
+       "unchanged)\n"
+    << "  interp_type=N            0: piecewise constant, 1: conservative "
+       "linear\n"
     << "                           (default: 1)\n"
     << "  n_files=N                Max number of plotfile data files\n"
     << "  -h, --help               Show this help message\n\n"
@@ -91,8 +97,8 @@ fillGhostCells(
   // Unlike FillPatchTwoLevels, this also uses levels below lev-1 where needed
   for (int lev = 0; lev < nlev; ++lev) {
     amrex::FillPatchNLevels(
-      mf[lev], lev, mf[lev].nGrowVect(), 0.0, smf, stime, 0, 0,
-      mf[lev].nComp(), geom, bndry_func, 0, ref_ratio, mapper, bcr, 0);
+      mf[lev], lev, mf[lev].nGrowVect(), 0.0, smf, stime, 0, 0, mf[lev].nComp(),
+      geom, bndry_func, 0, ref_ratio, mapper, bcr, 0);
   }
 }
 
@@ -285,8 +291,7 @@ main(int argc, char** argv)
       for (int lev = 0; lev < Nlev; ++lev) {
         const amrex::BoxArray ba = dst[lev].boxArray();
         const amrex::DistributionMapping dm = dst[lev].DistributionMap();
-        dst[lev].define(
-          ba, dm, ncomp_filter, ghostsAlong(dir + 2, nGrow[lev]));
+        dst[lev].define(ba, dm, ncomp_filter, ghostsAlong(dir + 2, nGrow[lev]));
       }
     }
   }
