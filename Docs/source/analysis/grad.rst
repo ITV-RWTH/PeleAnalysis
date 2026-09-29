@@ -28,4 +28,12 @@ Example Input File ``grad.inp``::
         finestLevel = 4				  # DEF: 1000, max level to consider for gradient 
         Aux_Variables = density x_velocity	  # DEF: None, variables that are just carried through the script and written to the output file   
         sym_dir = 0 0 0				  # DEF: 0 0 0, sets case symmetry 
-        is_per = 1 1 0                            # DEF: 0 0 0, sets case periodicity
+        is_per = 1 1 0                            # DEF: 1 1 1, sets case periodicity
+
+Embedded boundaries
+###################
+
+When built with ``USE_EB=TRUE``, ``grad`` rebuilds the EB geometry and
+computes the gradient with an EB-aware operator, so covered cells do not enter
+the stencil. This requires the ``eb2.*`` geometry inputs of the simulation; see
+:ref:`embedded_boundaries`. ``grad`` runs on GPU builds.
