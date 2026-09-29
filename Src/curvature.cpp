@@ -291,7 +291,7 @@ main(int argc, char* argv[])
 
     if (verbose > 0)
       Print() << "Start building EB!" << std::endl;
-    BL_PROFILE("PeleLMeX::makeEBGeometry()");
+    BL_PROFILE("PeleAnalysis::buildEBGeometry()");
 
     int max_coarsening_level = 100;
     int req_coarsening_level = static_cast<int>(geoms.size()) - 1;
@@ -623,7 +623,7 @@ main(int argc, char* argv[])
           state[lev - 1]->boxArray(), state[lev - 1]->DistributionMap(), 1,
           state[lev - 1]->nGrow());
         MultiFab::Copy(ProgVarCoarse, *state[lev - 1], idprogvar, 0, 1, nGrow);
-        poisson.setCoarseFineBC(&ProgVarCoarse, 2);
+        poisson.setCoarseFineBC(&ProgVarCoarse, pf.refRatio(lev - 1));
       }
 
       MultiFab ProgVar(ba, dmap[lev], 1, nGrow);
@@ -778,7 +778,8 @@ main(int argc, char* argv[])
             flame_normal[lev - 1]->DistributionMap(), 1, 0);
           MultiFab::Copy(
             FlameNormalIdimCoarse, *flame_normal[lev - 1], idim, 0, 1, 0);
-          poisson2.setCoarseFineBC(&FlameNormalIdimCoarse, 2);
+          poisson2.setCoarseFineBC(
+            &FlameNormalIdimCoarse, pf.refRatio(lev - 1));
         }
 
         MultiFab FlameNormalIdim(ba, dmap[lev], 1, 1);
@@ -911,7 +912,7 @@ main(int argc, char* argv[])
               cell_normal[lev - 1]->DistributionMap(), 1, 0);
             MultiFab::Copy(
               gradIdimCoarse, *cell_normal[lev - 1], idim, 0, 1, 0);
-            poisson2.setCoarseFineBC(&gradIdimCoarse, 2);
+            poisson2.setCoarseFineBC(&gradIdimCoarse, pf.refRatio(lev - 1));
           }
           MultiFab gradIdim(ba, dmap[lev], 1, 1);
           MultiFab::Copy(gradIdim, *cell_normal[lev], idim, 0, 1, 1);
@@ -1081,7 +1082,7 @@ main(int argc, char* argv[])
               0);
             MultiFab::Copy(
               velIdimCoarse, *state[lev - 1], idVst + idim, 0, 1, 0);
-            poisson2.setCoarseFineBC(&velIdimCoarse, 2);
+            poisson2.setCoarseFineBC(&velIdimCoarse, pf.refRatio(lev - 1));
           }
 
           MultiFab velIdim(ba, dmap[lev], 1, 1);
@@ -1271,7 +1272,10 @@ main(int argc, char* argv[])
     Print() << "Writing new data to " << outfile << " , for TS: " << time
             << "\n";
     Vector<int> isteps(Nlev, 0);
-    Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});
+    Vector<IntVect> refRatios(Nlev - 1, IntVect(2));
+    for (int lev = 0; lev < Nlev - 1; ++lev) {
+      refRatios[lev] = IntVect(pf.refRatio(lev));
+    }
     VisMF::SetNOutFiles(n_files);
     amrex::WriteMultiLevelPlotfile(
       outfile, Nlev, GetVecOfConstPtrs(ostate), nnames, geomsOP, time, isteps,

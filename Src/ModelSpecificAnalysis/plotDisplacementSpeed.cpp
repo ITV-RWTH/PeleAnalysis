@@ -276,7 +276,7 @@ main(int argc, char* argv[])
 
     if (verbose)
       Print() << "Start building EB!" << std::endl;
-    BL_PROFILE("PeleLMeX::makeEBGeometry()");
+    BL_PROFILE("PeleAnalysis::buildEBGeometry()");
 
     int max_coarsening_level = 100;
     int req_coarsening_level = static_cast<int>(geoms.size()) - 1;
@@ -883,7 +883,10 @@ main(int argc, char* argv[])
     pp.query("outfile", outfile);
     Print() << "Writing new data to " << outfile << std::endl;
     Vector<int> isteps(Nlev, 0);
-    Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});
+    Vector<IntVect> refRatios(Nlev - 1, IntVect(2));
+    for (int lev = 0; lev < Nlev - 1; ++lev) {
+      refRatios[lev] = IntVect(pf.refRatio(lev));
+    }
     Real time = pf.time();
     VisMF::SetNOutFiles(n_files);
     amrex::WriteMultiLevelPlotfile(

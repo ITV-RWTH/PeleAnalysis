@@ -37,14 +37,11 @@ EBUserDefined(
                    -prechamber_side_y /
                    2.0;); // Macro defines variables based on dimension  -> Raik
                           // question: Third dimension of prechamber?
-  Print() << prechamberLo << std::endl; // Just debugging or function?
   AMREX_D_TERM(prechamberHi[0] = geom.ProbLo(0) + prechamber_side_x;
                , prechamberHi[1] = prechamber_side_y / 2.0;
                , prechamberHi[2] = prechamber_side_y / 2.0;);
-  Print() << prechamberHi << std::endl;
   AMREX_D_TERM(cylinderCentre[0] = prechamberHi[0] + cylinderLength / 2.0;
                , cylinderCentre[1] = 0.0;, cylinderCentre[2] = 0.0;);
-  Print() << cylinderCentre << std::endl;
   AMREX_D_TERM(
     chamberLo[0] = geom.ProbLo(0) + prechamber_side_x + cylinderLength;
     , chamberLo[1] = geom.ProbLo(1);, chamberLo[2] = geom.ProbLo(2););
