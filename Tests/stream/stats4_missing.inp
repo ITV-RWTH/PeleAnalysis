@@ -1,0 +1,10 @@
+# Reads a stream directory with one stream record removed: the surface node it
+# belonged to has no data, so the tool must abort rather than treat the zeros
+# as a measurement.
+infile = str_3d_broken
+is_per = 1 1 1
+domain_size = 1.0 1.0 1.0
+avgComps = q
+intComps = q
+writeSurface = 1
+writeBasic = 0

@@ -1,0 +1,17 @@
+# Asking for the stream binary without a seed surface has no connectivity to
+# write: partStream must abort.
+infile = plt_stream_3d
+outfile = str_3d_nosurface
+vectorField = ux uy uz
+vars = temp q
+is_per = 1 1 1
+finestLevel = 0
+nGrow = 3
+Nsteps = 20
+hRK = 0.5
+cSpace = 0
+seedRakeNum = 4
+seedRakeL = 0.2 0.2 0.2
+seedRakeR = 0.8 0.8 0.8
+writeStreamBin = 1
+streamBinfile = str_3d_nosurface

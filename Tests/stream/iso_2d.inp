@@ -1,0 +1,11 @@
+# Seed polyline for the 2D tests: the c = 0.5 contour of plt_stream_2d.
+infile = plt_stream_2d
+outfile_base = surf_2d
+isoCompName = c
+isoVal = 0.5
+is_per = 1 1
+finestLevel = 0
+nGrow = 1
+writeSurf = 1
+surfFormat = MEF
+computeArea = 1

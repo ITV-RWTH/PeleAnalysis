@@ -1,0 +1,30 @@
+# 2D analogue of gen_stream_3d.inp.  The iso "surface" is a pair of lines, so
+# the total "area" (length) is again 2.
+amr.n_cell = 32 32
+amr.max_grid_size = 16
+amr.max_level = 0
+
+geometry.coord_sys = 0
+geometry.prob_lo = 0.0 0.0
+geometry.prob_hi = 1.0 1.0
+geometry.is_periodic = 1 1
+
+plotfile_name = plt_stream_2d
+
+field.names = c ux uy temp q
+
+c.type = plane_smooth
+c.axis = 0
+c.position = 0.8
+c.value_left = 0.0
+c.value_right = 1.0
+c.smooth_width = 0.2
+
+ux.type = constant
+ux.value = 1.0
+uy.type = constant
+uy.value = 0.0
+temp.type = constant
+temp.value = 300.0
+q.type = constant
+q.value = 1.0

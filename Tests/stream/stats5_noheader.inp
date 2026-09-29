@@ -1,0 +1,9 @@
+# The stream directory does not exist, so the Header cannot be read: the tool
+# must abort instead of reading the counts off a failed stream.
+infile = str_does_not_exist
+is_per = 1 1 1
+domain_size = 1.0 1.0 1.0
+avgComps = q
+intComps = q
+writeSurface = 1
+writeBasic = 0

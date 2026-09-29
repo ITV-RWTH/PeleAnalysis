@@ -12,7 +12,7 @@ writeParticles = 0                         # [0, 1], DEF: 0; Write particles as 
 particlefile = plt00000_particles          # DEF: outfile + "_particles"; Name of writeParticles output file/dir
 writeStreams = 0                           # [0, 1], DEF: 0; Write streamlines in Tecplot ascii format.
 streamfile = plt00000_stream               # DEF: outfile + "_stream"; Name of writeStreams output file/dir
-writeStreamBin                             # [0, 1], DEF: 0; Write streamlines as binary.
+writeStreamBin = 1                         # [0, 1], DEF: 1; Write streamlines as binary.
 streamBinfile = plt00000_streamBin         # DEF: outfile + "_streamBin"; Name of writeStreamBin output file/dir
 
 #------------------- GRID CONTROL ---------------------------------------------------------

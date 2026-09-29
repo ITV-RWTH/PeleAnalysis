@@ -1,0 +1,9 @@
+# Statistics for the periodic 2D case.
+infile = str_2d
+is_per = 1 1
+domain_size = 1.0 1.0
+avgComps = q
+intComps = q
+writeSurface = 1
+writeBasic = 0
+writeTecplotSurfaceFromStream = 1

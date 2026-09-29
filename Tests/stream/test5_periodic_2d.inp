@@ -1,0 +1,14 @@
+# 2D analogue of test 1.
+infile = plt_stream_2d
+outfile = str_2d
+isoFile = surf_2d.mef
+vectorField = ux uy
+vars = temp q
+is_per = 1 1
+finestLevel = 0
+nGrow = 3
+Nsteps = 20
+hRK = 0.5
+cSpace = 0
+writeStreamBin = 1
+streamBinfile = str_2d

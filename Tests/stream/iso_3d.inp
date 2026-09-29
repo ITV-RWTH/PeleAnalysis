@@ -1,0 +1,11 @@
+# Seed surface for the 3D tests: the c = 0.5 isosurface of plt_stream_3d.
+infile = plt_stream_3d
+outfile_base = surf_3d
+isoCompName = c
+isoVal = 0.5
+is_per = 1 1 1
+finestLevel = 0
+nGrow = 1
+writeSurf = 1
+surfFormat = MEF
+computeArea = 1

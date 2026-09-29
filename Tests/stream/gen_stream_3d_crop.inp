@@ -1,0 +1,35 @@
+# Same fields as gen_stream_3d.inp on a domain that is shorter in y, used for
+# two things: seeds of the full-domain surface fall outside it (partStream must
+# abort), and a seed rake placed between the last cell centre and the
+# non-periodic y wall checks the interpolation there.
+#   dy = 0.9/32 = 0.028125, last cell centre y = 0.8859375, wall y = 0.9
+amr.n_cell = 32 32 32
+amr.max_grid_size = 16
+amr.max_level = 0
+
+geometry.coord_sys = 0
+geometry.prob_lo = 0.0 0.0 0.0
+geometry.prob_hi = 1.0 0.9 1.0
+geometry.is_periodic = 1 0 1
+
+plotfile_name = plt_stream_3d_crop
+
+field.names = c ux uy uz temp q
+
+c.type = plane_smooth
+c.axis = 0
+c.position = 0.8
+c.value_left = 0.0
+c.value_right = 1.0
+c.smooth_width = 0.2
+
+ux.type = constant
+ux.value = 1.0
+uy.type = constant
+uy.value = 0.0
+uz.type = constant
+uz.value = 0.0
+temp.type = constant
+temp.value = 300.0
+q.type = constant
+q.value = 1.0

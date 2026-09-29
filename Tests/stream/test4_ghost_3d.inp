@@ -1,0 +1,20 @@
+# Seeds between the last cell centre (y = 0.8859375) and the non-periodic wall
+# (y = 0.9), where the interpolation stencil reaches outside the domain.  Both
+# mapped fields are constant, so every value along every stream must come back
+# as exactly temp = 300 and q = 1 once those ghost cells are filled.
+infile = plt_stream_3d_crop
+outfile = str_ghost
+vectorField = ux uy uz
+vars = temp q
+is_per = 1 0 1
+finestLevel = 0
+nGrow = 3
+Nsteps = 20
+hRK = 0.5
+cSpace = 0
+seedRakeNum = 16
+seedRakeL = 0.5 0.89296875 0.1
+seedRakeR = 0.5 0.89296875 0.9
+writeStreams = 1
+streamfile = str_ghost
+writeStreamBin = 0
