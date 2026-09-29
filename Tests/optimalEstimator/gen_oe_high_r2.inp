@@ -1,0 +1,41 @@
+# Synthetic plotfile for check_best_epoch.sh.
+#
+# Both fields are functions of x alone, and "feat" is strictly monotone in x
+# over the whole domain (its smoothstep edges, 0.5 +- 1.0, lie outside it), so
+# "targ" is an exact deterministic function of "feat": the irreducible error is
+# zero and a converging fit must run R2 up towards 1. The relation is not
+# linear - the two smoothsteps use different widths - so the network needs a
+# few hundred epochs to get there, which is what gives the check a stretch of
+# genuine improvement on the far side of R2 = 0.999 to look at.
+amr.n_cell = 64 64 64
+amr.max_grid_size = 32
+geometry.coord_sys = 0
+geometry.prob_lo = 0.0 0.0 0.0
+geometry.prob_hi = 1.0 1.0 1.0
+geometry.is_periodic = 0 0 0
+plotfile_name = plt_oe_high_r2
+
+field.names = feat targ noise
+
+feat.type = plane_smooth
+feat.axis = 0
+feat.position = 0.5
+feat.smooth_width = 2.0
+feat.value_left = 0.0
+feat.value_right = 1.0
+
+targ.type = plane_smooth
+targ.axis = 0
+targ.position = 0.35
+targ.smooth_width = 0.5
+targ.value_left = 1.0
+targ.value_right = 0.0
+
+# Varies only in y, so it carries no information about targ at all: the
+# low-R2 control case.
+noise.type = plane_smooth
+noise.axis = 1
+noise.position = 0.5
+noise.smooth_width = 2.0
+noise.value_left = 0.0
+noise.value_right = 1.0
