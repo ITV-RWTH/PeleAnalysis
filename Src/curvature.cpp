@@ -444,7 +444,7 @@ main(int argc, char* argv[])
         auto const& volFracBox = eb_factory[lev]->getVolFrac()[mfi].array();
 #endif
 
-        Real invdenom = 1.0 / (progMin - progMax);
+        Real invdenom = 1.0 / (progMax - progMin);
 
         amrex::ParallelFor(
           bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
@@ -452,12 +452,12 @@ main(int argc, char* argv[])
 // Making sure that progress variable outside of domain is set to 0
 #ifdef AMREX_USE_EB
             if (volFracBox(i, j, k) > 0) {
-              ProgVarFab(i, j, k) = (StateVarFab(i, j, k) - progMax) * invdenom;
+              ProgVarFab(i, j, k) = (StateVarFab(i, j, k) - progMin) * invdenom;
             } else {
               ProgVarFab(i, j, k) = 0;
             }
 #else
-                ProgVarFab(i,j,k) = ( StateVarFab(i,j,k) - progMax ) * invdenom;
+                ProgVarFab(i,j,k) = ( StateVarFab(i,j,k) - progMin ) * invdenom;
 #endif
           });
       }
@@ -678,11 +678,10 @@ main(int argc, char* argv[])
       cellavg_gradient.setVal(0.0);
 
 #ifdef AMREX_USE_EB
+      // MLEBABecLap with beta = 1, B = -1 returns +grad(C) as flux, whereas
+      // MLPoisson returns -grad(C); only the latter needs the sign flip.
       EB_average_face_to_cellcenter(
         cellavg_gradient, 0, amrex::GetArrOfConstPtrs(face_gradient));
-      cellavg_gradient.mult(
-        1.0, 0,
-        AMREX_SPACEDIM); // Doesn't need to be flipped for some reason, right?
 #else
       average_face_to_cellcenter(
         cellavg_gradient, 0, amrex::GetArrOfConstPtrs(face_gradient));

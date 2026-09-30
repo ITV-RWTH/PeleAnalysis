@@ -9,6 +9,18 @@ based on a user-defined progress variable. The tool reads an input
 plotfile, evaluates geometric and kinematic quantities, and writes a
 new plotfile containing the computed fields.
 
+Sign convention
+^^^^^^^^^^^^^^^
+
+The progress variable is :math:`c = (C - C_{min})/(C_{max} - C_{min})`, so
+low :math:`c` is the unburnt side. The flame normal
+:math:`\mathbf{n} = -\nabla c/|\nabla c|` points towards the unburnt gas, and
+the mean curvature (:math:`\kappa = \tfrac{1}{2}\nabla\cdot\mathbf{n}` in 3D,
+:math:`\kappa = \nabla\cdot\mathbf{n}` in 2D) is positive where the flame front
+is convex towards the unburnt gas. The normal
+velocity :math:`\mathbf{u}\cdot\mathbf{n}` is positive for flow towards the
+unburnt gas. The convention is the same with and without embedded boundaries.
+
 Usage
 -----
 
