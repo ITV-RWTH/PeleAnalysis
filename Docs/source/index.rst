@@ -170,7 +170,7 @@ General tools (``Src``)
    * - :doc:`grad <analysis/grad>`
      - ✅
      - ✅
-     - ❌
+     - ✅
      - R
    * - :doc:`integral <analysis/integral>`
      - ➖
