@@ -335,6 +335,11 @@ Model-specific tools (``Src/ModelSpecificAnalysis``)
      - ✅
      - ❌
      - R
+   * - :doc:`plotDisplacementSpeed <modelSpecific/plotDisplacementSpeed>`
+     - ✅
+     - ✅
+     - ✅
+     - R
    * - :doc:`plotQPD <modelSpecific/plotQPD>`
      - ❌
      - ✅
@@ -436,6 +441,7 @@ Model-specific tools (``Src/ModelSpecificAnalysis``)
    :caption: Model Specific:
 
    modelSpecific/computeMixtureFraction
+   modelSpecific/plotDisplacementSpeed
    modelSpecific/plotQPD
    modelSpecific/plotTransportCoeff
    modelSpecific/plotTYtoLe

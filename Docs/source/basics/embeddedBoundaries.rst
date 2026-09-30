@@ -59,6 +59,11 @@ wrote into the plotfile.
        operators; results are only computed where ``volFrac > 0``.
      - yes
      - no
+   * - :doc:`../modelSpecific/plotDisplacementSpeed`
+     - All gradients and flux divergences use EB-aware operators; the
+       displacement speed is only written where ``volFrac > 0``.
+     - yes
+     - no
    * - :doc:`../analysis/integral`
      - Every integrand is weighted by the cell volume fraction, so cut cells
        contribute their partial volume/area/length.
@@ -150,6 +155,10 @@ been run on a GPU as part of this review.
      - Runs on GPU
      - As ``grad``. The file min/max reduction synchronises once per box, which
        is correct but slow.
+   * - ``plotDisplacementSpeed``
+     - Runs on GPU
+     - Transport and chemistry are evaluated inside ``ParallelFor`` kernels
+       with the PelePhysics device functions.
    * - ``integral``
      - Wrong on multi-level data
      - The step that excludes coarse cells covered by a finer level is
