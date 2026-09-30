@@ -27,6 +27,8 @@ Example input file:
    infile = plt00000
    outfile = plt00000_curvature
    finestLevel = 0
+   is_per = 1 1 0
+   sym_dir = 0 0 0
 
    Aux_Variables = 2 3 4
    progressName = Y_H2
@@ -56,6 +58,15 @@ Parameters
 
 ``finestLevel``
    Finest AMR level to be processed.
+
+``is_per``
+   Periodicity in each direction (``1`` periodic, ``0`` not). Required; must
+   match the simulation.
+
+``sym_dir``
+   Symmetry in each non-periodic direction (``1`` applies an odd-reflection
+   boundary condition to the gradient operators, ``0`` a zero-gradient
+   condition). Default: ``0`` in all directions.
 
 ``Aux_Variables``
    Names of variables copied unchanged from input to output plotfile.

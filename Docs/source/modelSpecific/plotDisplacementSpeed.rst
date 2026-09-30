@@ -45,7 +45,7 @@ cells are set to zero.
 
 Usage: ::
 
-   ./plotDisplacementSpeed3d.gnu.MPI.ex infile=<s> fuelName=<s> [options]
+   ./plotDisplacementSpeed3d.gnu.MPI.ex infile=<s> fuelName=<s> is_per=<i i i> [options]
 
 Example: ::
 
@@ -98,10 +98,11 @@ including `finestLevel` are processed and written to the output.
 ::
 
    #------------------- Boundary conditions --------------------------------------------------
-   is_per = 1 1 1                             # DEF: 1 1 1; periodicity in each direction
+   is_per = 1 1 1                             # Required; periodicity in each direction
    sym_dir = 0 0 0                            # DEF: 0 0 0; symmetry in each non-periodic direction
 
-`is_per` sets the periodicity per direction and should match the simulation.
+`is_per` sets the periodicity per direction. It is required and must match
+the simulation.
 In non-periodic directions, `sym_dir = 1` applies an odd-reflection (symmetry)
 boundary condition to the gradient operators; otherwise a zero-gradient
 (Neumann) condition is used.

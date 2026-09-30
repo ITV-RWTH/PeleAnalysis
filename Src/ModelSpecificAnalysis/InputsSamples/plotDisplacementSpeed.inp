@@ -20,12 +20,12 @@ use_wbar = 1         # DEF: 1; include the mean molecular weight term
 finestLevel = 2      # DEF: finest level in file; Finest AMR level to process
 
 #------------------- Boundary conditions --------------------------------------------------
-is_per = 1 1 1       # DEF: 1 1 1; periodicity in each direction
+is_per = 1 1 1       # Required; periodicity in each direction
 sym_dir = 0 0 0      # DEF: 0 0 0; symmetry (odd reflection) in non-periodic directions
 
 #------------------- EB geometry (only for USE_EB=TRUE builds) ----------------------------
 # eb2.geom_type = UserDefined          # Required with EB; see Docs basics/embeddedBoundaries
-# eb2.max_level_generation = 2         # DEF: finestLevel
+# eb2.max_level_generation = 2         # DEF: finestLevel; must equal finestLevel
 # prob.prechamber_side_x = ...         # Parameters read by EBUserDefined (example geometry)
 
 #------------------- Additional Flags -----------------------------------------------------

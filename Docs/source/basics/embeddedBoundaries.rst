@@ -88,7 +88,7 @@ same one that produced the plotfile, so reuse the EB inputs of the simulation.
 
    #------------------- EB geometry ---------------------------------------------------------
    eb2.geom_type = UserDefined            # Required: AMReX EB2 geometry type or "UserDefined"
-   # eb2.max_level_generation = 2         # DEF: finestLevel; AMR level at which the EB is generated
+   # eb2.max_level_generation = 2         # DEF: finestLevel; must equal finestLevel
 
 `eb2.geom_type` selects the geometry and must always be given. Any geometry
 type known to AMReX ``EB2::Build`` (for example ``box``, ``cylinder``,
@@ -99,8 +99,9 @@ geometry described below.
 
 `eb2.max_level_generation` is the AMR level on which the geometry is generated;
 the coarser levels are obtained by coarsening. It defaults to the finest level
-that is processed (``finestLevel``). Keep the default: a larger value points
-past the last level, and a smaller one leaves the finer levels without EB data.
+that is processed (``finestLevel``) and must be equal to it; any other value
+aborts the run, because a larger value has no geometry and a smaller one would
+leave the finer levels without EB data.
 
 User-defined geometry
 =====================
