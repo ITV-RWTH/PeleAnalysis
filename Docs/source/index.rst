@@ -58,6 +58,7 @@ PeleAnalysis documentation
    :caption: Model Specific:
 
    modelSpecific/computeMixtureFraction
+   modelSpecific/plotDisplacementSpeed
    modelSpecific/plotQPD
    modelSpecific/plotTransportCoeff
    modelSpecific/plotTYtoLe
