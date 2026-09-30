@@ -235,8 +235,9 @@ main(int argc, char* argv[])
     Vector<int> sym_dir(AMREX_SPACEDIM, 0);
     pp.queryarr("sym_dir", sym_dir, 0, AMREX_SPACEDIM);
 
-    Vector<int> is_per(AMREX_SPACEDIM, 1);
-    pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
+    // Periodicity has no safe default: it must match the simulation
+    Vector<int> is_per(AMREX_SPACEDIM, 0);
+    pp.getarr("is_per", is_per, 0, AMREX_SPACEDIM);
 
     Print() << "Periodicity assumed for this case: ";
     for (int i = 0; i < AMREX_SPACEDIM; ++i) {
@@ -305,6 +306,15 @@ main(int argc, char* argv[])
     // Default : max_level
     int max_lvl_eb = finestLevel;
     ppeb2.query("max_level_generation", max_lvl_eb);
+    // The EB is generated on max_lvl_eb and coarsened to the coarser levels, so
+    // it must be the finest level processed: a larger value has no geometry,
+    // a smaller one leaves the finer levels without EB data.
+    if (max_lvl_eb != finestLevel) {
+      Abort(
+        "eb2.max_level_generation = " + std::to_string(max_lvl_eb) +
+        " must equal the finest level processed (" +
+        std::to_string(finestLevel) + ")");
+    }
 
     // Generate the EB data at max_lvl_eb
     if (geom_type == "UserDefined") {
@@ -740,9 +750,21 @@ main(int argc, char* argv[])
       MultiFab::Copy(
         *flame_normal[lev], *cell_normal[lev], 0, 0, AMREX_SPACEDIM, 0);
 
-      // Flame normal n = - grad(C)/norm(grad(C)
-      for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
-        MultiFab::Divide(*flame_normal[lev], cellnorm_gradient, 0, idim, 1, 0);
+      // Flame normal n = - grad(C)/norm(grad(C). norm(grad(C)) is only zero in
+      // EB-covered cells (it is floored at 1e-14 elsewhere); the normal is set
+      // to zero there instead of dividing 0/0.
+      for (MFIter mfi(*flame_normal[lev], TilingIfNotGPU()); mfi.isValid();
+           ++mfi) {
+        const Box& bx = mfi.tilebox();
+        const auto& normal = flame_normal[lev]->array(mfi);
+        const auto& normgrad = cellnorm_gradient.const_array(mfi);
+        amrex::ParallelFor(
+          bx, AMREX_SPACEDIM,
+          [=] AMREX_GPU_DEVICE(int i, int j, int k, int n) noexcept {
+            normal(i, j, k, n) = (normgrad(i, j, k) != 0.0)
+                                   ? normal(i, j, k, n) / normgrad(i, j, k)
+                                   : 0.0;
+          });
       }
       flame_normal[lev]->FillBoundary(
         0, AMREX_SPACEDIM, geoms[lev]->periodicity());
@@ -1023,8 +1045,12 @@ main(int argc, char* argv[])
                                    AdjHyiFab(i, j, k, 2) * CzFab(i, j, k)) +
                  CzFab(i, j, k) * (AdjHziFab(i, j, k, 0) * CxFab(i, j, k) +
                                    AdjHziFab(i, j, k, 1) * CyFab(i, j, k) +
-                                   AdjHziFab(i, j, k, 2) * CzFab(i, j, k))) /
-                std::pow(CgradNorm(i, j, k), 4.0);
+                                   AdjHziFab(i, j, k, 2) * CzFab(i, j, k)));
+              // norm(grad(C)) is zero only in EB-covered cells
+              gCurvFab(i, j, k) =
+                (CgradNorm(i, j, k) != 0.0)
+                  ? gCurvFab(i, j, k) / std::pow(CgradNorm(i, j, k), 4.0)
+                  : 0.0;
               if (
                 do_threshold && (progvar(i, j, k) < threshold ||
                                  progvar(i, j, k) > 1.0 - threshold)) {
