@@ -1435,9 +1435,23 @@ main(int argc, char* argv[])
               << std::endl;
       vFdata[lev].define(grids[lev], dmaps[lev], 1, nGrow[lev]);
       vFdata[lev].setVal(0.0);
-      const MultiFab& src = pf.get(lev, "volFrac");
-      MultiFab::Copy(vFdata[lev], src, 0, 0, 1, 0);
-      vFdata[lev].FillBoundary(geoms[lev].periodicity());
+      {
+        // Fill the ghost cells like the state (gstate) below, so that ghost
+        // cells at a coarse/fine boundary get the coarse volFrac instead of 0
+        MultiFab src = pf.get(lev, "volFrac");
+        if (lev == 0) {
+          FillPatchSingleLevel(
+            vFdata[lev], time, {&src}, {time}, 0, 0, 1, geoms[0], bcFunc, 0);
+        } else {
+          BCRec bc;
+          int r = pf.refRatio(lev - 1);
+          IntVect ratio(AMREX_D_DECL(r, r, r));
+          FillPatchTwoLevels(
+            vFdata[lev], time, {&vFdata[lev - 1]}, {time}, {&src}, {time}, 0, 0,
+            1, geoms[lev - 1], geoms[lev], bcFunc, 0, bcFunc, 0, ratio, &pci,
+            {bc}, 0);
+        }
+      }
       Print() << "...done reading the plotfile data at level " << lev << "..."
               << std::endl;
 #endif
