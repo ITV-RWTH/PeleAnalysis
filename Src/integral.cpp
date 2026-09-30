@@ -817,8 +817,16 @@ main(int argc, char* argv[])
       Print() << "Data loaded" << std::endl;
       indata[lev]->setVal(1.0, nVars, 1);
 
+#ifdef AMREX_USE_EB
+      volFracData[lev] = new MultiFab(probBoxArray, dmap, 1, 0);
+      Print() << "Loading volFrac data on level " << lev << std::endl;
+      MultiFab::Copy(*volFracData[lev], pf.get(lev, "volFrac"), 0, 0, 1, 0);
+
+      Print() << "volFrac data loaded" << std::endl;
+#else
       volFracData[lev] = new MultiFab(probBoxArray, dmap, 1, 0);
       volFracData[lev]->setVal(1.0);
+#endif
     }
 
 //-----------------------------------------------------------------
