@@ -186,8 +186,9 @@ main(int argc, char* argv[])
     Vector<int> sym_dir(AMREX_SPACEDIM, 0);
     pp.queryarr("sym_dir", sym_dir, 0, AMREX_SPACEDIM);
 
-    Vector<int> is_per(AMREX_SPACEDIM, 1);
-    pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
+    // Periodicity has no safe default: it must match the simulation
+    Vector<int> is_per(AMREX_SPACEDIM, 0);
+    pp.getarr("is_per", is_per, 0, AMREX_SPACEDIM);
     Print() << "Periodicity assumed for this case: ";
     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
       Print() << is_per[idim] << " ";
@@ -290,6 +291,15 @@ main(int argc, char* argv[])
     // Default : max_level
     int max_lvl_eb = finestLevel;
     ppeb2.query("max_level_generation", max_lvl_eb);
+    // The EB is generated on max_lvl_eb and coarsened to the coarser levels, so
+    // it must be the finest level processed: a larger value has no geometry,
+    // a smaller one leaves the finer levels without EB data.
+    if (max_lvl_eb != finestLevel) {
+      Abort(
+        "eb2.max_level_generation = " + std::to_string(max_lvl_eb) +
+        " must equal the finest level processed (" +
+        std::to_string(finestLevel) + ")");
+    }
 
     // Generate the EB data at max_lvl_eb
     if (geom_type == "UserDefined") {
