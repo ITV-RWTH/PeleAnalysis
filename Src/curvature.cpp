@@ -16,8 +16,14 @@
 // For min/max
 #include <AMReX_Reduce.H>
 
+#ifdef AMREX_USE_EB
+#include <AMReX_MLEBABecLap.H>
+#include <AMReX_EBMultiFabUtil.H>
+#include <PeleAnalysis_EB.H>
+#else
 #include <AMReX_MLPoisson.H>
 #include <AMReX_MLABecLaplacian.H>
+#endif
 
 using namespace amrex;
 
@@ -292,6 +298,17 @@ main(int argc, char* argv[])
     }
 
     //---------------------------------------------------------------------------
+    // Building EB
+    //---------------------------------------------------------------------------
+
+#ifdef AMREX_USE_EB
+
+    Vector<std::unique_ptr<EBFArrayBoxFactory>> eb_factory =
+      pele_analysis::buildEBFactories(geomsOP, grids, dmap, verbose);
+
+#endif // AMREX_USE_EB
+
+    //---------------------------------------------------------------------------
     // Finding min and max values in the domain
     //---------------------------------------------------------------------------
     if (useFileMinMax || floorIt) {
@@ -319,6 +336,10 @@ main(int argc, char* argv[])
                  ++mfi) {
               const Box& bx = mfi.tilebox();
               auto const& varBox = state[lev]->array(mfi, idCst);
+#ifdef AMREX_USE_EB
+              auto const& volFracBox =
+                eb_factory[lev]->getVolFrac()[mfi].array();
+#endif
 
               // Min/Max inside of tile (should be GPU safe)
               ReduceOps<ReduceOpMin, ReduceOpMax> reduce_op;
@@ -329,6 +350,10 @@ main(int argc, char* argv[])
                 bx, reduce_data,
                 [=] AMREX_GPU_DEVICE(
                   int i, int j, int k) noexcept -> ReduceTuple {
+#ifdef AMREX_USE_EB
+                  if (volFracBox(i, j, k) <= 0.0)
+                    return {1.0e20, -1.0e20};
+#endif
                   Real val = varBox(i, j, k, 0);
                   return {val, val};
                 });
@@ -382,12 +407,26 @@ main(int argc, char* argv[])
         const auto& StateVarFab = StateVar.array(mfi);
         const auto& ProgVarFab = ProgressVar.array(mfi);
 
+// Get volume fraction if an EB is used
+#ifdef AMREX_USE_EB
+        auto const& volFracBox = eb_factory[lev]->getVolFrac()[mfi].array();
+#endif
+
         Real invdenom = 1.0 / (progMax - progMin);
 
         amrex::ParallelFor(
           bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-            // Making sure that progress variable outside of domain is set to 0
-            ProgVarFab(i, j, k) = (StateVarFab(i, j, k) - progMin) * invdenom;
+
+// Making sure that progress variable outside of domain is set to 0
+#ifdef AMREX_USE_EB
+            if (volFracBox(i, j, k) > 0) {
+              ProgVarFab(i, j, k) = (StateVarFab(i, j, k) - progMin) * invdenom;
+            } else {
+              ProgVarFab(i, j, k) = 0;
+            }
+#else
+                ProgVarFab(i,j,k) = ( StateVarFab(i,j,k) - progMin ) * invdenom;
+#endif
           });
       }
       ProgressVar.FillBoundary(geoms[lev]->periodicity());
@@ -416,7 +455,12 @@ main(int argc, char* argv[])
       info.setConsolidation(1);
       info.setMetricTerm(false);
 
+#ifdef AMREX_USE_EB
+      MLEBABecLap mlabec(
+        geomsOP, grids, dmap, info, amrex::GetVecOfConstPtrs(eb_factory));
+#else
       MLABecLaplacian mlabec(geomsOP, grids, dmap, info);
+#endif
 
       mlabec.setMaxOrder(4);
 
@@ -495,11 +539,19 @@ main(int argc, char* argv[])
     // Compute curvature
     //---------------------------------------------------------------------------
 
+#ifdef AMREX_USE_EB
+    LPInfo info_apply;
+    info_apply.setMaxCoarseningLevel(0);
+    // info_apply.setAgglomeration(1);
+    // info_apply.setConsolidation(1);
+    info_apply.setMetricTerm(false);
+#else
     LPInfo info;
     info.setAgglomeration(1);
     info.setConsolidation(1);
     info.setMetricTerm(false);
     info.setMaxCoarseningLevel(0);
+#endif
 
     for (int lev = 0; lev < Nlev; ++lev) {
       const BoxArray ba = pf.boxArray(lev);
@@ -508,11 +560,23 @@ main(int argc, char* argv[])
         Print() << "Starting computation of mean curvature on level " << lev
                 << "\n";
 
-      // Get face gradients of progress variable
+// Get face gradients of progress variable
+#ifdef AMREX_USE_EB
+      MLEBABecLap poisson(
+        {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply, {eb_factory[lev].get()});
+      poisson.setVerbose(4);
+      poisson.setMaxOrder(4);
+
+      // Poisson like solver for EB
+      poisson.setScalars(0.0, 1.0);
+      poisson.setBCoeffs(0, -1.0); // Important to set only for lev 0 as solver
+                                   // is initialised with only 1 level
+#else
       //  Compute curvature using LinearOperators
       // Set-up Poisson Linear Solver
       MLPoisson poisson({*geoms[lev]}, {ba}, {dmap[lev]}, info);
       poisson.setMaxOrder(4);
+#endif
 
       std::array<LinOpBCType, AMREX_SPACEDIM> lo_bc;
       std::array<LinOpBCType, AMREX_SPACEDIM> hi_bc;
@@ -547,6 +611,21 @@ main(int argc, char* argv[])
       MLMG mlmg(poisson);
 
       std::array<MultiFab, AMREX_SPACEDIM> face_gradient;
+#ifdef AMREX_USE_EB
+      AMREX_D_TERM(face_gradient[0].define(
+        convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0, MFInfo(),
+        *eb_factory[lev]);
+                   , face_gradient[1].define(
+                       convert(ba, IntVect::TheDimensionVector(1)), dmap[lev],
+                       1, 0, MFInfo(), *eb_factory[lev]);
+                   , face_gradient[2].define(
+                       convert(ba, IntVect::TheDimensionVector(2)), dmap[lev],
+                       1, 0, MFInfo(), *eb_factory[lev]););
+
+      mlmg.getFluxes(
+        {amrex::GetArrOfPtrs(face_gradient)}, {&ProgVar},
+        MLMG::Location::FaceCentroid);
+#else
       AMREX_D_TERM(
         face_gradient[0].define(
           convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0);
@@ -559,13 +638,22 @@ main(int argc, char* argv[])
         {amrex::GetArrOfPtrs(face_gradient)}, {&ProgVar},
         MLMG::Location::FaceCenter);
 
+#endif
+
       // New Multifab cell avg gradient
       MultiFab cellavg_gradient(ba, dmap[lev], AMREX_SPACEDIM, 0);
       cellavg_gradient.setVal(0.0);
 
+#ifdef AMREX_USE_EB
+      // MLEBABecLap with beta = 1, B = -1 returns +grad(C) as flux, whereas
+      // MLPoisson returns -grad(C); only the latter needs the sign flip.
+      EB_average_face_to_cellcenter(
+        cellavg_gradient, 0, amrex::GetArrOfConstPtrs(face_gradient));
+#else
       average_face_to_cellcenter(
         cellavg_gradient, 0, amrex::GetArrOfConstPtrs(face_gradient));
       cellavg_gradient.mult(-1.0, 0, AMREX_SPACEDIM);
+#endif
 
       // Compute ||\nabla c||
 
@@ -581,14 +669,29 @@ main(int argc, char* argv[])
         const auto& normgrad = cellnorm_gradient.array(mfi);
         const auto& progvar = ProgVar.array(mfi);
 
+#ifdef AMREX_USE_EB
+        auto const& volFracBox = eb_factory[lev]->getVolFrac()[mfi].array();
+#endif
+
         amrex::ParallelFor(
           bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-            normgrad(i, j, k) = std::max(
-              1e-14, std::sqrt(AMREX_D_TERM(
-                       std::pow(Cx(i, j, k), 2.0), +std::pow(Cy(i, j, k), 2.0),
-                       +std::pow(Cz(i, j, k), 2.0))));
 
-            normgrad(i, j, k) = -normgrad(i, j, k);
+#ifdef AMREX_USE_EB
+            if (volFracBox(i, j, k) > 0) {
+              normgrad(i, j, k) = std::max(
+                1e-14,
+                std::sqrt(AMREX_D_TERM(
+                  std::pow(Cx(i, j, k), 2.0), +std::pow(Cy(i, j, k), 2.0),
+                  +std::pow(Cz(i, j, k), 2.0))));
+              normgrad(i, j, k) = -normgrad(i, j, k);
+            }
+#else
+                normgrad(i,j,k) = std::max(1e-14, std::sqrt( AMREX_D_TERM (   std::pow(Cx(i,j,k),2.0),
+                                                                            + std::pow(Cy(i,j,k),2.0),
+                                                                            + std::pow(Cz(i,j,k),2.0)) ) ) ;
+
+                normgrad(i,j,k) = -normgrad(i,j,k);
+#endif
           });
       }
       cellnorm_gradient.FillBoundary(geoms[lev]->periodicity());
@@ -638,8 +741,21 @@ main(int argc, char* argv[])
 
       for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
 
+#ifdef AMREX_USE_EB
+        MLEBABecLap poisson2(
+          {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply,
+          {eb_factory[lev].get()});
+        poisson2.setVerbose(4);
+        poisson2.setMaxOrder(4);
+
+        // Poisson like solver for EB
+        poisson2.setScalars(0.0, 1.0);
+        poisson2.setBCoeffs(0, -1.0);
+
+#else
         MLPoisson poisson2({*geoms[lev]}, {ba}, {dmap[lev]}, info);
         poisson2.setMaxOrder(4);
+#endif
 
         poisson2.setDomainBC(lo_bc, hi_bc);
         // Coarse BC data must outlive setLevelBC, which reads it
@@ -663,6 +779,21 @@ main(int argc, char* argv[])
         // Get the fluxes : d N_i / d x_j   , i = idim, j = 0, 1 (,2)
         std::array<MultiFab, AMREX_SPACEDIM> faceg;
 
+#ifdef AMREX_USE_EB
+        AMREX_D_TERM(faceg[0].define(
+          convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0,
+          MFInfo(), *eb_factory[lev]);
+                     , faceg[1].define(
+                         convert(ba, IntVect::TheDimensionVector(1)), dmap[lev],
+                         1, 0, MFInfo(), *eb_factory[lev]);
+                     , faceg[2].define(
+                         convert(ba, IntVect::TheDimensionVector(2)), dmap[lev],
+                         1, 0, MFInfo(), *eb_factory[lev]););
+
+        mlmg2.getFluxes(
+          {amrex::GetArrOfPtrs(faceg)}, {&FlameNormalIdim},
+          MLMG::Location::FaceCentroid);
+#else
         AMREX_D_TERM(
           faceg[0].define(
             convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0);
@@ -674,14 +805,20 @@ main(int argc, char* argv[])
         mlmg2.getFluxes(
           {amrex::GetArrOfPtrs(faceg)}, {&FlameNormalIdim},
           MLMG::Location::FaceCenter);
+#endif
 
         // Get cell centered d N_i / d x_y
         MultiFab cell_avgg(ba, dmap[lev], AMREX_SPACEDIM, 0);
         cell_avgg.setVal(0.0);
 
+#ifdef AMREX_USE_EB
+        EB_average_face_to_cellcenter(
+          cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
+#else
         average_face_to_cellcenter(
           cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
         cell_avgg.mult(-1.0, 0, AMREX_SPACEDIM);
+#endif
 
         // Add d N_i / d x_i to curvature
         MultiFab::Add(
@@ -738,8 +875,21 @@ main(int argc, char* argv[])
         // Compute grad of grad in each dim and store in Hessian
         for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
 
+#ifdef AMREX_USE_EB
+          MLEBABecLap poisson2(
+            {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply,
+            {eb_factory[lev].get()});
+          poisson2.setVerbose(4);
+          poisson2.setMaxOrder(4);
+
+          // Poisson like solver for EB
+          poisson2.setScalars(0.0, 1.0);
+          poisson2.setBCoeffs(0, -1.0);
+
+#else
           MLPoisson poisson2({*geoms[lev]}, {ba}, {dmap[lev]}, info);
           poisson2.setMaxOrder(4);
+#endif
 
           poisson2.setDomainBC(lo_bc, hi_bc);
           // Coarse BC data must outlive setLevelBC, which reads it
@@ -760,6 +910,22 @@ main(int argc, char* argv[])
 
           std::array<MultiFab, AMREX_SPACEDIM> faceg;
 
+#ifdef AMREX_USE_EB
+          AMREX_D_TERM(faceg[0].define(
+            convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0,
+            MFInfo(), *eb_factory[lev]);
+                       , faceg[1].define(
+                           convert(ba, IntVect::TheDimensionVector(1)),
+                           dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]);
+                       , faceg[2].define(
+                           convert(ba, IntVect::TheDimensionVector(2)),
+                           dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]););
+
+          mlmg2.getFluxes(
+            {amrex::GetArrOfPtrs(faceg)}, {&gradIdim},
+            MLMG::Location::FaceCentroid);
+
+#else
           AMREX_D_TERM(
             faceg[0].define(
               convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0);
@@ -768,14 +934,20 @@ main(int argc, char* argv[])
             , faceg[2].define(
                 convert(ba, IntVect::TheDimensionVector(2)), dmap[lev], 1, 0););
           mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {&gradIdim});
+#endif
 
           // Get cell centered d C / d idim _x_y_z
           MultiFab cell_avgg(ba, dmap[lev], AMREX_SPACEDIM, 0);
 
+#ifdef AMREX_USE_EB
+          EB_average_face_to_cellcenter(
+            cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
+#else
           average_face_to_cellcenter(
             cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
           cell_avgg.mult(
             -1.0, 0, AMREX_SPACEDIM); // Only necessary for non EB cases
+#endif
 
           // Copy in Hessian
           MultiFab::Copy(Hessian, cell_avgg, 0, (idim) * 3, AMREX_SPACEDIM, 0);
@@ -876,8 +1048,21 @@ main(int argc, char* argv[])
         // Compute strain tensor with a MLMG in each direction
         for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
 
+#ifdef AMREX_USE_EB
+          MLEBABecLap poisson2(
+            {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply,
+            {eb_factory[lev].get()});
+          poisson2.setVerbose(4);
+          poisson2.setMaxOrder(4);
+
+          // Poisson like solver for EB
+          poisson2.setScalars(0.0, 1.0);
+          poisson2.setBCoeffs(0, -1.0);
+
+#else
           MLPoisson poisson2({*geoms[lev]}, {ba}, {dmap[lev]}, info);
           poisson2.setMaxOrder(4);
+#endif
 
           poisson2.setDomainBC(lo_bc, hi_bc);
 
@@ -900,6 +1085,28 @@ main(int argc, char* argv[])
 
           std::array<MultiFab, AMREX_SPACEDIM> faceg;
 
+#ifdef AMREX_USE_EB
+          AMREX_D_TERM(faceg[0].define(
+            convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0,
+            MFInfo(), *eb_factory[lev]);
+                       , faceg[1].define(
+                           convert(ba, IntVect::TheDimensionVector(1)),
+                           dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]);
+                       , faceg[2].define(
+                           convert(ba, IntVect::TheDimensionVector(2)),
+                           dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]););
+
+          mlmg2.getFluxes(
+            {amrex::GetArrOfPtrs(faceg)}, {&velIdim},
+            MLMG::Location::FaceCentroid);
+
+          // Get cell centered d u_idim / d _x_y(_z)
+          MultiFab cell_avgg(
+            ba, dmap[lev], AMREX_SPACEDIM, 0, MFInfo(), *eb_factory[lev]);
+          cell_avgg.setVal(0.0);
+          EB_average_face_to_cellcenter(
+            cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
+#else
           AMREX_D_TERM(
             faceg[0].define(
               convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0);
@@ -916,6 +1123,8 @@ main(int argc, char* argv[])
           average_face_to_cellcenter(
             cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
           cell_avgg.mult(-1.0, 0, AMREX_SPACEDIM);
+
+#endif
 
           // Copy in strain tensor
           MultiFab::Copy(
