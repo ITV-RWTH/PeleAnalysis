@@ -15,10 +15,15 @@ concurrency:
 # tool names. .github/scripts/build_tools.sh skips the union of every list
 # that applies to a build:
 #   EXPECTED_<DIM>D_FAILURES      tools that only support the other dimension
+#   EXPECTED_EB_FAILURES          tools that do not compile with USE_EB=TRUE
+#   EXPECTED_EB_<DIM>D_FAILURES   ... with USE_EB=TRUE in this dimension only
 #   EXPECTED_<BACKEND>_FAILURES   tools that do not compile for a GPU backend
 env:
   EXPECTED_2D_FAILURES: 'qCriterion sequentialFilterPlt'
   EXPECTED_3D_FAILURES: ''
+  EXPECTED_EB_FAILURES: ''
+  EXPECTED_EB_2D_FAILURES: ''
+  EXPECTED_EB_3D_FAILURES: ''
   EXPECTED_CUDA_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
   EXPECTED_HIP_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
   EXPECTED_SYCL_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
@@ -69,6 +74,7 @@ jobs:
       matrix:
         comp: [gnu, llvm, gnu-debug]
         dim: [2, 3]
+        eb: ['FALSE', 'TRUE']
         include:
           - comp: gnu
             amrex_build_args: 'COMP=gnu'
@@ -76,9 +82,10 @@ jobs:
             amrex_build_args: 'COMP=gnu DEBUG=TRUE'
           - comp: llvm
             amrex_build_args: 'COMP=llvm'
-    name: CPU (${{matrix.comp}}, ${{matrix.dim}}D)
+    name: CPU (${{matrix.comp}}, ${{matrix.dim}}D, EB=${{matrix.eb}})
     env:
       DIM: ${{matrix.dim}}
+      USE_EB: ${{matrix.eb}}
       BACKEND: CPU
     steps:
       - uses: actions/checkout@v4
@@ -107,9 +114,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
-          key: ccache-${{github.workflow}}-${{github.job}}-${{matrix.comp}}-${{matrix.dim}}d-git-${{github.sha}}
+          key: ccache-${{github.workflow}}-${{github.job}}-${{matrix.comp}}-${{matrix.dim}}d-eb${{matrix.eb}}-git-${{github.sha}}
           restore-keys: |
-               ccache-${{github.workflow}}-${{github.job}}-${{matrix.comp}}-${{matrix.dim}}d-git-
+               ccache-${{github.workflow}}-${{github.job}}-${{matrix.comp}}-${{matrix.dim}}d-eb${{matrix.eb}}-git-
       - name: Dependency (HDF5)
         run: |
           sudo apt-get update
@@ -160,6 +167,7 @@ jobs:
       matrix:
         backend: [CUDA, HIP, SYCL]
         dim: [2, 3]
+        eb: ['FALSE', 'TRUE']
         include:
           - backend: CUDA
             os: ubuntu-22.04
@@ -171,9 +179,10 @@ jobs:
             os: ubuntu-24.04
             amrex_build_args: 'USE_SYCL=TRUE FC=ifx'
     runs-on: ${{matrix.os}}
-    name: GPU (${{matrix.backend}}, ${{matrix.dim}}D)
+    name: GPU (${{matrix.backend}}, ${{matrix.dim}}D, EB=${{matrix.eb}})
     env:
       DIM: ${{matrix.dim}}
+      USE_EB: ${{matrix.eb}}
       BACKEND: ${{matrix.backend}}
     steps:
       - name: Clone PeleAnalysis
@@ -246,9 +255,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
-          key: ccache-${{github.workflow}}-${{github.job}}-${{matrix.backend}}-${{matrix.dim}}d-git-${{github.sha}}
+          key: ccache-${{github.workflow}}-${{github.job}}-${{matrix.backend}}-${{matrix.dim}}d-eb${{matrix.eb}}-git-${{github.sha}}
           restore-keys: |
-               ccache-${{github.workflow}}-${{github.job}}-${{matrix.backend}}-${{matrix.dim}}d-git-
+               ccache-${{github.workflow}}-${{github.job}}-${{matrix.backend}}-${{matrix.dim}}d-eb${{matrix.eb}}-git-
       - name: Dependency (HDF5)
         run: |
           sudo apt-get update

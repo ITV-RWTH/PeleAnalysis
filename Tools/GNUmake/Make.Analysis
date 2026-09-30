@@ -24,6 +24,14 @@ ifeq ($(USE_PARTICLES),TRUE)
   Adirs += Particle
 endif
 
+ifeq ($(USE_EB),TRUE)
+  Adirs +=  EB
+  # User-replaceable EB geometry (PeleLMeX_EBUserDefined.H, pelelmex_prob_parm.H)
+  INCLUDE_LOCATIONS += $(PELE_ANALYSIS_HOME)/Src/EBUserDefined
+  # Shared EB helpers (PeleAnalysis_EB.H)
+  INCLUDE_LOCATIONS += $(PELE_ANALYSIS_HOME)/Tools/EB
+endif
+
 Bpack += $(foreach dir, $(Adirs), $(AMREX_HOME)/Src/$(dir)/Make.package)
 Blocs += $(foreach dir, $(Adirs), $(AMREX_HOME)/Src/$(dir))
 

@@ -9,6 +9,7 @@ PeleAnalysis documentation
    basics/data
    basics/template
    basics/analysis_util
+   basics/embeddedBoundaries
 
 .. toctree::
    :maxdepth: 2

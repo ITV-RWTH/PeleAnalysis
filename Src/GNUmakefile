@@ -21,6 +21,7 @@ COMP          = gnu
 USE_MPI       = FALSE
 USE_OMP       = FALSE
 USE_CUDA      = FALSE
+USE_EB        = FALSE
 
 # Executable
 # Uncomment the desired exec
