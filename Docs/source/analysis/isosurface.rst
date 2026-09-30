@@ -96,3 +96,17 @@ Signed distance function
 ########################
 
 Optionally, the code can also return a field containing the signed distance to the isosurface from each valid point in the plotfile structure.  The shape of this data will correspond to that of the original plotfile.  The signed distance is computed, up to a maximum, on all points in the domain.
+
+Embedded boundaries
+###################
+
+When built with ``USE_EB=TRUE``, cells that are fully covered by the geometry
+(``volFrac == 0``) are excluded from the isosurface extraction. The plotfile
+must contain the ``volFrac`` field; no geometry inputs are needed. See
+:ref:`embedded_boundaries`.
+
+.. warning::
+
+   ``isosurface`` compiles for GPUs but does not run there: the surface
+   extraction and output are host code that reads device memory. Use a CPU
+   build. See :ref:`eb_gpu_support`.
