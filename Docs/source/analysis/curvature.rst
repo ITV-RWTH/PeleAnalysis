@@ -19,7 +19,7 @@ the mean curvature (:math:`\kappa = \tfrac{1}{2}\nabla\cdot\mathbf{n}` in 3D,
 :math:`\kappa = \nabla\cdot\mathbf{n}` in 2D) is positive where the flame front
 is convex towards the unburnt gas. The normal
 velocity :math:`\mathbf{u}\cdot\mathbf{n}` is positive for flow towards the
-unburnt gas.
+unburnt gas. The convention is the same with and without embedded boundaries.
 
 Usage
 -----
@@ -122,3 +122,13 @@ Parameters
    created for large parallel post-processing runs. AMReX clamps the value to
    the number of MPI ranks, so a serial run always writes a single data file.
    Default: the AMReX default.
+
+Embedded boundaries
+-------------------
+
+When built with ``USE_EB=TRUE``, ``curvature`` rebuilds the EB geometry, sets
+the progress variable to zero in covered cells, and computes all gradients,
+the smoothing, the curvatures, the strain rate and the normal velocity with
+EB-aware operators, only where the volume fraction is positive. This requires
+the ``eb2.*`` geometry inputs of the simulation; see :ref:`embedded_boundaries`.
+``curvature`` runs on GPU builds.
