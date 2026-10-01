@@ -57,3 +57,16 @@ The `integralDimension` defines in how many dimensions the integral is performed
 
 The format option allows to output ASCI coded `dat` files or `ppm` (portable pixmap) image files. For the latter, `useminmax1`, `useminmax2`, and so on allow to normalize fariables 1, 2, and so on, respectively. `goPastMax` extends the colorscale to a superunitiy region.
 
+Embedded boundaries
+###################
+
+When built with ``USE_EB=TRUE``, every integrand is weighted by the cell
+volume fraction, so cut cells contribute only their fluid part. The plotfile
+must contain the ``volFrac`` field; no geometry inputs are needed. See
+:ref:`embedded_boundaries`.
+
+.. warning::
+
+   On GPU builds, coarse cells covered by a finer level are not excluded, so
+   multi-level plotfiles are integrated incorrectly. Single-level integrals
+   are correct. See :ref:`eb_gpu_support`.

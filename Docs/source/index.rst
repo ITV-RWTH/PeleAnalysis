@@ -379,6 +379,7 @@ Model-specific tools (``Src/ModelSpecificAnalysis``)
    basics/data
    basics/template
    basics/analysis_util
+   basics/embeddedBoundaries
 
 .. toctree::
    :maxdepth: 2
@@ -429,6 +430,7 @@ Model-specific tools (``Src/ModelSpecificAnalysis``)
    :caption: Model Specific:
 
    modelSpecific/computeMixtureFraction
+   modelSpecific/plotDisplacementSpeed
    modelSpecific/plotQPD
    modelSpecific/plotTransportCoeff
    modelSpecific/plotTYtoLe

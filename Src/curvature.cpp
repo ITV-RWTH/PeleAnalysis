@@ -7,36 +7,28 @@
 #include <AMReX_MultiFabUtil_C.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
-#include <AMReX_DataServices.H>
 #include <AMReX_BCRec.H>
 #include <AMReX_Interpolater.H>
 #include <AMReX_VisMF.H>
 
 #include <AMReX_MLMG.H>
+
+// For min/max
+#include <AMReX_Reduce.H>
+
+#ifdef AMREX_USE_EB
+#include <AMReX_MLEBABecLap.H>
+#include <AMReX_EBMultiFabUtil.H>
+#include <AMReX_EB2.H>
+#include <AMReX_EB2_IF.H>
+#include <pelelmex_prob_parm.H>
+#include <PeleLMeX_EBUserDefined.H>
+#else
 #include <AMReX_MLPoisson.H>
 #include <AMReX_MLABecLaplacian.H>
+#endif
 
 using namespace amrex;
-
-static void
-print_usage(int, char* argv[])
-{
-  std::cerr << "Usage:\n"
-            << "  " << argv[0]
-            << " infile=FILE isoCompName=NAME isoVal=VALUE [OPTIONS]\n\n"
-
-            << "Required arguments:\n"
-            << "  infile=FILE        AMReX plotfile\n"
-            << "  isoCompName=NAME   Component used for curvature evaluation\n"
-            << "  isoVal=VALUE       Isovalue\n\n"
-
-            << "Options:\n"
-            << "  -h, --help         Show this help message\n\n"
-            << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
-            << "the documentation.\n";
-
-  std::exit(1);
-}
 
 std::string
 getFileRoot(const std::string& infile)
@@ -50,15 +42,12 @@ main(int argc, char* argv[])
 {
   amrex::Initialize(argc, argv);
   {
-    if (argc < 2) {
-      print_usage(argc, argv);
-    } else if (
-      (std::strcmp(argv[1], "-h") == 0) ||
-      (std::strcmp(argv[1], "--help") == 0)) {
-      print_usage(argc, argv);
-    }
 
-    ParmParse pp;
+    // if (argc < 2)
+    //    print_usage(argc,argv);
+
+    // if (pp.contains("help"))
+    //    print_usage(argc,argv);
 
     // ---------------------------------------------------------------------
     // Set defaults input values
@@ -68,6 +57,7 @@ main(int argc, char* argv[])
     Real progMax = -1.0e20;
     int finestLevel = 1000;
     int verbose = 0;
+    int floorIt = 0;
     int useFileMinMax = 1;
     bool do_strain = false;
     bool do_gaussCurv = false;
@@ -78,9 +68,17 @@ main(int argc, char* argv[])
     bool do_smooth = false;
     Real smooth_time = 1.0e-7;
     int nAuxVar = 0;
+    int n_files = amrex::VisMF::GetNOutFiles();
+
+    // ---------------------------------------------------------------------
+    // ParmParse
+    // ---------------------------------------------------------------------
+    ParmParse pp;
 
     // IO
     pp.query("verbose", verbose);
+    pp.query(
+      "n_files", n_files); // Cap on the number of plotfile data files (VisMF)
     std::string plotFileName;
     pp.get("infile", plotFileName);
     std::string outfile(getFileRoot(plotFileName) + "_K");
@@ -92,6 +90,7 @@ main(int argc, char* argv[])
     pp.query("progressName", progressName);
     pp.query("progMin", progMin);
     pp.query("progMax", progMax);
+    pp.query("floorIt", floorIt);
     pp.query("useFileMinMax", useFileMinMax);
 
     // Clip results outside the flame front ? ( C ~ 0 or C ~ 1)
@@ -116,58 +115,28 @@ main(int argc, char* argv[])
       pp.get("Aux_Variables", AuxVar[ivar], ivar);
     }
 
-    if (verbose > 1)
-      AmrData::SetVerbose(true);
-
     Print() << "infile = " << plotFileName << "\n";
     Print() << "reading plt file = " << plotFileName << "\n";
 
-    // Initialize DataService
-    DataServices::SetBatchMode();
-    Amrvis::FileType fileType(Amrvis::NEWPLT);
-    DataServices dataServices(plotFileName, fileType);
-    if (!dataServices.AmrDataOk()) {
-      DataServices::Dispatch(DataServices::ExitRequest, NULL);
-    }
-    AmrData& amrData = dataServices.AmrDataRef();
+    PlotFileData pf(plotFileName);
 
     // Plotfile global infos
-    finestLevel = std::min(finestLevel, amrData.FinestLevel());
+    finestLevel = std::min(finestLevel, pf.finestLevel());
     int Nlev = finestLevel + 1;
-    const Vector<std::string>& plotVarNames = amrData.PlotVarNames();
-    RealBox rb(&(amrData.ProbLo()[0]), &(amrData.ProbHi()[0]));
+    const Vector<std::string>& plotVarNames = pf.varNames();
+    RealBox rb(&(pf.probLo()[0]), &(pf.probHi()[0]));
 
-    // ---------------------------------------------------------------------
-    // Progress variable construction
-    // ---------------------------------------------------------------------
-    int idC = amrData.StateNumber(progressName);
-    if (idC < 0) {
+    //--- old code
+    // int idC = amrData.StateNumber(progressName);
+    // if ( idC < 0 ) {
+    //      amrex::Abort("Wrong progress variable name: "+progressName);
+    // }
+
+    auto it = std::find(plotVarNames.begin(), plotVarNames.end(), progressName);
+    if (it == plotVarNames.end()) {
       amrex::Abort("Wrong progress variable name: " + progressName);
     }
-    Real progMinlvl = 1.0e20;
-    Real progMaxlvl = -1.0e20;
-
-    if (useFileMinMax) {
-      for (int lev = 0; lev < Nlev; ++lev) {
-        amrData.MinMax(
-          amrData.ProbDomain()[lev], progressName, lev, progMinlvl, progMaxlvl);
-        progMin = std::min(progMin, progMinlvl);
-        progMax = std::max(progMax, progMaxlvl);
-      }
-      ParallelDescriptor::ReduceRealMin(progMin);
-      ParallelDescriptor::ReduceRealMax(progMax);
-    }
-
-    Print() << "progressName = " << progressName
-            << " at index: " << amrData.StateNumber(progressName) << "\n";
-    Print() << "useFileMinMax = " << useFileMinMax << "\n";
-    Print() << "Min/Max = " << progMin << " / " << progMax << "\n";
-
-    ParallelDescriptor::Barrier();
-
-    if (progMin >= progMax) {
-      amrex::Abort("progMin must be less than progMax");
-    }
+    int idC = std::distance(plotVarNames.begin(), it);
 
     // ---------------------------------------------------------------------
     // Variables index management
@@ -192,7 +161,9 @@ main(int argc, char* argv[])
     if (nAuxVar > 0) {
       inVarNames.resize(nCompIn + nAuxVar);
       for (int ivar = 0; ivar < nAuxVar; ++ivar) {
-        if (amrData.StateNumber(AuxVar[ivar]) < 0) {
+        auto it =
+          std::find(plotVarNames.begin(), plotVarNames.end(), AuxVar[ivar]);
+        if (it == plotVarNames.end()) {
           amrex::Abort("Unknown auxiliary variable name: " + AuxVar[ivar]);
         }
         inVarNames[nCompIn] = AuxVar[ivar];
@@ -243,9 +214,9 @@ main(int argc, char* argv[])
     }
 
     if (verbose) {
-      Print() << "Will read the following states: ";
+      Print() << "Will read the following variables: ";
       for (int i = 0; i < nCompIn; ++i) {
-        Print() << " " << amrData.StateNumber(inVarNames[i]);
+        Print() << " " << inVarNames[i];
       }
       Print() << '\n';
       Print() << "States out will be those plus: " << '\n';
@@ -264,8 +235,9 @@ main(int argc, char* argv[])
     Vector<int> sym_dir(AMREX_SPACEDIM, 0);
     pp.queryarr("sym_dir", sym_dir, 0, AMREX_SPACEDIM);
 
-    Vector<int> is_per(AMREX_SPACEDIM, 1);
-    pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
+    // Periodicity has no safe default: it must match the simulation
+    Vector<int> is_per(AMREX_SPACEDIM, 0);
+    pp.getarr("is_per", is_per, 0, AMREX_SPACEDIM);
 
     Print() << "Periodicity assumed for this case: ";
     for (int i = 0; i < AMREX_SPACEDIM; ++i) {
@@ -287,43 +259,206 @@ main(int argc, char* argv[])
     Vector<DistributionMapping> dmap(Nlev);
     const int nGrow = 2;
 
-    // Read the required data from pltfile and compute progress variable while
-    // we're at it.
+    // Read the required data from pltfile
     FArrayBox tmp;
     for (int lev = 0; lev < Nlev; ++lev) {
-      const BoxArray ba = amrData.boxArray(lev);
+      const BoxArray ba = pf.boxArray(lev);
       grids[lev] = ba;
-      DistributionMapping dm(ba);
-      dmap[lev] = dm;
-      geoms[lev] =
-        new Geometry(amrData.ProbDomain()[lev], &rb, coord, &(is_per[0]));
+      dmap[lev] = pf.DistributionMap(lev);
+      geoms[lev] = new Geometry(pf.probDomain(lev), &rb, coord, &(is_per[0]));
       geomsOP[lev] = *geoms[lev];
 
-      state[lev] = new MultiFab(ba, dm, nCompOut, nGrow);
-      flame_normal[lev] = new MultiFab(ba, dm, AMREX_SPACEDIM, nGrow);
-      cell_normal[lev] = new MultiFab(ba, dm, AMREX_SPACEDIM, nGrow);
-      const Vector<Real>& delta = amrData.DxLevel()[lev];
-      Real dxn[3];
-      for (int i = 0; i < AMREX_SPACEDIM; ++i) {
-        dxn[i] = delta[i];
-      }
+      state[lev] = new MultiFab(ba, dmap[lev], nCompOut, nGrow);
+      state[lev]->setVal(0.0);
+      flame_normal[lev] = new MultiFab(ba, dmap[lev], AMREX_SPACEDIM, nGrow);
+      flame_normal[lev]->setVal(0.0);
+      cell_normal[lev] = new MultiFab(ba, dmap[lev], AMREX_SPACEDIM, nGrow);
+      cell_normal[lev]->setVal(0.0);
 
       // Get input state data
       if (verbose)
         Print() << "Reading data for level " << lev << "\n";
-      amrData.FillVar(*state[lev], lev, inVarNames, destFillComps);
+      for (int n = 0; n < inVarNames.size(); ++n) {
+        const MultiFab& src = pf.get(lev, inVarNames[n]);
+        MultiFab::Copy(*state[lev], src, 0, n, 1, 0);
+      }
+    }
 
-      // Build progress variable from state at idCst, put into idProg
+    //---------------------------------------------------------------------------
+    // Building EB
+    //---------------------------------------------------------------------------
+
+#ifdef AMREX_USE_EB
+
+    if (verbose > 0)
+      Print() << "Start building EB!" << std::endl;
+    BL_PROFILE("PeleAnalysis::buildEBGeometry()");
+
+    int max_coarsening_level = 100;
+    int req_coarsening_level = static_cast<int>(geoms.size()) - 1;
+
+    // Read the geometry type and act accordingly
+    ParmParse ppeb2("eb2");
+    std::string geom_type;
+    ppeb2.get("geom_type", geom_type);
+
+    // At what level should the EB be generated ?
+    // Default : max_level
+    int max_lvl_eb = finestLevel;
+    ppeb2.query("max_level_generation", max_lvl_eb);
+    // The EB is generated on max_lvl_eb and coarsened to the coarser levels, so
+    // it must be the finest level processed: a larger value has no geometry,
+    // a smaller one leaves the finer levels without EB data.
+    if (max_lvl_eb != finestLevel) {
+      Abort(
+        "eb2.max_level_generation = " + std::to_string(max_lvl_eb) +
+        " must equal the finest level processed (" +
+        std::to_string(finestLevel) + ")");
+    }
+
+    // Generate the EB data at max_lvl_eb
+    if (geom_type == "UserDefined") {
+      EBUserDefined(
+        *geoms[max_lvl_eb], req_coarsening_level, max_coarsening_level);
+    } else {
+      // If geom_type is not an AMReX recognized type, it'll crash.
+      EB2::Build(
+        *geoms[max_lvl_eb], req_coarsening_level, max_coarsening_level);
+    }
+
+    // Setting up an eb_factory for the solver to use
+    if (verbose > 0)
+      Print() << "Setting up EBFactory!" << std::endl;
+    Vector<std::unique_ptr<EBFArrayBoxFactory>> eb_factory(Nlev);
+    for (int lev = 0; lev < Nlev; ++lev) {
+      const EB2::IndexSpace& eb_is = EB2::IndexSpace::top();
+      const EB2::Level& eb_level = eb_is.getLevel(*geoms[lev]);
+      eb_factory[lev] = std::make_unique<EBFArrayBoxFactory>(
+        eb_level, *geoms[lev], grids[lev], dmap[lev], Vector<int>{2, 2, 2},
+        EBSupport::full);
+    }
+
+#endif // AMREX_USE_EB
+
+    //---------------------------------------------------------------------------
+    // Finding min and max values in the domain
+    //---------------------------------------------------------------------------
+    if (useFileMinMax || floorIt) {
+      if (useFileMinMax) {
+
+        if (verbose)
+          Print() << "Getting Minimum and Maximum values..." << std::endl;
+
+        Real global_min = 1.0e20;
+        Real global_max = -1.0e20;
+
+        for (int lev = 0; lev < Nlev; ++lev) {
+          if (verbose)
+            Print() << "Starting MFIter to find min/max for Level " << lev
+                    << std::endl;
+
+#ifdef AMREX_USE_OMP
+#pragma omp parallel if (Gpu::notInLaunchRegion())
+#endif
+          {
+            Real thread_min = 1.0e20;
+            Real thread_max = -1.0e20;
+
+            for (MFIter mfi(*state[lev], TilingIfNotGPU()); mfi.isValid();
+                 ++mfi) {
+              const Box& bx = mfi.tilebox();
+              auto const& varBox = state[lev]->array(mfi, idCst);
+#ifdef AMREX_USE_EB
+              auto const& volFracBox =
+                eb_factory[lev]->getVolFrac()[mfi].array();
+#endif
+
+              // Min/Max inside of tile (should be GPU safe)
+              ReduceOps<ReduceOpMin, ReduceOpMax> reduce_op;
+              ReduceData<Real, Real> reduce_data(reduce_op);
+              using ReduceTuple = amrex::GpuTuple<Real, Real>;
+
+              reduce_op.eval(
+                bx, reduce_data,
+                [=] AMREX_GPU_DEVICE(
+                  int i, int j, int k) noexcept -> ReduceTuple {
+#ifdef AMREX_USE_EB
+                  if (volFracBox(i, j, k) <= 0.0)
+                    return {1.0e20, -1.0e20};
+#endif
+                  Real val = varBox(i, j, k, 0);
+                  return {val, val};
+                });
+
+              auto [tile_min, tile_max] =
+                reduce_data.value(); // Result of tile reduction
+              thread_min = std::min(thread_min, tile_min);
+              thread_max = std::max(thread_max, tile_max);
+            } // MFIter
+
+#ifdef AMREX_USE_OMP
+#pragma omp critical
+#endif
+            {
+              global_min = std::min(global_min, thread_min);
+              global_max = std::max(global_max, thread_max);
+            }
+          } // End OMP parallel region
+        } // End Level loop
+
+        // Global reduction across all ranks
+        amrex::ParallelDescriptor::ReduceRealMin(global_min);
+        amrex::ParallelDescriptor::ReduceRealMax(global_max);
+
+        progMin = global_min;
+        progMax = global_max;
+
+        if (progMin >= progMax) {
+          amrex::Abort("progMin must be less than progMax");
+        }
+      }
+
+      Print() << "progressName = " << progressName << " at index: " << idC
+              << "\n";
+      Print() << "useFileMinMax = " << useFileMinMax << "\n";
+      Print() << "Min/Max = " << progMin << " / " << progMax << "\n";
+
+      ParallelDescriptor::Barrier();
+    }
+
+    //---------------------------------------------------------------------------
+    // Building progress Variable
+    //---------------------------------------------------------------------------
+
+    // Build progress variable from state at idCst, put into idProg
+    for (int lev = 0; lev < Nlev; ++lev) {
       MultiFab StateVar(*state[lev], amrex::make_alias, idCst, 1);
       MultiFab ProgressVar(*state[lev], amrex::make_alias, idProg, 1);
-      for (MFIter mfi(*state[lev]); mfi.isValid(); ++mfi) {
+      for (MFIter mfi(*state[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
         const Box& bx = mfi.validbox();
         const auto& StateVarFab = StateVar.array(mfi);
         const auto& ProgVarFab = ProgressVar.array(mfi);
+
+// Get volume fraction if an EB is used
+#ifdef AMREX_USE_EB
+        auto const& volFracBox = eb_factory[lev]->getVolFrac()[mfi].array();
+#endif
+
         Real invdenom = 1.0 / (progMax - progMin);
+
         amrex::ParallelFor(
           bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-            ProgVarFab(i, j, k) = (StateVarFab(i, j, k) - progMin) * invdenom;
+
+// Making sure that progress variable outside of domain is set to 0
+#ifdef AMREX_USE_EB
+            if (volFracBox(i, j, k) > 0) {
+              ProgVarFab(i, j, k) = (StateVarFab(i, j, k) - progMin) * invdenom;
+            } else {
+              ProgVarFab(i, j, k) = 0;
+            }
+#else
+                ProgVarFab(i,j,k) = ( StateVarFab(i,j,k) - progMin ) * invdenom;
+#endif
           });
       }
       ProgressVar.FillBoundary(geoms[lev]->periodicity());
@@ -333,7 +468,13 @@ main(int argc, char* argv[])
 
     } // End lev loop
 
+    //---------------------------------------------------------------------------
+    // Optional smoothing
+    //---------------------------------------------------------------------------
+
     if (do_smooth) {
+      if (verbose)
+        Print() << "Start smoothing of ProgVar!" << std::endl;
       // Set a composite ABec solve to smooth the progress variable
       // Try solving c^{n+1} - ∆t \nabla \cdot b_i \nabla c^{n+1} = c^{n)
       // In ABec terms  (\alpha A - \beta \nabla \cdot B_i \nabla) \phi = rhs
@@ -345,11 +486,18 @@ main(int argc, char* argv[])
       info.setAgglomeration(1);
       info.setConsolidation(1);
       info.setMetricTerm(false);
+      info.setMaxCoarseningLevel(0); // Needed for no Segfault?
 
+#ifdef AMREX_USE_EB
+      MLEBABecLap mlabec(
+        geomsOP, grids, dmap, info, amrex::GetVecOfConstPtrs(eb_factory));
+#else
       MLABecLaplacian mlabec(geomsOP, grids, dmap, info);
+#endif
+
       mlabec.setMaxOrder(4);
 
-      const Real tol_rel = 1.e-12;
+      const Real tol_rel = 1.e-12; // 1.e-12
       const Real tol_abs = 1.e-12;
 
       // Problem with Periodic or Neumann BC
@@ -368,7 +516,6 @@ main(int argc, char* argv[])
         // for problem with homogeneous Neumann BC, we need to pass nullptr
         mlabec.setLevelBC(lev, nullptr);
       }
-
       Real alpha = 1.0;
       Real beta = smooth_time;
       mlabec.setScalars(alpha, beta);
@@ -385,21 +532,26 @@ main(int argc, char* argv[])
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
           const BoxArray& ba = amrex::convert(
             state[lev]->boxArray(), IntVect::TheDimensionVector(idim));
+
           face_bcoef[idim].define(ba, state[lev]->DistributionMap(), 1, 0);
-          face_bcoef[idim].setVal(1.0);
+          face_bcoef[idim].setVal(1); // was 1.0 1e-30
         }
         mlabec.setBCoeffs(lev, amrex::GetArrOfConstPtrs(face_bcoef));
       }
 
+      if (verbose)
+        Print() << "Building Solution and RHS MultiFabs!" << std::endl;
       Vector<MultiFab> solution(Nlev);
       Vector<MultiFab> rhs(Nlev);
       for (int lev = 0; lev < Nlev; ++lev) {
         rhs[lev].define(grids[lev], dmap[lev], 1, 0);
-        MultiFab::Copy(rhs[lev], *state[lev], idProg, 0, 1, 0);
         solution[lev].define(grids[lev], dmap[lev], 1, nGrow);
+        MultiFab::Copy(rhs[lev], *state[lev], idProg, 0, 1, 0);
         solution[lev].setVal(0.0);
       }
 
+      if (verbose)
+        Print() << "Building MLMG for Smoothing!" << std::endl;
       MLMG mlmg(mlabec);
       mlmg.setMaxIter(100);
       mlmg.setVerbose(1);
@@ -412,28 +564,53 @@ main(int argc, char* argv[])
       }
       if (verbose)
         Print() << "Progress variable smoothed successfully \n";
-    }
+    } // do_smooth
 
     int idprogvar = do_smooth ? idSmProg : idProg;
 
-    //  Compute curvature using LinearOperators
-    // Set-up Poisson Linear Solver
+    //---------------------------------------------------------------------------
+    // Compute curvature
+    //---------------------------------------------------------------------------
+
+#ifdef AMREX_USE_EB
+    LPInfo info_apply;
+    info_apply.setMaxCoarseningLevel(0);
+    // info_apply.setAgglomeration(1);
+    // info_apply.setConsolidation(1);
+    info_apply.setMetricTerm(false);
+#else
     LPInfo info;
     info.setAgglomeration(1);
     info.setConsolidation(1);
     info.setMetricTerm(false);
     info.setMaxCoarseningLevel(0);
+#endif
 
     for (int lev = 0; lev < Nlev; ++lev) {
-      const BoxArray ba = amrData.boxArray(lev);
-      DistributionMapping dm(ba);
+      const BoxArray ba = pf.boxArray(lev);
 
       if (verbose)
-        Print() << "Starting mean curvature on level " << lev << "\n";
+        Print() << "Starting computation of mean curvature on level " << lev
+                << "\n";
 
-      // Get face gradients of progress variable
+// Get face gradients of progress variable
+#ifdef AMREX_USE_EB
+      MLEBABecLap poisson(
+        {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply, {eb_factory[lev].get()});
+      poisson.setVerbose(4);
+      poisson.setMaxOrder(4);
+
+      // Poisson like solver for EB
+      poisson.setScalars(0.0, 1.0);
+      poisson.setBCoeffs(0, -1.0); // Important to set only for lev 0 as solver
+                                   // is initialised with only 1 level
+#else
+      //  Compute curvature using LinearOperators
+      // Set-up Poisson Linear Solver
       MLPoisson poisson({*geoms[lev]}, {ba}, {dmap[lev]}, info);
       poisson.setMaxOrder(4);
+#endif
+
       std::array<LinOpBCType, AMREX_SPACEDIM> lo_bc;
       std::array<LinOpBCType, AMREX_SPACEDIM> hi_bc;
       for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
@@ -448,20 +625,40 @@ main(int argc, char* argv[])
         }
       }
       poisson.setDomainBC(lo_bc, hi_bc);
+
+      // Coarse BC data must outlive setLevelBC, which reads it
+      MultiFab ProgVarCoarse;
       if (lev > 0) {
-        MultiFab* ProgVarCoarse = new MultiFab(
+        ProgVarCoarse.define(
           state[lev - 1]->boxArray(), state[lev - 1]->DistributionMap(), 1,
           state[lev - 1]->nGrow());
-        MultiFab::Copy(*ProgVarCoarse, *state[lev - 1], idprogvar, 0, 1, nGrow);
-        poisson.setCoarseFineBC(ProgVarCoarse, 2);
+        MultiFab::Copy(ProgVarCoarse, *state[lev - 1], idprogvar, 0, 1, nGrow);
+        poisson.setCoarseFineBC(&ProgVarCoarse, pf.refRatio(lev - 1));
       }
+
       MultiFab ProgVar(ba, dmap[lev], 1, nGrow);
       MultiFab::Copy(ProgVar, *state[lev], idprogvar, 0, 1, nGrow);
+
       poisson.setLevelBC(0, &ProgVar);
 
       MLMG mlmg(poisson);
 
       std::array<MultiFab, AMREX_SPACEDIM> face_gradient;
+#ifdef AMREX_USE_EB
+      AMREX_D_TERM(face_gradient[0].define(
+        convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0, MFInfo(),
+        *eb_factory[lev]);
+                   , face_gradient[1].define(
+                       convert(ba, IntVect::TheDimensionVector(1)), dmap[lev],
+                       1, 0, MFInfo(), *eb_factory[lev]);
+                   , face_gradient[2].define(
+                       convert(ba, IntVect::TheDimensionVector(2)), dmap[lev],
+                       1, 0, MFInfo(), *eb_factory[lev]););
+
+      mlmg.getFluxes(
+        {amrex::GetArrOfPtrs(face_gradient)}, {&ProgVar},
+        MLMG::Location::FaceCentroid);
+#else
       AMREX_D_TERM(
         face_gradient[0].define(
           convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0);
@@ -469,31 +666,65 @@ main(int argc, char* argv[])
             convert(ba, IntVect::TheDimensionVector(1)), dmap[lev], 1, 0);
         , face_gradient[2].define(
             convert(ba, IntVect::TheDimensionVector(2)), dmap[lev], 1, 0););
-      mlmg.getFluxes({amrex::GetArrOfPtrs(face_gradient)}, {&ProgVar});
 
-      // Convert to cell avg gradient
+      mlmg.getFluxes(
+        {amrex::GetArrOfPtrs(face_gradient)}, {&ProgVar},
+        MLMG::Location::FaceCenter);
+
+#endif
+
+      // New Multifab cell avg gradient
       MultiFab cellavg_gradient(ba, dmap[lev], AMREX_SPACEDIM, 0);
+      cellavg_gradient.setVal(0.0);
+
+#ifdef AMREX_USE_EB
+      // MLEBABecLap with beta = 1, B = -1 returns +grad(C) as flux, whereas
+      // MLPoisson returns -grad(C); only the latter needs the sign flip.
+      EB_average_face_to_cellcenter(
+        cellavg_gradient, 0, amrex::GetArrOfConstPtrs(face_gradient));
+#else
       average_face_to_cellcenter(
         cellavg_gradient, 0, amrex::GetArrOfConstPtrs(face_gradient));
       cellavg_gradient.mult(-1.0, 0, AMREX_SPACEDIM);
+#endif
 
       // Compute ||\nabla c||
+
       MultiFab cellnorm_gradient(ba, dmap[lev], 1, 1);
       cellnorm_gradient.setVal(0.0);
-      for (MFIter mfi(cellnorm_gradient); mfi.isValid(); ++mfi) {
+
+      for (MFIter mfi(cellnorm_gradient, TilingIfNotGPU()); mfi.isValid();
+           ++mfi) {
         const Box& bx = mfi.validbox();
         AMREX_D_TERM(auto const& Cx = cellavg_gradient.array(mfi, 0);
                      , auto const& Cy = cellavg_gradient.array(mfi, 1);
                      , auto const& Cz = cellavg_gradient.array(mfi, 2););
         const auto& normgrad = cellnorm_gradient.array(mfi);
         const auto& progvar = ProgVar.array(mfi);
+
+#ifdef AMREX_USE_EB
+        auto const& volFracBox = eb_factory[lev]->getVolFrac()[mfi].array();
+#endif
+
         amrex::ParallelFor(
           bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-            normgrad(i, j, k) = std::max(
-              1e-14, std::sqrt(AMREX_D_TERM(
-                       std::pow(Cx(i, j, k), 2.0), +std::pow(Cy(i, j, k), 2.0),
-                       +std::pow(Cz(i, j, k), 2.0))));
-            normgrad(i, j, k) = -normgrad(i, j, k);
+
+#ifdef AMREX_USE_EB
+            if (volFracBox(i, j, k) > 0) {
+              normgrad(i, j, k) = std::max(
+                1e-14,
+                std::sqrt(AMREX_D_TERM(
+                  std::pow(Cx(i, j, k), 2.0), +std::pow(Cy(i, j, k), 2.0),
+                  +std::pow(Cz(i, j, k), 2.0))));
+              normgrad(i, j, k) = -normgrad(i, j, k);
+            }
+#else
+                normgrad(i,j,k) = std::max(1e-14, std::sqrt( AMREX_D_TERM (   std::pow(Cx(i,j,k),2.0),
+                                                                            + std::pow(Cy(i,j,k),2.0),
+                                                                            + std::pow(Cz(i,j,k),2.0)) ) ) ;
+
+                normgrad(i,j,k) = -normgrad(i,j,k);
+#endif
           });
       }
       cellnorm_gradient.FillBoundary(geoms[lev]->periodicity());
@@ -517,8 +748,22 @@ main(int argc, char* argv[])
       //      cells on normal
       MultiFab::Copy(
         *flame_normal[lev], *cell_normal[lev], 0, 0, AMREX_SPACEDIM, 0);
-      for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
-        MultiFab::Divide(*flame_normal[lev], cellnorm_gradient, 0, idim, 1, 0);
+
+      // Flame normal n = - grad(C)/norm(grad(C). norm(grad(C)) is only zero in
+      // EB-covered cells (it is floored at 1e-14 elsewhere); the normal is set
+      // to zero there instead of dividing 0/0.
+      for (MFIter mfi(*flame_normal[lev], TilingIfNotGPU()); mfi.isValid();
+           ++mfi) {
+        const Box& bx = mfi.tilebox();
+        const auto& normal = flame_normal[lev]->array(mfi);
+        const auto& normgrad = cellnorm_gradient.const_array(mfi);
+        amrex::ParallelFor(
+          bx, AMREX_SPACEDIM,
+          [=] AMREX_GPU_DEVICE(int i, int j, int k, int n) noexcept {
+            normal(i, j, k, n) = (normgrad(i, j, k) != 0.0)
+                                   ? normal(i, j, k, n) / normgrad(i, j, k)
+                                   : 0.0;
+          });
       }
       flame_normal[lev]->FillBoundary(
         0, AMREX_SPACEDIM, geoms[lev]->periodicity());
@@ -529,25 +774,59 @@ main(int argc, char* argv[])
 
       for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
 
+#ifdef AMREX_USE_EB
+        MLEBABecLap poisson2(
+          {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply,
+          {eb_factory[lev].get()});
+        poisson2.setVerbose(4);
+        poisson2.setMaxOrder(4);
+
+        // Poisson like solver for EB
+        poisson2.setScalars(0.0, 1.0);
+        poisson2.setBCoeffs(0, -1.0);
+
+#else
         MLPoisson poisson2({*geoms[lev]}, {ba}, {dmap[lev]}, info);
         poisson2.setMaxOrder(4);
+#endif
+
         poisson2.setDomainBC(lo_bc, hi_bc);
+        // Coarse BC data must outlive setLevelBC, which reads it
+        MultiFab FlameNormalIdimCoarse;
         if (lev > 0) {
-          MultiFab* FlameNormalIdimCoarse = new MultiFab(
+          FlameNormalIdimCoarse.define(
             flame_normal[lev - 1]->boxArray(),
             flame_normal[lev - 1]->DistributionMap(), 1, 0);
           MultiFab::Copy(
-            *FlameNormalIdimCoarse, *flame_normal[lev - 1], idim, 0, 1, 0);
-          poisson2.setCoarseFineBC(FlameNormalIdimCoarse, 2);
+            FlameNormalIdimCoarse, *flame_normal[lev - 1], idim, 0, 1, 0);
+          poisson2.setCoarseFineBC(
+            &FlameNormalIdimCoarse, pf.refRatio(lev - 1));
         }
-        MultiFab* FlameNormalIdim = new MultiFab(ba, dmap[lev], 1, 1);
-        MultiFab::Copy(*FlameNormalIdim, *flame_normal[lev], idim, 0, 1, 1);
-        poisson2.setLevelBC(0, FlameNormalIdim);
+
+        MultiFab FlameNormalIdim(ba, dmap[lev], 1, 1);
+        MultiFab::Copy(FlameNormalIdim, *flame_normal[lev], idim, 0, 1, 1);
+        poisson2.setLevelBC(0, &FlameNormalIdim);
 
         MLMG mlmg2(poisson2);
 
         // Get the fluxes : d N_i / d x_j   , i = idim, j = 0, 1 (,2)
         std::array<MultiFab, AMREX_SPACEDIM> faceg;
+
+#ifdef AMREX_USE_EB
+        AMREX_D_TERM(faceg[0].define(
+          convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0,
+          MFInfo(), *eb_factory[lev]);
+                     , faceg[1].define(
+                         convert(ba, IntVect::TheDimensionVector(1)), dmap[lev],
+                         1, 0, MFInfo(), *eb_factory[lev]);
+                     , faceg[2].define(
+                         convert(ba, IntVect::TheDimensionVector(2)), dmap[lev],
+                         1, 0, MFInfo(), *eb_factory[lev]););
+
+        mlmg2.getFluxes(
+          {amrex::GetArrOfPtrs(faceg)}, {&FlameNormalIdim},
+          MLMG::Location::FaceCentroid);
+#else
         AMREX_D_TERM(
           faceg[0].define(
             convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0);
@@ -555,16 +834,30 @@ main(int argc, char* argv[])
               convert(ba, IntVect::TheDimensionVector(1)), dmap[lev], 1, 0);
           , faceg[2].define(
               convert(ba, IntVect::TheDimensionVector(2)), dmap[lev], 1, 0););
-        mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {FlameNormalIdim});
+
+        mlmg2.getFluxes(
+          {amrex::GetArrOfPtrs(faceg)}, {&FlameNormalIdim},
+          MLMG::Location::FaceCenter);
+#endif
 
         // Get cell centered d N_i / d x_y
         MultiFab cell_avgg(ba, dmap[lev], AMREX_SPACEDIM, 0);
+        cell_avgg.setVal(0.0);
+
+#ifdef AMREX_USE_EB
+        EB_average_face_to_cellcenter(
+          cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
+#else
         average_face_to_cellcenter(
           cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
         cell_avgg.mult(-1.0, 0, AMREX_SPACEDIM);
+#endif
 
         // Add d N_i / d x_i to curvature
-        MultiFab::Add(Curv, cell_avgg, idim, 0, 1, 0);
+        MultiFab::Add(
+          Curv, cell_avgg, idim, 0, 1,
+          0); // Adds cell_avgg to Curv starting from location idim to 0 in Curv
+              // and only adds 1 comp + 0 ghost cells
       }
 
 #if AMREX_SPACEDIM == 3
@@ -574,7 +867,7 @@ main(int argc, char* argv[])
 #endif
 
       // Clip curvature & flame normal for c < threshold or c > 1.0-threshold
-      for (MFIter mfi(Curv); mfi.isValid(); ++mfi) {
+      for (MFIter mfi(Curv, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
         const Box& bx = mfi.validbox();
         const auto& CurvFab = Curv.array(mfi);
         AMREX_D_TERM(const auto& FnormXFab = flame_normal[lev]->array(mfi, 0);
@@ -601,6 +894,10 @@ main(int argc, char* argv[])
       if (verbose)
         Print() << "Mean curvature has been computed on level " << lev << "\n";
 
+        //---------------------------------------------------------------------------
+        // Compute gaussian curvature
+        //---------------------------------------------------------------------------
+
         // Now work on the gaussian curvature: only if 3D and required
 #if AMREX_SPACEDIM == 3
       if (do_gaussCurv) {
@@ -611,24 +908,57 @@ main(int argc, char* argv[])
         // Compute grad of grad in each dim and store in Hessian
         for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
 
+#ifdef AMREX_USE_EB
+          MLEBABecLap poisson2(
+            {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply,
+            {eb_factory[lev].get()});
+          poisson2.setVerbose(4);
+          poisson2.setMaxOrder(4);
+
+          // Poisson like solver for EB
+          poisson2.setScalars(0.0, 1.0);
+          poisson2.setBCoeffs(0, -1.0);
+
+#else
           MLPoisson poisson2({*geoms[lev]}, {ba}, {dmap[lev]}, info);
           poisson2.setMaxOrder(4);
+#endif
+
           poisson2.setDomainBC(lo_bc, hi_bc);
+          // Coarse BC data must outlive setLevelBC, which reads it
+          MultiFab gradIdimCoarse;
           if (lev > 0) {
-            MultiFab* gradIdimCoarse = new MultiFab(
+            gradIdimCoarse.define(
               cell_normal[lev - 1]->boxArray(),
               cell_normal[lev - 1]->DistributionMap(), 1, 0);
             MultiFab::Copy(
-              *gradIdimCoarse, *cell_normal[lev - 1], idim, 0, 1, 0);
-            poisson2.setCoarseFineBC(gradIdimCoarse, 2);
+              gradIdimCoarse, *cell_normal[lev - 1], idim, 0, 1, 0);
+            poisson2.setCoarseFineBC(&gradIdimCoarse, pf.refRatio(lev - 1));
           }
-          MultiFab* gradIdim = new MultiFab(ba, dmap[lev], 1, 1);
-          MultiFab::Copy(*gradIdim, *cell_normal[lev], idim, 0, 1, 1);
-          poisson2.setLevelBC(0, gradIdim);
+          MultiFab gradIdim(ba, dmap[lev], 1, 1);
+          MultiFab::Copy(gradIdim, *cell_normal[lev], idim, 0, 1, 1);
+          poisson2.setLevelBC(0, &gradIdim);
 
           MLMG mlmg2(poisson2);
 
           std::array<MultiFab, AMREX_SPACEDIM> faceg;
+
+#ifdef AMREX_USE_EB
+          AMREX_D_TERM(faceg[0].define(
+            convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0,
+            MFInfo(), *eb_factory[lev]);
+                       , faceg[1].define(
+                           convert(ba, IntVect::TheDimensionVector(1)),
+                           dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]);
+                       , faceg[2].define(
+                           convert(ba, IntVect::TheDimensionVector(2)),
+                           dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]););
+
+          mlmg2.getFluxes(
+            {amrex::GetArrOfPtrs(faceg)}, {&gradIdim},
+            MLMG::Location::FaceCentroid);
+
+#else
           AMREX_D_TERM(
             faceg[0].define(
               convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0);
@@ -636,13 +966,21 @@ main(int argc, char* argv[])
                 convert(ba, IntVect::TheDimensionVector(1)), dmap[lev], 1, 0);
             , faceg[2].define(
                 convert(ba, IntVect::TheDimensionVector(2)), dmap[lev], 1, 0););
-          mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {gradIdim});
+          mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {&gradIdim});
+#endif
 
           // Get cell centered d C / d idim _x_y_z
           MultiFab cell_avgg(ba, dmap[lev], AMREX_SPACEDIM, 0);
+
+#ifdef AMREX_USE_EB
+          EB_average_face_to_cellcenter(
+            cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
+#else
           average_face_to_cellcenter(
             cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
-          cell_avgg.mult(-1.0, 0, AMREX_SPACEDIM);
+          cell_avgg.mult(
+            -1.0, 0, AMREX_SPACEDIM); // Only necessary for non EB cases
+#endif
 
           // Copy in Hessian
           MultiFab::Copy(Hessian, cell_avgg, 0, (idim) * 3, AMREX_SPACEDIM, 0);
@@ -651,7 +989,7 @@ main(int argc, char* argv[])
         // Get the adjugate of the Hessian
         MultiFab AdjHessian(ba, dmap[lev], 9, 0);
 
-        for (MFIter mfi(Hessian); mfi.isValid(); ++mfi) {
+        for (MFIter mfi(Hessian, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
           const Box& bx = mfi.validbox();
           const auto& HxiFab = Hessian.array(mfi, 0); // Cxx, Cxy, Cxz
           const auto& HyiFab = Hessian.array(mfi, 3); // Cyx, Cyy, Cyz
@@ -684,7 +1022,7 @@ main(int argc, char* argv[])
 
         // Now get the gausian curvature
         MultiFab gCurv(ba, dmap[lev], 1, 0);
-        for (MFIter mfi(gCurv); mfi.isValid(); ++mfi) {
+        for (MFIter mfi(gCurv, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
           const Box& bx = mfi.validbox();
           const auto& progvar = ProgVar.array(mfi);
           const auto& gCurvFab = gCurv.array(mfi);
@@ -706,8 +1044,12 @@ main(int argc, char* argv[])
                                    AdjHyiFab(i, j, k, 2) * CzFab(i, j, k)) +
                  CzFab(i, j, k) * (AdjHziFab(i, j, k, 0) * CxFab(i, j, k) +
                                    AdjHziFab(i, j, k, 1) * CyFab(i, j, k) +
-                                   AdjHziFab(i, j, k, 2) * CzFab(i, j, k))) /
-                std::pow(CgradNorm(i, j, k), 4.0);
+                                   AdjHziFab(i, j, k, 2) * CzFab(i, j, k)));
+              // norm(grad(C)) is zero only in EB-covered cells
+              gCurvFab(i, j, k) =
+                (CgradNorm(i, j, k) != 0.0)
+                  ? gCurvFab(i, j, k) / std::pow(CgradNorm(i, j, k), 4.0)
+                  : 0.0;
               if (
                 do_threshold && (progvar(i, j, k) < threshold ||
                                  progvar(i, j, k) > 1.0 - threshold)) {
@@ -716,39 +1058,88 @@ main(int argc, char* argv[])
             });
         }
         MultiFab::Copy(*state[lev], gCurv, 0, idKg, 1, 0);
+        if (verbose)
+          Print() << "Gaussian curvature has been computed on level " << lev
+                  << "\n";
       }
-      if (verbose)
-        Print() << "Gaussian curvature has been computed on level " << lev
-                << "\n";
 #endif
+
+      //---------------------------------------------------------------------------
+      // Compute strain
+      //---------------------------------------------------------------------------
 
       if (do_strain) {
         // Strain rate -nn:\nabla u + \nabla \cdot u
+        if (verbose)
+          Print() << "Starting computation of tangential strain rate for "
+                  << lev << "\n";
 
         // Start by building the strain tensor
         MultiFab StrainT(ba, dmap[lev], AMREX_SPACEDIM * AMREX_SPACEDIM, 0);
+        StrainT.setVal(0.0);
 
         // Compute strain tensor with a MLMG in each direction
         for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
 
+#ifdef AMREX_USE_EB
+          MLEBABecLap poisson2(
+            {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply,
+            {eb_factory[lev].get()});
+          poisson2.setVerbose(4);
+          poisson2.setMaxOrder(4);
+
+          // Poisson like solver for EB
+          poisson2.setScalars(0.0, 1.0);
+          poisson2.setBCoeffs(0, -1.0);
+
+#else
           MLPoisson poisson2({*geoms[lev]}, {ba}, {dmap[lev]}, info);
           poisson2.setMaxOrder(4);
+#endif
+
           poisson2.setDomainBC(lo_bc, hi_bc);
+
+          // Coarse BC data must outlive setLevelBC, which reads it
+          MultiFab velIdimCoarse;
           if (lev > 0) {
-            MultiFab* velIdimCoarse = new MultiFab(
+            velIdimCoarse.define(
               state[lev - 1]->boxArray(), state[lev - 1]->DistributionMap(), 1,
               0);
             MultiFab::Copy(
-              *velIdimCoarse, *state[lev - 1], idVst + idim, 0, 1, 0);
-            poisson2.setCoarseFineBC(velIdimCoarse, 2);
+              velIdimCoarse, *state[lev - 1], idVst + idim, 0, 1, 0);
+            poisson2.setCoarseFineBC(&velIdimCoarse, pf.refRatio(lev - 1));
           }
-          MultiFab* velIdim = new MultiFab(ba, dmap[lev], 1, 1);
-          MultiFab::Copy(*velIdim, *state[lev], idVst + idim, 0, 1, 1);
-          poisson2.setLevelBC(0, velIdim);
+
+          MultiFab velIdim(ba, dmap[lev], 1, 1);
+          MultiFab::Copy(velIdim, *state[lev], idVst + idim, 0, 1, 1);
+          poisson2.setLevelBC(0, &velIdim);
 
           MLMG mlmg2(poisson2);
 
           std::array<MultiFab, AMREX_SPACEDIM> faceg;
+
+#ifdef AMREX_USE_EB
+          AMREX_D_TERM(faceg[0].define(
+            convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0,
+            MFInfo(), *eb_factory[lev]);
+                       , faceg[1].define(
+                           convert(ba, IntVect::TheDimensionVector(1)),
+                           dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]);
+                       , faceg[2].define(
+                           convert(ba, IntVect::TheDimensionVector(2)),
+                           dmap[lev], 1, 0, MFInfo(), *eb_factory[lev]););
+
+          mlmg2.getFluxes(
+            {amrex::GetArrOfPtrs(faceg)}, {&velIdim},
+            MLMG::Location::FaceCentroid);
+
+          // Get cell centered d u_idim / d _x_y(_z)
+          MultiFab cell_avgg(
+            ba, dmap[lev], AMREX_SPACEDIM, 0, MFInfo(), *eb_factory[lev]);
+          cell_avgg.setVal(0.0);
+          EB_average_face_to_cellcenter(
+            cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
+#else
           AMREX_D_TERM(
             faceg[0].define(
               convert(ba, IntVect::TheDimensionVector(0)), dmap[lev], 1, 0);
@@ -756,13 +1147,17 @@ main(int argc, char* argv[])
                 convert(ba, IntVect::TheDimensionVector(1)), dmap[lev], 1, 0);
             , faceg[2].define(
                 convert(ba, IntVect::TheDimensionVector(2)), dmap[lev], 1, 0););
-          mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {velIdim});
+
+          mlmg2.getFluxes({amrex::GetArrOfPtrs(faceg)}, {&velIdim});
 
           // Get cell centered d u_idim / d _x_y(_z)
           MultiFab cell_avgg(ba, dmap[lev], AMREX_SPACEDIM, 0);
+          cell_avgg.setVal(0.0);
           average_face_to_cellcenter(
             cell_avgg, 0, amrex::GetArrOfConstPtrs(faceg));
           cell_avgg.mult(-1.0, 0, AMREX_SPACEDIM);
+
+#endif
 
           // Copy in strain tensor
           MultiFab::Copy(
@@ -771,8 +1166,9 @@ main(int argc, char* argv[])
 
         // Gather the components of strain rate
         MultiFab strainrate(ba, dmap[lev], 1, 0);
+        strainrate.setVal(0.0);
 
-        for (MFIter mfi(strainrate); mfi.isValid(); ++mfi) {
+        for (MFIter mfi(strainrate, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
           const Box& bx = mfi.validbox();
           const auto& progvar = ProgVar.array(mfi);
           const auto& srFab = strainrate.array(mfi);
@@ -822,7 +1218,7 @@ main(int argc, char* argv[])
         // Velocity normal to the flame front
         MultiFab velNormal(ba, dmap[lev], 1, 0);
 
-        for (MFIter mfi(velNormal); mfi.isValid(); ++mfi) {
+        for (MFIter mfi(velNormal, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
           const Box& bx = mfi.validbox();
           const auto& progvar = ProgVar.array(mfi);
           const auto& velNormFab = velNormal.array(mfi);
@@ -850,7 +1246,8 @@ main(int argc, char* argv[])
             << "Flow velocity normal to the flame has been computed on level "
             << lev << "\n";
       }
-    }
+
+    } // level-loop
 
     // ---------------------------------------------------------------------
     // Set-up the output
@@ -896,19 +1293,20 @@ main(int argc, char* argv[])
       ostate[lev] = new MultiFab(ba, dmap[lev], nCompOut, 0);
       MultiFab::Copy(*ostate[lev], *state[lev], 0, 0, nCompOut, 0);
     }
-
-    // Cap the number of plotfile data files via the n_files option (AMReX)
-    int n_files = amrex::VisMF::GetNOutFiles();
-    pp.query("n_files", n_files);
-    amrex::VisMF::SetNOutFiles(n_files);
-
-    Print() << "Writing new data to " << outfile << "\n";
+    Real time = pf.time();
+    Print() << "Writing new data to " << outfile << " , for TS: " << time
+            << "\n";
     Vector<int> isteps(Nlev, 0);
-    Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});
+    Vector<IntVect> refRatios(Nlev - 1, IntVect(2));
+    for (int lev = 0; lev < Nlev - 1; ++lev) {
+      refRatios[lev] = IntVect(pf.refRatio(lev));
+    }
+    VisMF::SetNOutFiles(n_files);
     amrex::WriteMultiLevelPlotfile(
-      outfile, Nlev, GetVecOfConstPtrs(ostate), nnames, geomsOP, 0.0, isteps,
+      outfile, Nlev, GetVecOfConstPtrs(ostate), nnames, geomsOP, time, isteps,
       refRatios);
   }
+  ParallelDescriptor::Barrier();
   amrex::Finalize();
   return 0;
 }

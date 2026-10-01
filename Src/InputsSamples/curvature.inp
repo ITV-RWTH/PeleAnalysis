@@ -8,6 +8,11 @@ n_files = 64                               # DEF: AMReX default; max number of p
 finestLevel = 0                            # DEF: finest level of plot file; Sets the 
                                            # finest level to read.
 
+#------------------- Boundary conditions --------------------------------------------------
+is_per = 1 1 0                             # Required; periodicity in each direction
+sym_dir = 0 0 0                            # DEF: 0 0 0; symmetry (odd reflection) in
+                                           # non-periodic directions
+
 #------------------- Variables ------------------------------------------------------------
 Aux_Variables = density temp               # DEF: ""; Variable names to be taken from input
                                            # file over to output file without change.

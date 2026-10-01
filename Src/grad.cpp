@@ -1,15 +1,26 @@
 #include <string>
 #include <iostream>
 
+// General AMReX Utils
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
-#include <AMReX_DataServices.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_VisMF.H>
 #include <AMReX_MLMG.H>
+
+// Non-EB Solver
+#ifndef AMREX_USE_EB
 #include <AMReX_MLPoisson.H>
-#include <AMReX_MLABecLaplacian.H>
+#endif
+
+// For EB
+#ifdef AMREX_USE_EB
+#include <AMReX_EBMultiFabUtil.H>
+#include <AMReX_MLEBABecLap.H>
+#include <pelelmex_prob_parm.H>
+#include <PeleLMeX_EBUserDefined.H>
+#endif
 
 using namespace amrex;
 
@@ -51,61 +62,97 @@ main(int argc, char* argv[])
       print_usage(argc, argv);
     }
 
-    std::string gradVar = "";
+    const Real pf_strt_time_io = ParallelDescriptor::second();
+    //------------------------------------------------------------------------------------------
+    // Set defaults input values
+    //------------------------------------------------------------------------------------------
+    std::string gradVar = "temp";
     std::string infile = "";
     int finestLevel = 1000;
     int nAuxVar = 0;
+    int verbose = 1;
+    int n_files = amrex::VisMF::GetNOutFiles();
 
+    //------------------------------------------------------------------------------------------
+    // ParmParse
+    //------------------------------------------------------------------------------------------
     ParmParse pp;
 
+    if (pp.contains("help")) {
+      print_usage(argc, argv);
+    }
+    // General settings
+    pp.query("verbose", verbose);
+
     pp.get("infile", infile);
-    pp.get("gradVar", gradVar);
+    if (infile.empty()) {
+      Abort("Plotfile not specified, Use infile=");
+    }
+    if (verbose > 0)
+      Print() << "infile = " << infile << std::endl;
+
+    pp.query("gradVar", gradVar);
+    if (verbose > 0)
+      Print() << "Choosen gradVar: " << gradVar << std::endl;
+
     pp.query("finestLevel", finestLevel);
 
-    // Initialize DataService
-    DataServices::SetBatchMode();
-    Amrvis::FileType fileType(Amrvis::NEWPLT);
-    DataServices dataServices(infile, fileType);
-    if (!dataServices.AmrDataOk()) {
-      DataServices::Dispatch(DataServices::ExitRequest, NULL);
-    }
-    AmrData& amrData = dataServices.AmrDataRef();
+    pp.query(
+      "n_files", n_files); // Cap on the number of plotfile data files (VisMF)
+
+    std::string outfile(getFileRoot(infile) + "_gt");
+    pp.query("outfile", outfile); // Ability to change pltfile path and name
+
+    PlotFileData pf(infile);
 
     // Plotfile global infos
-    finestLevel = std::min(finestLevel, amrData.FinestLevel());
+    if (verbose > 0)
+      Print() << "Initialising global infos!" << std::endl;
+    finestLevel = std::min(finestLevel, pf.finestLevel());
     int Nlev = finestLevel + 1;
-    const Vector<std::string>& plotVarNames = amrData.PlotVarNames();
-    RealBox rb(&(amrData.ProbLo()[0]), &(amrData.ProbHi()[0]));
+    if (verbose > 0)
+      Print() << "finestLevel = " << finestLevel << "!" << std::endl;
+    const Vector<std::string>& plotVarNames = pf.varNames();
+    RealBox rb(&(pf.probLo()[0]), &(pf.probHi()[0]));
 
     // Gradient variable
+    if (verbose > 0)
+      Print() << "Checking for gradVar!" << std::endl;
     int idC = -1;
     for (int i = 0; i < plotVarNames.size(); ++i) {
       if (plotVarNames[i] == gradVar)
         idC = i;
     }
     if (idC < 0) {
-      Print() << "Cannot find " << gradVar << " data in pltfile \n";
+      Abort("Cannot find " + gradVar + " in pltfile. Check gradVar=");
     }
 
     // Auxiliary variables
+    if (verbose > 0)
+      Print() << "Checking for auxiliary variables!" << std::endl;
     nAuxVar = pp.countval("Aux_Variables");
     Vector<std::string> AuxVar(nAuxVar);
     for (int ivar = 0; ivar < nAuxVar; ++ivar) {
       pp.get("Aux_Variables", AuxVar[ivar], ivar);
     }
 
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
     // Variables index management
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
+    if (verbose > 0)
+      Print() << "Index Management!" << std::endl;
     const int idCst = 0;
     int nCompIn = idCst + 1;
     Vector<std::string> inVarNames(nCompIn);
     inVarNames[idCst] = plotVarNames[idC];
+    Print() << "invarNames = " << inVarNames[0] << std::endl;
 
     if (nAuxVar > 0) {
       inVarNames.resize(nCompIn + nAuxVar);
       for (int ivar = 0; ivar < nAuxVar; ++ivar) {
-        if (amrData.StateNumber(AuxVar[ivar]) < 0) {
+        auto it =
+          std::find(plotVarNames.begin(), plotVarNames.end(), AuxVar[ivar]);
+        if (it == plotVarNames.end()) {
           amrex::Abort("Unknown auxiliary variable name: " + AuxVar[ivar]);
         }
         inVarNames[nCompIn] = AuxVar[ivar];
@@ -126,28 +173,25 @@ main(int argc, char* argv[])
     Vector<int> sym_dir(AMREX_SPACEDIM, 0);
     pp.queryarr("sym_dir", sym_dir, 0, AMREX_SPACEDIM);
 
+    // Periodicity has no safe default: it must match the simulation
     Vector<int> is_per(AMREX_SPACEDIM, 0);
-    pp.queryarr("is_per", is_per, 0, AMREX_SPACEDIM);
-    Print() << "Periodicity assumed for this case: ";
-    for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
-      Print() << is_per[idim] << " ";
-    }
-    Print() << "\n";
-    BCRec gradVarBC;
-    for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
-      gradVarBC.setLo(idim, BCType::foextrap);
-      gradVarBC.setHi(idim, BCType::foextrap);
-      if (is_per[idim]) {
-        gradVarBC.setLo(idim, BCType::int_dir);
-        gradVarBC.setHi(idim, BCType::int_dir);
+    pp.getarr("is_per", is_per, 0, AMREX_SPACEDIM);
+    if (verbose > 0) {
+      Print() << "Periodicity assumed for this case: ";
+      for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+        Print() << is_per[idim] << " ";
       }
+      Print() << "\n";
     }
 
     int coord = 0;
 
-    // ---------------------------------------------------------------------
-    // Let's start the real work
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
+    // Initialising MultiFabs and loading the pltfile Data
+    //------------------------------------------------------------------------------------------
+
+    if (verbose > 0)
+      Print() << "Start of gradient computation!" << std::endl;
     Vector<MultiFab> state(Nlev);
     Vector<Geometry> geoms(Nlev);
     Vector<BoxArray> grids(Nlev);
@@ -155,29 +199,158 @@ main(int argc, char* argv[])
     const int nGrow = 1;
 
     // Read data on all the levels
+    if (verbose > 0)
+      Print() << "Reading data on all levels!" << std::endl;
     for (int lev = 0; lev < Nlev; ++lev) {
-
-      const BoxArray ba = amrData.boxArray(lev);
+      const BoxArray ba = pf.boxArray(lev);
       grids[lev] = ba;
-      dmap[lev] = DistributionMapping(ba);
-      geoms[lev] =
-        Geometry(amrData.ProbDomain()[lev], &rb, coord, &(is_per[0]));
+      dmap[lev] = pf.DistributionMap(lev);
+      geoms[lev] = Geometry(pf.probDomain(lev), &rb, coord, &(is_per[0]));
       state[lev].define(grids[lev], dmap[lev], nCompOut, nGrow);
-
-      Print() << "Reading data for level: " << lev << std::endl;
-      amrData.FillVar(state[lev], lev, inVarNames, destFillComps);
-
+      state[lev].setVal(0.0);
+      for (int n = 0; n < inVarNames.size(); ++n) {
+        const MultiFab& src = pf.get(lev, inVarNames[n]);
+        MultiFab::Copy(state[lev], src, 0, n, 1, 0);
+      }
       state[lev].FillBoundary(idCst, 1, geoms[lev].periodicity());
+      Print() << "...done reading the plotfile data at level " << lev << "..."
+              << std::endl;
     }
 
+//------------------------------------------------------------------------------------------
+// Build the EB
+//------------------------------------------------------------------------------------------
+#ifdef AMREX_USE_EB
+
+    if (verbose > 0)
+      Print() << "Start building EB!" << std::endl;
+    BL_PROFILE("PeleAnalysis::buildEBGeometry()");
+
+    int max_coarsening_level = 100;
+    int req_coarsening_level = static_cast<int>(geoms.size()) - 1;
+
+    // Read the geometry type and act accordingly
+    ParmParse ppeb2("eb2");
+    std::string geom_type;
+    ppeb2.get("geom_type", geom_type);
+
+    // At what level should the EB be generated ?
+    // Default : max_level
+    int max_lvl_eb = finestLevel;
+    ppeb2.query("max_level_generation", max_lvl_eb);
+    // The EB is generated on max_lvl_eb and coarsened to the coarser levels, so
+    // it must be the finest level processed: a larger value has no geometry,
+    // a smaller one leaves the finer levels without EB data.
+    if (max_lvl_eb != finestLevel) {
+      Abort(
+        "eb2.max_level_generation = " + std::to_string(max_lvl_eb) +
+        " must equal the finest level processed (" +
+        std::to_string(finestLevel) + ")");
+    }
+
+    // Generate the EB data at max_lvl_eb
+    if (geom_type == "UserDefined") {
+      EBUserDefined(
+        geoms[max_lvl_eb], req_coarsening_level, max_coarsening_level);
+    } else {
+      // If geom_type is not an AMReX recognized type, it'll crash.
+      EB2::Build(geoms[max_lvl_eb], req_coarsening_level, max_coarsening_level);
+    }
+
+    // Setting up an eb_factory for the solver to use
+    if (verbose > 0)
+      Print() << "Setting up EBFactory!" << std::endl;
+    Vector<std::unique_ptr<EBFArrayBoxFactory>> eb_factory(Nlev);
+    for (int lev = 0; lev < Nlev; ++lev) {
+      const EB2::IndexSpace& eb_is = EB2::IndexSpace::top();
+      const EB2::Level& eb_level = eb_is.getLevel(geoms[lev]);
+      eb_factory[lev] = std::make_unique<EBFArrayBoxFactory>(
+        eb_level, geoms[lev], grids[lev], dmap[lev], Vector<int>{2, 2, 2},
+        EBSupport::full);
+    }
+
+#endif
+
+    //------------------------------------------------------------------------------------------
+    // EB Solver Section
+    //------------------------------------------------------------------------------------------
+
+#ifdef AMREX_USE_EB
+    if (verbose > 0)
+      Print() << "Setting up solver!" << std::endl;
+    LPInfo info_apply;
+    info_apply.setMaxCoarseningLevel(0);
+    MLEBABecLap poisson_eb(
+      geoms, grids, dmap, info_apply, amrex::GetVecOfConstPtrs(eb_factory));
+    poisson_eb.setVerbose(4);
+    poisson_eb.setMaxOrder(4);
+
+    // Poisson like solver able to handle EB'S
+    poisson_eb.setScalars(0.0, 1.0);
+    for (int lev = 0; lev <= finestLevel; ++lev) {
+      poisson_eb.setBCoeffs(lev, -1.0);
+    }
+
+    if (verbose > 0)
+      Print() << "Setting Boundary Conditions" << std::endl;
+    std::array<LinOpBCType, AMREX_SPACEDIM> lo_bc;
+    std::array<LinOpBCType, AMREX_SPACEDIM> hi_bc;
+    for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
+      if (is_per[idim] == 1) {
+        lo_bc[idim] = hi_bc[idim] = LinOpBCType::Periodic;
+      } else {
+        if (sym_dir[idim] == 1) {
+          lo_bc[idim] = hi_bc[idim] = LinOpBCType::reflect_odd;
+        } else {
+          lo_bc[idim] = hi_bc[idim] = LinOpBCType::Neumann;
+        }
+      }
+    }
+    poisson_eb.setDomainBC(lo_bc, hi_bc);
+
+    // Need to apply the operator to ensure CF consistency with composite solve
+    int nGrowGrad = 0; // No need for ghost face on gradient
+    Vector<Array<MultiFab, AMREX_SPACEDIM>> grad(Nlev);
+    Vector<std::unique_ptr<MultiFab>> phi;
+    Vector<MultiFab> laps;
+    for (int lev = 0; lev < Nlev; ++lev) {
+      for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
+        const auto& ba = grids[lev];
+        grad[lev][idim].define(
+          amrex::convert(ba, IntVect::TheDimensionVector(idim)), dmap[lev], 1,
+          nGrowGrad, MFInfo(), *eb_factory[lev]);
+      }
+      phi.push_back(
+        std::make_unique<MultiFab>(state[lev], amrex::make_alias, idCst, 1));
+      poisson_eb.setLevelBC(lev, phi[lev].get());
+      laps.emplace_back(grids[lev], dmap[lev], 1, 1);
+    }
+
+    if (verbose > 0)
+      Print() << "Getting Fluxes!" << std::endl;
+    MLMG mlmg_eb(poisson_eb);
+    mlmg_eb.apply(GetVecOfPtrs(laps), GetVecOfPtrs(phi));
+    mlmg_eb.getFluxes(
+      GetVecOfArrOfPtrs(grad), GetVecOfPtrs(phi), MLMG::Location::FaceCentroid);
+#else
+
+    //------------------------------------------------------------------------------------------
+    // Alternative solver if USE_EB = FALSE
+    //------------------------------------------------------------------------------------------
+
     // Get face-centered gradients from MLMG
+    if (verbose > 0)
+      Print() << "Setting up solver!" << std::endl;
     LPInfo info;
-    info.setAgglomeration(1);
-    info.setConsolidation(1);
+    info.setAgglomeration(true);
+    info.setConsolidation(true);
+    info.setMaxCoarseningLevel(0);
     info.setMetricTerm(false);
     info.setMaxCoarseningLevel(0);
     MLPoisson poisson({geoms}, {grids}, {dmap}, info);
-    poisson.setMaxOrder(4);
+
+    if (verbose > 0)
+      Print() << "Setting Boundary Conditions" << std::endl;
     std::array<LinOpBCType, AMREX_SPACEDIM> lo_bc;
     std::array<LinOpBCType, AMREX_SPACEDIM> hi_bc;
     for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
@@ -192,6 +365,7 @@ main(int argc, char* argv[])
       }
     }
     poisson.setDomainBC(lo_bc, hi_bc);
+    poisson.setLevelBC(0, nullptr);
 
     // Need to apply the operator to ensure CF consistency with composite solve
     int nGrowGrad = 0; // No need for ghost face on gradient
@@ -211,16 +385,26 @@ main(int argc, char* argv[])
       laps.emplace_back(grids[lev], dmap[lev], 1, 1);
     }
 
+    if (verbose > 0)
+      Print() << "Getting Fluxes!" << std::endl;
     MLMG mlmg(poisson);
     mlmg.apply(GetVecOfPtrs(laps), GetVecOfPtrs(phi));
     mlmg.getFluxes(
       GetVecOfArrOfPtrs(grad), GetVecOfPtrs(phi), MLMG::Location::FaceCenter);
 
+#endif
+
     for (int lev = 0; lev < Nlev; ++lev) {
       // Convert to cell avg gradient
       MultiFab gradAlias(state[lev], amrex::make_alias, idGr, AMREX_SPACEDIM);
+#ifdef AMREX_USE_EB
+      EB_average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));
+      // *(-1) Not needed when using MLEBABecLap
+#else
       average_face_to_cellcenter(gradAlias, 0, GetArrOfConstPtrs(grad[lev]));
       gradAlias.mult(-1.0);
+#endif
+
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -238,9 +422,9 @@ main(int argc, char* argv[])
       }
     }
 
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
     // Write the results
-    // ---------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------
     Vector<std::string> nnames(nCompOut);
     for (int i = 0; i < nCompIn; ++i) {
       nnames[i] = inVarNames[i];
@@ -251,21 +435,23 @@ main(int argc, char* argv[])
     nnames[idGr + 2] = gradVar + "_gz";
 #endif
     nnames[idGr + AMREX_SPACEDIM] = "||grad" + gradVar + "||";
-    std::string outfile(getFileRoot(infile) + "_gt");
-    pp.query("outfile", outfile);
-
-    // Cap the number of plotfile data files via the n_files option (AMReX)
-    int n_files = amrex::VisMF::GetNOutFiles();
-    pp.query("n_files", n_files);
-    amrex::VisMF::SetNOutFiles(n_files);
-
-    Print() << "Writing new data to " << outfile << std::endl;
+    if (verbose > 0)
+      Print() << "Writing results to " << outfile << std::endl;
     Vector<int> isteps(Nlev, 0);
-    Vector<IntVect> refRatios(Nlev - 1, {AMREX_D_DECL(2, 2, 2)});
+    Vector<IntVect> refRatios(Nlev - 1, IntVect(2));
+    for (int lev = 0; lev < Nlev - 1; ++lev) {
+      refRatios[lev] = IntVect(pf.refRatio(lev));
+    }
+    VisMF::SetNOutFiles(n_files);
+    Real time = pf.time();
     amrex::WriteMultiLevelPlotfile(
-      outfile, Nlev, GetVecOfConstPtrs(state), nnames, geoms, 0.0, isteps,
+      outfile, Nlev, GetVecOfConstPtrs(state), nnames, geoms, time, isteps,
       refRatios);
+    const Real pf_end_time_io = ParallelDescriptor::second();
+    Real pf_io_time = pf_end_time_io - pf_strt_time_io;
+    Print() << "Duration: " << pf_io_time << " s" << std::endl;
   }
+
   amrex::Finalize();
   return 0;
 }
