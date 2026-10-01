@@ -18,7 +18,8 @@
 #   EXPECTED_<DIM>D_FAILURES           e.g. EXPECTED_2D_FAILURES
 #   EXPECTED_EB_FAILURES               any DIM, when USE_EB=TRUE
 #   EXPECTED_EB_<DIM>D_FAILURES        this DIM, when USE_EB=TRUE
-#   EXPECTED_<BACKEND>_FAILURES        e.g. EXPECTED_CUDA_FAILURES
+#   EXPECTED_GPU_FAILURES              any GPU backend, when BACKEND!=CPU
+#   EXPECTED_<BACKEND>_FAILURES        this backend, e.g. EXPECTED_CUDA_FAILURES
 set +e
 
 DIM=${DIM:?DIM must be set}
@@ -33,7 +34,7 @@ if [ "${USE_EB}" = "TRUE" ]; then
   SKIP="${SKIP} $(list EXPECTED_EB_FAILURES) $(list "EXPECTED_EB_${DIM}D_FAILURES")"
 fi
 if [ "${BACKEND}" != "CPU" ]; then
-  SKIP="${SKIP} $(list "EXPECTED_${BACKEND}_FAILURES")"
+  SKIP="${SKIP} $(list EXPECTED_GPU_FAILURES) $(list "EXPECTED_${BACKEND}_FAILURES")"
 fi
 SKIP=" $(echo ${SKIP}) "
 
