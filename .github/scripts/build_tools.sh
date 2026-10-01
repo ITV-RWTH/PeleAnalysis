@@ -57,5 +57,9 @@ done
 
 if [ -n "${FAILED}" ]; then
   echo "ERROR: Compilation failed (DIM=${DIM}, USE_EB=${USE_EB}, BACKEND=${BACKEND}) for:${FAILED}"
+  # Also report the failing tools as a GitHub Actions annotation
+  if [ -n "${GITHUB_ACTIONS}" ]; then
+    echo "::error title=Compilation failed::DIM=${DIM} USE_EB=${USE_EB} BACKEND=${BACKEND}:${FAILED}"
+  fi
   exit 1
 fi
