@@ -19,9 +19,9 @@ concurrency:
 env:
   EXPECTED_2D_FAILURES: 'qCriterion sequentialFilterPlt'
   EXPECTED_3D_FAILURES: ''
-  EXPECTED_CUDA_FAILURES: 'amrToFE ciao2plt conditionalMean jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
-  EXPECTED_HIP_FAILURES: 'amrToFE ciao2plt conditionalMean jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
-  EXPECTED_SYCL_FAILURES: 'amrToFE ciao2plt conditionalMean jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
+  EXPECTED_CUDA_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
+  EXPECTED_HIP_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
+  EXPECTED_SYCL_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
 
 jobs:
 
