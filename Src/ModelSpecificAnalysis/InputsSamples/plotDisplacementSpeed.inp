@@ -1,0 +1,32 @@
+# Example input file for plotDisplacementSpeed
+# Computes the flame displacement speed of a fuel species and its diffusive
+# and reactive contributions from an AMReX/PeleLMeX plot file.
+
+#------------------- IO CONTROL -----------------------------------------------------------
+infile = plt00500    # Input AMReX plot file (must contain Y(...), temp, density,
+                     # I_R(<fuel>), rhoh)
+outfile = plt00500_sd  # DEF: <infile>_sd; name of the output plot file
+n_files = 64         # DEF: AMReX default; max number of plotfile data
+                     # files written (VisMF), clamped to the MPI rank count
+
+#------------------- Species --------------------------------------------------------------
+fuelName = H2        # Fuel species used as progress variable
+
+#------------------- Transport contributions ----------------------------------------------
+transport.use_soret = 0  # DEF: 0; include the Soret (thermal diffusion) term
+use_wbar = 1         # DEF: 1; include the mean molecular weight term
+
+#------------------- AMR Control ----------------------------------------------------------
+finestLevel = 2      # DEF: finest level in file; Finest AMR level to process
+
+#------------------- Boundary conditions --------------------------------------------------
+is_per = 1 1 1       # Required; periodicity in each direction
+sym_dir = 0 0 0      # DEF: 0 0 0; symmetry (odd reflection) in non-periodic directions
+
+#------------------- EB geometry (only for USE_EB=TRUE builds) ----------------------------
+# eb2.geom_type = UserDefined          # Required with EB; see Docs basics/embeddedBoundaries
+# eb2.max_level_generation = 2         # DEF: finestLevel; must equal finestLevel
+# prob.prechamber_side_x = ...         # Parameters read by EBUserDefined (example geometry)
+
+#------------------- Additional Flags -----------------------------------------------------
+verbose = 1          # DEF: 0; print progress information
