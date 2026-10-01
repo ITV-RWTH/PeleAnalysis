@@ -59,6 +59,11 @@ wrote into the plotfile.
        operators; results are only computed where ``volFrac > 0``.
      - yes
      - no
+   * - :doc:`../analysis/integral`
+     - Every integrand is weighted by the cell volume fraction, so cut cells
+       contribute their partial volume/area/length.
+     - no
+     - yes
 
 All other tools ignore EB, even when built with ``USE_EB=TRUE``.
 
@@ -140,3 +145,8 @@ been run on a GPU as part of this review.
      - Runs on GPU
      - As ``grad``. The file min/max reduction synchronises once per box, which
        is correct but slow.
+   * - ``integral``
+     - Wrong on multi-level data
+     - The step that excludes coarse cells covered by a finer level is
+       compiled out on GPU builds, so covered regions are counted twice when
+       ``finestLevel > 0``. Single-level integrals are correct.
