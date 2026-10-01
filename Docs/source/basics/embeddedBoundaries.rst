@@ -64,6 +64,11 @@ wrote into the plotfile.
        contribute their partial volume/area/length.
      - no
      - yes
+   * - :doc:`../analysis/isosurface`
+     - Fully covered cells (``volFrac == 0``) are masked out of the isosurface
+       extraction.
+     - no
+     - yes
 
 All other tools ignore EB, even when built with ``USE_EB=TRUE``.
 
@@ -150,3 +155,8 @@ been run on a GPU as part of this review.
      - The step that excludes coarse cells covered by a finer level is
        compiled out on GPU builds, so covered regions are counted twice when
        ``finestLevel > 0``. Single-level integrals are correct.
+   * - ``isosurface``
+     - Not supported
+     - The data preparation runs on the GPU, but the surface extraction, the
+       distance function and the output are host loops over device memory and
+       would crash or read invalid data.
