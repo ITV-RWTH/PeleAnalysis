@@ -11,6 +11,17 @@ concurrency:
   group: ${{github.ref}}-${{github.head_ref}}-ci
   cancel-in-progress: true
 
+# Tools known not to compile for a given configuration, as space-separated
+# tool names. .github/scripts/build_tools.sh skips the union of every list
+# that applies to a build:
+#   EXPECTED_<DIM>D_FAILURES      tools that only support the other dimension
+#   EXPECTED_GPU_FAILURES         tools that do not compile for any GPU backend
+#   EXPECTED_<BACKEND>_FAILURES   tools that do not compile for one GPU backend
+env:
+  EXPECTED_2D_FAILURES: 'qCriterion sequentialFilterPlt'
+  EXPECTED_3D_FAILURES: ''
+  EXPECTED_GPU_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
+
 jobs:
 
 # This is mostly just copied from the PelePhysics CI
@@ -55,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        comp: [gnu, llvm, gnu-debug]  # TODO: cuda, hip, sycl
+        comp: [gnu, llvm, gnu-debug]
         dim: [2, 3]
         include:
           - comp: gnu
@@ -64,6 +75,10 @@ jobs:
             amrex_build_args: 'COMP=gnu DEBUG=TRUE'
           - comp: llvm
             amrex_build_args: 'COMP=llvm'
+    name: CPU (${{matrix.comp}}, ${{matrix.dim}}D)
+    env:
+      DIM: ${{matrix.dim}}
+      BACKEND: CPU
     steps:
       - uses: actions/checkout@v4
       - name: Clone PeleAnalysis
@@ -76,18 +91,12 @@ jobs:
           echo "PELE_ANALYSIS_HOME=${{github.workspace}}/PeleAnalysis-${{matrix.comp}}-${{matrix.dim}}d" >> $GITHUB_ENV
           echo "BASE_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis-${{matrix.comp}}-${{matrix.dim}}d/Src" >> $GITHUB_ENV
           echo "MODELSPECIFIC_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis-${{matrix.comp}}-${{matrix.dim}}d/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
+          echo "BUILD_TOOLS=${{github.workspace}}/PeleAnalysis-${{matrix.comp}}-${{matrix.dim}}d/.github/scripts/build_tools.sh" >> $GITHUB_ENV
           echo "NPROCS=$(nproc)" >> $GITHUB_ENV
           echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
           echo "CCACHE_COMPRESSLEVEL=5" >> $GITHUB_ENV
           echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
           echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV
-
-          # Tools known to only support specific dimensions.
-          # List tools here instead of relying on static_assert grep.
-          # Format: space-separated tool names.
-          echo "EXPECTED_2D_FAILURES=qCriterion sequentialFilterPlt" >> $GITHUB_ENV
-          echo "EXPECTED_3D_FAILURES=''" >> $GITHUB_ENV
-
       - name: Install Ccache
         run: |
           wget https://github.com/ccache/ccache/releases/download/v4.8/ccache-4.8-linux-x86_64.tar.xz
@@ -121,31 +130,7 @@ jobs:
         working-directory: ${{env.BASE_WORKING_DIRECTORY}}
         run: |
           ccache -z
-          set +e
-          EBASE_OPTIONS=$(grep -oP '^#(?!#)\s*EBASE\s*=\s*\K[^ ]+' GNUmakefile)
-          DIM=${{matrix.dim}}
-          EXPECTED_FAILURES=$([ "$DIM" = "2" ] && echo "$EXPECTED_2D_FAILURES" || echo "$EXPECTED_3D_FAILURES")
-
-          build_and_check() {
-            local TYPE=$1
-            if [[ " $EXPECTED_FAILURES " == *" $TYPE "* ]]; then
-              echo "Skipping ${TYPE}: known unsupported for DIM=${DIM}."
-              return 0
-            fi
-            printf "\n-------- ${TYPE} (DIM=${DIM}) --------\n"
-            OUTPUT=$(make -j ${{ env.NPROCS }} EBASE=${TYPE} USE_CCACHE=TRUE DIM=${DIM} ${{ matrix.amrex_build_args }} 2>&1)
-            RESULT=$?
-            echo "${OUTPUT}"
-            make realclean
-            if [ ${RESULT} -ne 0 ]; then
-              echo "ERROR: Compilation failed for ${TYPE} (DIM=${DIM})."
-              exit ${RESULT}
-            fi
-          }
-
-          for TYPE in $EBASE_OPTIONS; do
-            build_and_check "${TYPE}"
-          done
+          ${BUILD_TOOLS} ${{matrix.amrex_build_args}}
 
       - name: Src ccache report
         working-directory: ${{env.BASE_WORKING_DIRECTORY}}
@@ -154,34 +139,150 @@ jobs:
           du -hs ${HOME}/.cache/ccache
 
       - name: Test (ModelSpecificAnalysis)
+        # Report these tools even when the Src step failed
+        if: success() || failure()
         working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
         run: |
           ccache -z
-          set +e
-          EBASE_OPTIONS=$(grep -oP '^#(?!#)\s*EBASE\s*=\s*\K[^ ]+' GNUmakefile)
-          DIM=${{matrix.dim}}
-          EXPECTED_FAILURES=$([ "$DIM" = "2" ] && echo "$EXPECTED_2D_FAILURES" || echo "$EXPECTED_3D_FAILURES")
+          ${BUILD_TOOLS} ${{matrix.amrex_build_args}}
 
-          build_and_check() {
-            local TYPE=$1
-            if [[ " $EXPECTED_FAILURES " == *" $TYPE "* ]]; then
-              echo "Skipping ${TYPE}: known unsupported for DIM=${DIM}."
-              return 0
-            fi
-            printf "\n-------- ${TYPE} (DIM=${DIM}) --------\n"
-            OUTPUT=$(make -j ${{ env.NPROCS }} EBASE=${TYPE} USE_CCACHE=TRUE DIM=${DIM} ${{ matrix.amrex_build_args }} 2>&1)
-            RESULT=$?
-            echo "${OUTPUT}"
-            make realclean
-            if [ ${RESULT} -ne 0 ]; then
-              echo "ERROR: Compilation failed for ${TYPE} (DIM=${DIM})."
-              exit ${RESULT}
-            fi
-          }
+      - name: ModelSpecificAnalysis ccache report
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          ccache -s
+          du -hs ${HOME}/.cache/ccache
 
-          for TYPE in $EBASE_OPTIONS; do
-            build_and_check "${TYPE}"
-          done
+  TestAnalysisCodesGPU:
+    needs: TestAnalysisCodes
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [CUDA, HIP, SYCL]
+        dim: [2, 3]
+        include:
+          - backend: CUDA
+            os: ubuntu-22.04
+            amrex_build_args: 'USE_CUDA=TRUE'
+          - backend: HIP
+            os: ubuntu-24.04
+            amrex_build_args: 'USE_HIP=TRUE'
+          - backend: SYCL
+            os: ubuntu-24.04
+            amrex_build_args: 'USE_SYCL=TRUE FC=ifx'
+    runs-on: ${{matrix.os}}
+    name: GPU (${{matrix.backend}}, ${{matrix.dim}}D)
+    env:
+      DIM: ${{matrix.dim}}
+      BACKEND: ${{matrix.backend}}
+    steps:
+      - name: Clone PeleAnalysis
+        uses: actions/checkout@v4
+        with:
+          path: PeleAnalysis-${{matrix.backend}}-${{matrix.dim}}d
+          submodules: recursive
+      - name: Set Environment Variables
+        run: |
+          echo "PELE_ANALYSIS_HOME=${{github.workspace}}/PeleAnalysis-${{matrix.backend}}-${{matrix.dim}}d" >> $GITHUB_ENV
+          echo "BASE_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis-${{matrix.backend}}-${{matrix.dim}}d/Src" >> $GITHUB_ENV
+          echo "MODELSPECIFIC_WORKING_DIRECTORY=${{github.workspace}}/PeleAnalysis-${{matrix.backend}}-${{matrix.dim}}d/Src/ModelSpecificAnalysis" >> $GITHUB_ENV
+          echo "BUILD_TOOLS=${{github.workspace}}/PeleAnalysis-${{matrix.backend}}-${{matrix.dim}}d/.github/scripts/build_tools.sh" >> $GITHUB_ENV
+          echo "NPROCS=$(nproc)" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESSLEVEL=10" >> $GITHUB_ENV
+          echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=300M" >> $GITHUB_ENV
+          echo "CCACHE_DEPEND=1" >> $GITHUB_ENV
+      - name: Free disk space
+        if: matrix.backend != 'CUDA'
+        run: |
+          ${PELE_ANALYSIS_HOME}/Submodules/PelePhysics/Submodules/amrex/.github/workflows/dependencies/ubuntu_free_disk_space.sh
+      - name: Dependencies (CUDA)
+        if: matrix.backend == 'CUDA'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential wget gnupg lsb-release make g++ clang
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
+          sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+          sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub
+          sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/ /"
+          sudo apt-get update
+          sudo apt-get install -y cuda-toolkit-12-3
+          echo "/usr/local/cuda/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+      - name: Dependencies (HIP)
+        if: matrix.backend == 'HIP'
+        run: |
+          sudo mkdir --parents --mode=0755 /etc/apt/keyrings
+          wget https://repo.radeon.com/rocm/rocm.gpg.key -O - | gpg --dearmor | sudo tee /etc/apt/keyrings/rocm.gpg > /dev/null
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/6.3.3 noble main" | sudo tee --append /etc/apt/sources.list.d/rocm.list
+          echo -e 'Package: *\nPin: release o=repo.radeon.com\nPin-Priority: 600' | sudo tee /etc/apt/preferences.d/rocm-pin-600
+          sudo apt-get update
+          sudo apt-get install -y rocm-dev rocrand-dev rocprim-dev hiprand-dev rocsparse-dev
+          echo "/opt/rocm/llvm/bin" >> $GITHUB_PATH
+          echo "/opt/rocm/bin" >> $GITHUB_PATH
+          echo "HIP_PLATFORM=amd" >> $GITHUB_ENV
+      - name: Dependencies (SYCL)
+        if: matrix.backend == 'SYCL'
+        run: |
+          sudo wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+          sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+          echo "deb https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
+          sudo apt-get update
+          sudo apt-get install -y intel-oneapi-compiler-dpcpp-cpp=2024.2.1-1079 intel-oneapi-mkl-devel=2024.2.2-15
+          sudo apt-get install -y intel-oneapi-compiler-fortran=2024.2.1-1079
+          source /opt/intel/oneapi/setvars.sh
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "CPATH=$CPATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$LIBRARY_PATH" >> $GITHUB_ENV
+          which icpx && icpx --version
+      - name: Install Ccache
+        run: |
+          wget https://github.com/ccache/ccache/releases/download/v4.8/ccache-4.8-linux-x86_64.tar.xz
+          tar xvf ccache-4.8-linux-x86_64.tar.xz
+          sudo cp -f ccache-4.8-linux-x86_64/ccache /usr/local/bin/
+      - name: Set Up Ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{github.workflow}}-${{github.job}}-${{matrix.backend}}-${{matrix.dim}}d-git-${{github.sha}}
+          restore-keys: |
+               ccache-${{github.workflow}}-${{github.job}}-${{matrix.backend}}-${{matrix.dim}}d-git-
+      - name: Dependency (HDF5)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libhdf5-serial-dev
+          echo "HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> $GITHUB_ENV
+      - name: Dependency (qslim)
+        working-directory: ${{env.BASE_WORKING_DIRECTORY}}
+        run: |
+          sudo apt-get update && sudo apt-get install libgl1-mesa-dev libglu1-mesa-dev
+          make qslim EBASE=decimateMEF
+      - name: Dependency (sundials)
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          cmake --version
+          make TPL ${{matrix.amrex_build_args}}
+
+      - name: Test (Src)
+        working-directory: ${{env.BASE_WORKING_DIRECTORY}}
+        run: |
+          ccache -z
+          ${BUILD_TOOLS} ${{matrix.amrex_build_args}}
+
+      - name: Src ccache report
+        working-directory: ${{env.BASE_WORKING_DIRECTORY}}
+        run: |
+          ccache -s
+          du -hs ${HOME}/.cache/ccache
+
+      - name: Test (ModelSpecificAnalysis)
+        # Report these tools even when the Src step failed
+        if: success() || failure()
+        working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
+        run: |
+          ccache -z
+          ${BUILD_TOOLS} ${{matrix.amrex_build_args}}
 
       - name: ModelSpecificAnalysis ccache report
         working-directory: ${{env.MODELSPECIFIC_WORKING_DIRECTORY}}
