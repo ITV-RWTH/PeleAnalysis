@@ -15,13 +15,12 @@ concurrency:
 # tool names. .github/scripts/build_tools.sh skips the union of every list
 # that applies to a build:
 #   EXPECTED_<DIM>D_FAILURES      tools that only support the other dimension
-#   EXPECTED_<BACKEND>_FAILURES   tools that do not compile for a GPU backend
+#   EXPECTED_GPU_FAILURES         tools that do not compile for any GPU backend
+#   EXPECTED_<BACKEND>_FAILURES   tools that do not compile for one GPU backend
 env:
   EXPECTED_2D_FAILURES: 'qCriterion sequentialFilterPlt'
   EXPECTED_3D_FAILURES: ''
-  EXPECTED_CUDA_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
-  EXPECTED_HIP_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
-  EXPECTED_SYCL_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
+  EXPECTED_GPU_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
 
 jobs:
 
