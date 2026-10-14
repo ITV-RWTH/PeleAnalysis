@@ -102,6 +102,11 @@ General tools (``Src``)
      - ➖
      - ❌
      - R
+   * - :doc:`chemTableLookup <analysis/chemTableLookup>`
+     - ✅
+     - ✅
+     - ❌
+     - S
    * - :doc:`ciao2plt <analysis/ciao2plt>`
      - ➖
      - ✅
@@ -142,11 +147,21 @@ General tools (``Src``)
      - ✅
      - ✅
      - R
+   * - :doc:`divergence <analysis/divergence>`
+     - ✅
+     - ✅
+     - ❌
+     - S
    * - :doc:`dumpFABslice <analysis/dumpFABslice>`
      - ➖
      - ➖
      - ❌
      - R
+   * - :doc:`evalPlt <analysis/evalPlt>`
+     - ✅
+     - ✅
+     - ❌
+     - S
    * - :doc:`favreAvgPlotfiles <analysis/favreAvgPlotfiles>`
      - ✅
      - ✅
