@@ -1,0 +1,23 @@
+# Example input file for evalPlt
+
+#------------------- IO CONTROL -----------------------------------------------------------
+infiles = plt00000 plt00000_D             # plotfile(s) on the same domain; a variable is read
+                                          # from the first file that contains it
+outfile = plt00000_eval                   # DEF: <infiles[0]>_eval, output pltfile
+n_files = 64                              # DEF: AMReX default; max number of plotfile data
+                                          # files written (VisMF), clamped to the MPI rank count
+
+#------------------- Operation control ----------------------------------------------------
+alias = "YH2:Y(H2)" "YO2:Y(O2)" "rhoDH2:rhoD(H2)"  # DEF: none; symbol:variable, for variable
+                                          # names that are not identifiers. Names that are
+                                          # identifiers (density, temp, ...) need no alias
+constants = "nu:7.936" "YO2air:0.2329"    # DEF: none (pi is predefined); named constants
+keepVars = density                        # DEF: none; input variables copied to the output
+outVars = Z rhoZ DZ                       # variables to compute, evaluated in this order;
+                                          # each may use the earlier ones
+expr.Z = "(nu*YH2 + YO2air - YO2)/(nu + YO2air)"
+expr.rhoZ = "density*Z"
+expr.DZ = "max(rhoDH2, 0.0)"
+#writeVars = Z rhoZ                       # DEF: all outVars; subset of outVars to write
+finestLevel = 1000                        # DEF: finest level; max level to process
+# The cell-center coordinates are available as x, y, z (unless a variable has that name)

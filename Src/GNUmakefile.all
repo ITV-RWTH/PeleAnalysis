@@ -20,12 +20,15 @@ TARGETS = \
     avgPlotfiles \
     avgToPlane \
     checkIso \
+    chemTableLookup \
     combinePlts \
     conditionalMean \
     convert2hdf5 \
     curvature \
     diffPlts \
+    divergence \
     dumpFABslice \
+    evalPlt \
     filterPlt \
     flattenAMRFile \
     generateTestPlt \

@@ -1,0 +1,16 @@
+# Example input file for divergence
+
+#------------------- IO CONTROL -----------------------------------------------------------
+infile = plt00000                         # input pltfile
+outfile = plt00000_div                    # DEF: <infile>_div, output pltfile
+n_files = 64                              # DEF: AMReX default; max number of plotfile data
+                                          # files written (VisMF), clamped to the MPI rank count
+
+#------------------- Operation control ----------------------------------------------------
+vectorVars = x_velocity y_velocity z_velocity  # components of the vector(s), AMREX_SPACEDIM
+                                          # per vector; several vectors may be listed
+outVars = divU                            # one output name per vector
+keepVars = density                        # DEF: none; variables copied to the output
+finestLevel = 1000                        # DEF: finest level; max level to process
+sym_dir = 0 0 0                           # DEF: 0 0 0, sets case symmetry
+is_per = 1 1 0                            # DEF: 0 0 0, sets case periodicity

@@ -1,0 +1,19 @@
+# Example input file for chemTableLookup
+
+#------------------- IO CONTROL -----------------------------------------------------------
+infile = plt00000_favre                   # input pltfile with the lookup state
+outfile = plt00000_table                  # DEF: <infile>_table, output pltfile
+n_files = 64                              # DEF: AMReX default; max number of plotfile data
+                                          # files written (VisMF), clamped to the MPI rank count
+
+#------------------- Table ----------------------------------------------------------------
+tableDir = ./chemTables/table_H2O_filt    # directory with tableProperties and the tables
+tableSuffix = _prem_table                 # DEF: _prem_table; table file = <name><tableSuffix>
+tables = DC Dz DzSRC T                    # tables to look up
+
+#------------------- Operation control ----------------------------------------------------
+coordVars = Ct varC Zt                    # one plotfile variable per table parameter, in the
+                                          # order of 'params' in tableProperties
+outPrefix = tab_                          # DEF: none; prefix of the output variable names
+keepVars = Ct varC Zt                     # DEF: none; variables copied to the output
+finestLevel = 1000                        # DEF: finest level; max level to process

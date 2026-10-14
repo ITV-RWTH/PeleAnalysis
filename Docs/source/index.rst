@@ -390,13 +390,16 @@ Model-specific tools (``Src/ModelSpecificAnalysis``)
    analysis/avgPlotfiles
    analysis/avgToPlane
    analysis/checkIso
+   analysis/chemTableLookup
    analysis/ciao2plt
    analysis/combinePlts
    analysis/conditionalMean
    analysis/convert2hdf5
    analysis/curvature
    analysis/diffPlts
+   analysis/divergence
    analysis/dumpFABslice
+   analysis/evalPlt
    analysis/favreAvgPlotfiles
    analysis/filterPlt
    analysis/flattenAMRFile
