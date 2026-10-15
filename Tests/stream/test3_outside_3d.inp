@@ -1,0 +1,16 @@
+# The seed surface covers the full domain, the plotfile is shorter in y and y
+# is not periodic: the seeds beyond y = 0.9 cannot be placed and partStream
+# must abort instead of dropping them.
+infile = plt_stream_3d_crop
+outfile = str_3d_outside
+isoFile = surf_3d.mef
+vectorField = ux uy uz
+vars = temp q
+is_per = 1 0 1
+finestLevel = 0
+nGrow = 3
+Nsteps = 20
+hRK = 0.5
+cSpace = 0
+writeStreamBin = 1
+streamBinfile = str_3d_outside
