@@ -45,8 +45,17 @@ Example Input File ``conditionalMean.inp``::
 Output
 ------
 
-The output file contains bin centers and corresponding conditional
-mean values for each requested variable.
+The output file ``CM_<binVar>.dat`` (written to the working directory)
+contains per bin the bin center, the sum, the sum of squares, the mean and
+the standard deviation of each requested variable, the sample weight ``N``
+and the fraction ``p`` of all samples. Every cell is weighted by its volume
+in units of a finest-level cell of the first plotfile, so ``N`` is the
+binned volume in those units.
+
+All plotfiles in ``infile`` are pooled into one set of statistics (e.g. a
+time average), and ``bounds`` restricts the samples to a sub-domain of each
+of them. Because sums and sums of squares are written, statistics of
+different files or sub-domains can be added afterwards.
 
 Typical Applications
 --------------------

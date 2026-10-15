@@ -1,3 +1,4 @@
+#include <iomanip>
 #include <string>
 #include <iostream>
 using std::cerr;
@@ -118,7 +119,9 @@ main(int argc, char* argv[])
   pp.query("writeBinMinMax", writeBinMinMax);
   Vector<Real> binMinVals;
   Vector<Real> binMaxVals;
-  Vector<int> binHits(nBins, 0);
+  // Cell volume in units of the finest cell of the first file; a Real, so
+  // that large domains cannot overflow it
+  Vector<Real> binHits(nBins, 0);
   if (writeBinMinMax) {
     binMinVals.resize(nBins * nAvgComps, 0);
     binMaxVals.resize(nBins * nAvgComps, 0);
@@ -131,8 +134,7 @@ main(int argc, char* argv[])
   if (binMax <= binMin)
     amrex::Abort("Bad bin min,max");
 
-  Real domainVol = -1;
-  Vector<int> weights;
+  Real refCellVol = -1;
   Vector<std::string> compNames;
   Vector<int> destFillComps(avgComps.size() + 1);
   for (int i = 0; i < destFillComps.size(); ++i)
@@ -175,51 +177,53 @@ main(int argc, char* argv[])
     AmrData& amrData = dataServices.AmrDataRef();
     int ngrow = 0;
 
-    Box domain;
     if (iPlot == 0) {
       compNames.resize(avgComps.size() + 1);
       compNames[0] = amrData.PlotVarNames()[binComp];
       for (int i = 0; i < avgComps.size(); ++i) {
         int comp = avgComps[i];
         if (comp < 0 || comp >= amrData.NComp())
-          amrex::Abort("Bad comp: " + comp);
+          amrex::Abort("Bad comp: " + std::to_string(comp));
         compNames[i + 1] = amrData.PlotVarNames()[comp];
       }
 
-      domain = amrData.ProbDomain()[0];
-
-      if (bbll.size() == AMREX_SPACEDIM && bbur.size() == AMREX_SPACEDIM) {
-        // Find coarse-grid coordinates of bounding box, round outwardly
-        for (int i = 0; i < AMREX_SPACEDIM; ++i) {
-          const Real dx =
-            amrData.ProbSize()[i] / amrData.ProbDomain()[0].length(i);
-          domain.setSmall(
-            i, std::max(
-                 domain.smallEnd()[i],
-                 (int)((bbll[i] - amrData.ProbLo()[i] + .0001 * dx) / dx)));
-          domain.setBig(
-            i, std::min(
-                 domain.bigEnd()[i],
-                 (int)((bbur[i] - amrData.ProbLo()[i] - .0001 * dx) / dx)));
-        }
-      }
-      domainVol = domain.d_numPts();
-
       if (finestLevel < 0)
         finestLevel = amrData.FinestLevel();
+      const int refLevel = std::min(finestLevel, amrData.FinestLevel());
+      refCellVol = AMREX_D_TERM(
+        amrData.DxLevel()[refLevel][0], *amrData.DxLevel()[refLevel][1],
+        *amrData.DxLevel()[refLevel][2]);
+    }
 
-      weights.resize(finestLevel + 1, 1);
-      for (int i = finestLevel - 1; i >= 0; --i) {
-        int rat = amrData.RefRatio()[i];
-        weights[i] = weights[i + 1];
-        for (int d = 0; d < AMREX_SPACEDIM; ++d)
-          weights[i] *= rat;
+    // Sub-domain on the coarse grid, set for every file
+    Box domain = amrData.ProbDomain()[0];
+    if (bbll.size() == AMREX_SPACEDIM && bbur.size() == AMREX_SPACEDIM) {
+      // Find coarse-grid coordinates of bounding box, round outwardly
+      for (int i = 0; i < AMREX_SPACEDIM; ++i) {
+        const Real dx =
+          amrData.ProbSize()[i] / amrData.ProbDomain()[0].length(i);
+        domain.setSmall(
+          i, std::max(
+               domain.smallEnd()[i],
+               (int)((bbll[i] - amrData.ProbLo()[i] + .0001 * dx) / dx)));
+        domain.setBig(
+          i, std::min(
+               domain.bigEnd()[i],
+               (int)((bbur[i] - amrData.ProbLo()[i] - .0001 * dx) / dx)));
       }
     }
 
     // Build boxarrays for fillvar call
     Box levelDomain = domain;
     int thisFinestLevel = std::min(finestLevel, amrData.FinestLevel());
+    Vector<Real> weights(thisFinestLevel + 1);
+    for (int iLevel = 0; iLevel <= thisFinestLevel; ++iLevel) {
+      weights[iLevel] =
+        AMREX_D_TERM(
+          amrData.DxLevel()[iLevel][0], *amrData.DxLevel()[iLevel][1],
+          *amrData.DxLevel()[iLevel][2]) /
+        refCellVol;
+    }
     int Nlevels = thisFinestLevel + 1;
     Vector<BoxArray> bas(Nlevels);
     for (int iLevel = 0; iLevel <= thisFinestLevel; ++iLevel) {
@@ -238,7 +242,10 @@ main(int argc, char* argv[])
           levelDomain.refine(amrData.RefRatio()[iLevel]);
         }
       } else {
+        // Finer levels are nested in this one and cannot intersect either
         bas.resize(iLevel);
+        thisFinestLevel = iLevel - 1;
+        break;
       }
     }
 
@@ -276,7 +283,7 @@ main(int argc, char* argv[])
                   (int)(nBins * (binVal - binMin) / (binMax - binMin));
                 if (myBin < 0 || myBin >= binHits.size())
                   amrex::Abort("Bad bin");
-                int myWeight = weights[iLevel];
+                const Real myWeight = weights[iLevel];
                 for (int j = 0; j < nAvgComps; ++j) {
                   Real val = dataIV[j + 2];
                   int binIdx = myBin * nAvgComps + j;
@@ -300,7 +307,7 @@ main(int argc, char* argv[])
     } // Level
   } // iPlot
 
-  ParallelDescriptor::ReduceIntSum(binHits.dataPtr(), binHits.size(), ioproc);
+  ParallelDescriptor::ReduceRealSum(binHits.dataPtr(), binHits.size(), ioproc);
   ParallelDescriptor::ReduceRealSum(binVals.dataPtr(), binVals.size(), ioproc);
   ParallelDescriptor::ReduceRealSum(
     binValsSq.dataPtr(), binValsSq.size(), ioproc);
@@ -325,6 +332,8 @@ main(int argc, char* argv[])
       std::cout << "Opening file " << filename << std::endl;
     }
     std::ofstream ofs(filename.c_str());
+    // Full precision: the sums are post-processed (pooling, RMS)
+    ofs << std::setprecision(15);
     std::string variables = "VARIABLES = " + compNames[0];
     for (int i = 1; i < compNames.size(); ++i)
       variables += " " + compNames[i] + "_sum";
@@ -350,9 +359,10 @@ main(int argc, char* argv[])
       filename = plotFileNames[0] + "/CM_" + compNames[0] + ".dat";
       std::cout << "Opening file " << filename << std::endl;
       ofs.open(filename.c_str());
+      ofs << std::setprecision(15);
     }
     const Real dv = (binMax - binMin) / nBins;
-    int ntot = 0;
+    Real ntot = 0;
     for (int i = 0; i < nBins; i++) {
       ntot += binHits[i];
     }
