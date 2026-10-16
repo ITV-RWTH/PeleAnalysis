@@ -11,7 +11,7 @@ PELE_ANALYSIS_HOME = ../..
 # AMREX_HOME = $(abspath ../../../PelePhysics/Submodules/amrex)
 
 # AMReX
-DIM        = 3
+DIM        = 2
 PRECISION  = DOUBLE
 PROFILE    = FALSE
 VERBOSE    = TRUE
@@ -33,12 +33,15 @@ TINY_PROFILE = FALSE
 #EBASE=computeMixtureFraction
 #EBASE=testQPDtools
 #EBASE=testTsolve
-
+EBASE=plotTYtoRayleigh
 
 CEXE_sources += $(EBASE).cpp
+ifeq ($(EBASE),plotYTtoRayleigh)) # add targets that need utils as space-separated list
+   CEXE_headers += RayleighCrossSection.H
+endif
 
 Eos_Model       = Fuego
-Chemistry_Model = drm19
+Chemistry_Model = LiDryer
 Transport_Model = Simple
 
 Blocs   := .
