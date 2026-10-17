@@ -24,7 +24,7 @@ USE_CUDA      = FALSE
 
 # Executable
 # Uncomment the desired exec
-#EBASE   = template
+EBASE   = template
 #EBASE   = amrToFE
 #EBASE   = arithmetics
 #EBASE   = avgPlotfiles
@@ -48,6 +48,7 @@ USE_CUDA      = FALSE
 #EBASE   = jpdf
 #EBASE   = makeImage
 #EBASE   = makePlotfile
+#EBASE   = mef2jpdf
 #EBASE   = partStream
 #EBASE   = progVar
 #EBASE   = qCriterion

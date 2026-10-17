@@ -1,0 +1,6 @@
+infiles = surf_plane_z.mef
+xvar = X
+yvar = Y
+nBins = 8
+xvar_out = X_t2
+yvar_out = Y_t2

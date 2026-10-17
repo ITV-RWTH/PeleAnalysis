@@ -1,0 +1,19 @@
+# Example input file for isosurface
+# This tool calculates the isosurface based on a given variable and iso value.
+
+# NOTE: AMReX ParmParse does not support shell globbing (*)! If you want to specify multiple 
+#   files via shell globbing, do it like this:
+#     <executable> <.inp-file> infiles=$(echo <glob>)
+#   Example:
+#     ./mef2jpdf3d.gnu.MPI.OMP.ex mef2jpdf.inp infiles=$(echo plt*0_all_subplt_new_progVar_0.9.mef)
+
+#------------------- IO CONTROL -----------------------------------------------------------
+xvar = "MeanCurvature_progVar"
+yvar = "Sd(H2)"
+xvar_out = "kappa"
+yvar_out = "Sd"
+
+#------------------- GRID CONTROL ---------------------------------------------------------
+nBins = 512
+#xmin = -0.99834 xmax = 0.99834
+#ymin = -14.9751 ymax = 24.9585

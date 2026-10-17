@@ -1,0 +1,8 @@
+infile = plt_sphere_const
+isoCompName = sphere_step
+isoVal = 0.5
+outfile_base = surf_sphere_const
+comps = const_field
+writeSurf = 1
+surfFormat = MEF
+is_per = 0 0 0

@@ -1,0 +1,6 @@
+infiles = surf_sphere.mef
+xvar = X
+yvar = Z
+nBins = 20
+xvar_out = X_t3
+yvar_out = Z_t3

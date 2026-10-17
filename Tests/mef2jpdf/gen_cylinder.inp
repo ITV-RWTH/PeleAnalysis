@@ -1,0 +1,19 @@
+amr.n_cell = 256 256 256
+amr.max_grid_size = 256
+geometry.prob_lo = 0.0 0.0 0.0
+geometry.prob_hi = 1.0 1.0 1.0
+geometry.is_periodic = 0 0 0
+geometry.coord_sys = 0
+plotfile_name = plt_cylinder
+
+field.names = z_iso sine_x
+z_iso.type = plane_step
+z_iso.axis = 2
+z_iso.position = 0.5
+z_iso.value_left = 1.0
+z_iso.value_right = 0.0
+sine_x.type = sine
+sine_x.frequency = 1 0 0
+sine_x.phase = 0 0 1.5708
+sine_x.amplitude = 1.0
+sine_x.offset = 0.0

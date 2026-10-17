@@ -1,0 +1,8 @@
+infiles = surf_cylinder.mef
+xvar = sine_x
+yvar = Y
+nBins = 20
+xmin = -1.0
+xmax = 1.0
+xvar_out = X_t6
+yvar_out = Z_t6
