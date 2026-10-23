@@ -42,6 +42,10 @@ Available suites
      - Whole chain against analytic values; periodicity, vanishing field,
        boundary interpolation, four abort paths; 2D + 3D serial + 3D MPI
        (2 and 4 ranks)
+   * - :doc:`isosurface <testing/isosurface>`
+     - Iso lines and surfaces on periodic domains
+     - Measure against a non-periodic reference to round-off; node positions
+       and edge lengths; 2D + 3D serial, uniform and two-level grids
 
 .. toctree::
    :hidden:
@@ -49,6 +53,7 @@ Available suites
    testing/jpdf
    testing/arithmetics
    testing/stream
+   testing/isosurface
 
 Adding a new suite
 ##################
