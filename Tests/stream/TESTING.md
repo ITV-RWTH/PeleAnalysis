@@ -65,12 +65,9 @@ for every element.
 
 The `c` field rises from 0 to 1 around `x = 0.8`. In a periodic x-direction it
 also drops back across the boundary, so the `c = 0.5` isosurface has two flat
-sheets, each of unit extent.  The second one does *not* sit at the boundary:
-`isosurface` places the crossing between the last cell and the periodic ghost
-cell at the average of their coordinates without the domain shift, i.e. at
-`x = 0.5` rather than `x = 1.0` (an `isosurface` issue, not a stream one).  The
-expected values below do not depend on where the sheets are, only on their
-area, and the streams seeded at `x = 0.8` still cross the periodic boundary
+sheets, each of unit extent; the second one lies on the periodic boundary
+`x = 0`.  The expected values below depend only on the area, and the streams
+seeded at `x = 0.8` cross the periodic boundary
 (their unwrapped `X` reaches `1.097`):
 
 ```
