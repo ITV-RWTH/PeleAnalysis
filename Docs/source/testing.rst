@@ -42,6 +42,10 @@ Available suites
      - Whole chain against analytic values; periodicity, vanishing field,
        boundary interpolation, four abort paths; 2D + 3D serial + 3D MPI
        (2 and 4 ranks)
+   * - :doc:`isosurface <testing/isosurface>`
+     - Iso lines and surfaces on periodic domains
+     - Measure against a non-periodic reference to round-off; node positions
+       and edge lengths; 2D + 3D serial, uniform and two-level grids
    * - :doc:`repackPlt <testing/repackPlt>`
      - Rewriting plotfiles with a chosen number of data files
      - 49 assertions; exact data comparison; batches of plotfiles; header
@@ -54,6 +58,7 @@ Available suites
    testing/jpdf
    testing/arithmetics
    testing/stream
+   testing/isosurface
    testing/repackPlt
 
 Adding a new suite

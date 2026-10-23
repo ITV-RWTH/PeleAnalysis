@@ -1,0 +1,28 @@
+# As gen_per_3d.inp, but dx = 1/32 on level 0 and dx = 1/64 on level 1, which
+# covers c > 0.3 and so the whole iso surface.
+amr.n_cell = 32 32 8
+amr.max_grid_size = 16
+amr.max_level = 1
+amr.ref_ratio = 2
+amr.blocking_factor = 4
+amr.grid_eff = 0.7
+amr.n_error_buf = 2
+
+geometry.coord_sys = 0
+geometry.prob_lo = 0.0 0.0 0.0
+geometry.prob_hi = 1.0 1.0 0.25
+geometry.is_periodic = 1 1 1
+
+plotfile_name = plt_iso_per_amr_3d
+
+amr.refinement_indicators = flame
+amr.flame.value_greater = 0.3
+amr.flame.field_name = c
+amr.flame.max_level = 1
+
+field.names = c
+c.type = sine
+c.frequency = 1.0 1.0 0.0
+c.phase = 0.5890486225480862 -0.9817477042468103 1.5707963267948966
+c.amplitude = 1.0
+c.offset = 0.0
