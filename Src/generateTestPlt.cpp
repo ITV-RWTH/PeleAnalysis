@@ -458,11 +458,13 @@ evaluateField(
 
 #if AMREX_SPACEDIM == 3
     Real arg_z = 2.0 * M_PI * config.frequency[2] * z + config.phase[2];
-#else
-    Real arg_z = 0.0;
-#endif
     result = config.offset + config.amplitude * std::sin(arg_x) *
                                std::cos(arg_y) * std::sin(arg_z);
+#else
+    // No z factor in 2D: sin(0) would make the field constant
+    result =
+      config.offset + config.amplitude * std::sin(arg_x) * std::cos(arg_y);
+#endif
     break;
   }
 
