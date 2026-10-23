@@ -29,7 +29,7 @@ StreamParticleContainer::StreamParticleContainer(
   ResizeRuntimeRealComp(sizeOfRealStreamData, true);
 }
 
-void
+Long
 StreamParticleContainer::InitParticles(const Vector<Vector<Real>>& locs)
 {
   BL_PROFILE("StreamParticleContainer::InitParticles");
@@ -37,6 +37,7 @@ StreamParticleContainer::InitParticles(const Vector<Vector<Real>>& locs)
   const int nProc = ParallelDescriptor::NProcs();
   const int myProc = ParallelDescriptor::MyProc();
   int nLocs = locs.size();
+  Long nPairsCreated = 0;
   auto& particle_tile = DefineAndReturnParticleTile(Nlev - 1, myProc, 0);
   for (int n = 0; n < nLocs; n++) {
     // lets just initialise on a random processor and redistribute afterwards
@@ -80,9 +81,11 @@ StreamParticleContainer::InitParticles(const Vector<Vector<Real>>& locs)
       for (int i = 0; i < NumRuntimeRealComps(); i++) {
         particle_tile.push_back_real(i, i < AMREX_SPACEDIM ? locs[n][i] : 0);
       }
+      nPairsCreated++;
     }
   }
   Redistribute();
+  return nPairsCreated;
 }
 
 void
@@ -117,10 +120,14 @@ StreamParticleContainer::SetParticleLocation(const int a_streamLoc)
 static void
 VectorNormalize(Vector<Real>& vec, int dir)
 {
-  static Real eps = 1.e24;
+  // Below eps the vector field cannot be told apart from round-off, so return
+  // the zero vector and let the stream stop rather than follow noise.  Note
+  // that the test used to read (mag < 1.e24): it normalized unconditionally
+  // and divided by zero wherever the field vanished exactly.
+  constexpr Real eps = 1.e-24;
   Real mag = std::sqrt(
     AMREX_D_TERM(vec[0] * vec[0], +vec[1] * vec[1], +vec[2] * vec[2]));
-  if (mag < eps) {
+  if (mag > eps) {
     for (int i = 0; i < AMREX_SPACEDIM; ++i)
       vec[i] *= dir / mag;
   } else {
@@ -271,8 +278,12 @@ StreamParticleContainer::RungeKutta4(
     delta[d] = (k1[d] + k4[d]) * sixth + (k2[d] + k3[d]) * third;
   }
 
-  // cut step length to keep in domain (FIXME: Deal with periodic - hopefully
-  // fixed?)
+  // cut step length to keep in domain.  Only the non-periodic directions are
+  // treated here: in a periodic direction the particle has to be allowed to
+  // leave the domain so that the Redistribute() in SetParticleLocation() wraps
+  // it back in, and InterpDataAtLocation() undoes the wrap to keep the stream
+  // trajectory continuous.  Clipping there instead pins the stream to the
+  // boundary face for the rest of the integration.
   Real scale = 1;
   for (int d = 0; d < AMREX_SPACEDIM; ++d) {
     if ((x[d] + delta[d] <= plo[d] + dx[d]) && (is_per[d] == 0)) {
@@ -290,9 +301,11 @@ StreamParticleContainer::RungeKutta4(
   }
   for (int d = 0; d < AMREX_SPACEDIM; ++d) {
     x[d] += scale * delta[d];
-    x[d] = std::min(
-      phi[d] - 1.e-10,
-      std::max(plo[d] + 1.e-10, x[d])); // Deal with precision issues
+    if (is_per[d] == 0) {
+      x[d] = std::min(
+        phi[d] - 1.e-10,
+        std::max(plo[d] + 1.e-10, x[d])); // Deal with precision issues
+    }
   }
   return true;
 }
@@ -375,8 +388,11 @@ StreamParticleContainer::InterpDataAtLocation(
           Vector<Real> ntrpvOut(fcomp); // components in infile
 
           // interpolate all data to particle location
-          InterpolateVector(
-            x, v, dx, plo, phi, ntrpvOut, fcomp); // components in infile
+          if (!InterpolateVector(
+                x, v, dx, plo, phi, ntrpvOut, fcomp)) // components in infile
+            Abort("StreamParticleContainer::InterpDataAtLocation: the "
+                  "interpolation stencil left the grown box; the data at this "
+                  "location would be undefined.");
 
           // copy the interpolated data to the particle
           // first DIM components are particle location
@@ -405,13 +421,19 @@ StreamParticleContainer::InterpDataAtLocation(
               Real xnew = soa.GetRealData(idx)[pindex];
               Real xold = soa.GetRealData(idxOld)[pindex];
               Real delta = xnew - xold;
-              if (fabs(delta) > dx[d]) { // has been adjusted for periodicity
-                // printf("%i %i %e %e %e",pindex,d,xnew,xold,delta);
+              // A wrap by Redistribute() changes delta by exactly +-Lx, so
+              // anything beyond half a domain length is a wrap and nothing
+              // else can be (a step is at most 0.95 dx of the level it was
+              // taken on).  The test used to be |delta| > dx of the level the
+              // particle sits on *now*, without an is_per guard: a cSpace step
+              // taken on a coarse level and landing on a finer one exceeded
+              // that and was "unwrapped" by Lx, also in non-periodic
+              // directions.
+              if ((is_per[d] != 0) && (fabs(delta) > 0.5 * Lx[d])) {
                 if (delta < 0.)
                   delta += Lx[d];
                 else
                   delta -= Lx[d];
-                // printf(" --> %e\n",delta);
               }
               // store periodicity-adjusted copy of location at idx+SPACEDIM
               Real sold = soa.GetRealData(idxOld + AMREX_SPACEDIM)[pindex];
@@ -635,20 +657,9 @@ StreamParticleContainer::WriteStreamAsBinary(
     amrex::CreateDirectoryFailed(outFile);
   ParallelDescriptor::Barrier();
 
-  bool will_write = false;
-  for (int lev = 0; lev < Nlev && !will_write; ++lev) {
-    for (MyParIter pti(*this, lev); pti.isValid() && !will_write; ++pti) {
-      auto& aos = pti.GetArrayOfStructs();
-
-      for (size_t pindex = 0; pindex < aos.size() && !will_write; ++pindex) {
-        ParticleType& p = aos[pindex];
-        will_write |= (p.id() > 0);
-      }
-    }
-  }
-
   // Need to count the total number of streams to be written
-  // by all ptiters on all levels on this processor
+  // by all ptiters on all levels on this processor.  Every stream counted here
+  // is written: an unpaired one aborts below.
   int nStreams = 0;
   int nStreamsCheck = 0;
 
@@ -673,8 +684,6 @@ StreamParticleContainer::WriteStreamAsBinary(
   //  total number of streams in file
   fwrite(&(nStreams), sizeof(int), 1, file);
 
-  int minId = 100000000;
-  int maxId = -minId;
   for (int lev = 0; lev < Nlev; ++lev) {
 
     for (MyParIter pti(*this, lev); pti.isValid(); ++pti) {
@@ -702,27 +711,39 @@ StreamParticleContainer::WriteStreamAsBinary(
 
         if ((pId > 0) && (dir == 1)) {
           // write info about this stream and its pair
-          int pindexPair = pid_to_pindex[pairId];
+          auto itPair = pid_to_pindex.find(pairId);
+          if (itPair == pid_to_pindex.end()) {
+            // Both halves of a pair sit on the same seed point after
+            // SetParticleLocation(0), so they always land in the same tile.  A
+            // missing partner means a particle has been lost, which the seed
+            // check and the particle counts in partStream should have caught
+            // first; the stream cannot be written without it.
+            Abort(
+              "StreamParticleContainer::WriteStreamAsBinary: particle " +
+              std::to_string(pId) + " has no partner (" +
+              std::to_string(pairId) +
+              ") in its tile; the stream for this seed cannot be written.");
+          }
+          int pindexPair = itPair->second;
           ParticleType& pPair = aos[pindexPair];
           int pIdPair = pPair.id();
           int pairIdPair = pPair.idata(2);
 
-          // sanity check
+          // sanity check: the map is keyed on the id, so this can only fail if
+          // the pairing itself is corrupt rather than merely incomplete
           if ((pIdPair != pairId) || (pId != pairIdPair)) {
-            std::cout << pIdPair << std::endl;
-            std::cout << pairId << std::endl;
-            std::cout << pId << std::endl;
-            std::cout << pairIdPair << std::endl;
-            Abort("Bad pair mapping");
+            Abort(
+              "StreamParticleContainer::WriteStreamAsBinary: bad pair mapping "
+              "(id " +
+              std::to_string(pId) + " expects partner " +
+              std::to_string(pairId) + ", found id " + std::to_string(pIdPair) +
+              " which expects " + std::to_string(pairIdPair) + ").");
           }
           // back out the original id from the surface (both count from 1)
           int pIdInv = (pId + 1) / 2;
           fwrite(&(pIdInv), sizeof(int), 1, file); // pair id
 
           // fprintf(head,"%i %i %i\n",pId,dir,pairId);
-
-          minId = min(minId, pId);
-          maxId = max(maxId, pId);
 
           // if we write in the order paricle->component->position on surface,
           // then end up with a single-component stream together in memory
@@ -750,13 +771,12 @@ StreamParticleContainer::WriteStreamAsBinary(
       }
     }
   }
-  ParallelDescriptor::ReduceIntMin(minId);
-  ParallelDescriptor::ReduceIntMax(maxId);
-
-  if (nStreams != nStreamsCheck)
-    std::cout << "(nStreams!=nStreamsCheck) : " << nStreams
-              << " != " << nStreamsCheck << std::endl;
-
+  // the count written at the head of the file covers every stream, since an
+  // unpaired one would have aborted above
+  AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+    nStreamsCheck == nStreams,
+    "StreamParticleContainer::WriteStreamAsBinary: wrote a different number of "
+    "streams than counted");
   fclose(file);
 
   // Write header file with everything consistent across all processors

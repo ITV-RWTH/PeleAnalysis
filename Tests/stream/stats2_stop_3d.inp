@@ -1,0 +1,10 @@
+# Statistics for the case whose vector field vanishes: the tubes are shorter
+# than 0.59375 and must still be finite.
+infile = str_3d_stop
+is_per = 1 1 1
+domain_size = 1.0 1.0 1.0
+avgComps = q
+intComps = q
+writeSurface = 1
+writeBasic = 0
+writeStreamsToMatlab = 1

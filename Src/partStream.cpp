@@ -1,6 +1,7 @@
 #include <AMReX_ParmParse.H>
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_FillPatchUtil.H>
+#include <AMReX_BCUtil.H>
 #include <StreamPC.H>
 
 using namespace amrex;
@@ -214,7 +215,24 @@ main(int argc, char* argv[])
     Real time = 0;
     PhysBCFunctNoOp f;
     PCInterp cbi;
-    BCRec bc;
+    // Interior in the periodic directions, zeroth-order extrapolation at the
+    // physical boundaries: there is nothing better to extrapolate from, and the
+    // alternative is to leave those ghost cells uninitialised.  A seed sitting
+    // within half a cell of a non-periodic boundary has an interpolation
+    // stencil that reaches outside the domain, so it used to pick up whatever
+    // was in memory there.
+    Vector<BCRec> bcs(nComp);
+    for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+      for (int n = 0; n < nComp; ++n) {
+        if (is_per[d] != 0) {
+          bcs[n].setLo(d, BCType::int_dir);
+          bcs[n].setHi(d, BCType::int_dir);
+        } else {
+          bcs[n].setLo(d, BCType::foextrap);
+          bcs[n].setHi(d, BCType::foextrap);
+        }
+      }
+    }
     AMREX_ALWAYS_ASSERT(nGrow >= 1);
     Vector<MultiFab> vectorField(Nlev);
     for (int lev = 0; lev < Nlev; ++lev) {
@@ -228,10 +246,13 @@ main(int argc, char* argv[])
           FillPatchTwoLevels(
             vectorField[lev], time, {&pfdata[lev - 1][d]}, {time},
             {&pfdata[lev][d]}, {time}, 0, d, 1, geoms[lev - 1], geoms[lev], f,
-            0, f, 0, ratios[lev - 1] * IntVect::Unit, &cbi, {bc}, 0);
+            0, f, 0, ratios[lev - 1] * IntVect::Unit, &cbi, {bcs[d]}, 0);
         }
       }
       vectorField[lev].FillBoundary(geoms[lev].periodicity());
+      // FillPatch leaves the cells outside a non-periodic physical boundary
+      // alone; fill them here.  A no-op when the geometry is fully periodic.
+      FillDomainBoundary(vectorField[lev], geoms[lev], bcs);
     }
 
     int Nsteps = 50;
@@ -245,9 +266,85 @@ main(int argc, char* argv[])
       Abort("Writing stream binary without surface definition!");
     }
     int nStreamPairs = locs.size();
+
+    // Check the seeds against the domain before handing them to AMReX.  A seed
+    // outside the domain in a non-periodic direction cannot be placed on any
+    // grid, so AMReX invalidates the particle and drops it without a word,
+    // leaving its partner unpaired and the surface elements that use the seed
+    // without a stream.  In a periodic direction the shift rescues it.
+    // The bound tested here is AMReX's roundoff domain, the same one
+    // locateParticle() uses: it sits just inside probLo/probHi, so a seed
+    // exactly on a non-periodic face is dropped although it passes a plain
+    // comparison against probHi.
+    {
+      const auto& rlo = spc.Geom(0).RoundOffLo();
+      const auto& rhi = spc.Geom(0).RoundOffHi();
+      Vector<Real> locMin(AMREX_SPACEDIM, 1.e30);
+      Vector<Real> locMax(AMREX_SPACEDIM, -1.e30);
+      Vector<int> nOut(AMREX_SPACEDIM, 0);
+      int nDropped = 0;
+      for (int n = 0; n < nStreamPairs; ++n) {
+        bool dropped = false;
+        for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+          locMin[d] = std::min(locMin[d], locs[n][d]);
+          locMax[d] = std::max(locMax[d], locs[n][d]);
+          if (pp_is_per[d] != 0)
+            continue;
+          if ((locs[n][d] < rlo[d]) || (locs[n][d] > rhi[d])) {
+            nOut[d]++;
+            dropped = true;
+          }
+        }
+        if (dropped)
+          nDropped++;
+      }
+      Print() << "Seed locations (" << nStreamPairs << " nodes):" << std::endl;
+      for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+        Print() << "   dir " << d << ": [" << locMin[d] << ", " << locMax[d]
+                << "]  domain [" << rlo[d] << ", " << rhi[d] << "]  is_per "
+                << pp_is_per[d] << "  outside: " << nOut[d];
+        if (nOut[d] > 0) {
+          Print() << "  <-- OUTSIDE DOMAIN (non-periodic direction)";
+        }
+        Print() << std::endl;
+      }
+      // Abort() ends the whole job (MPI_Abort), so a rank detecting this on
+      // its own cannot leave the others waiting in a collective.
+      if (nDropped > 0) {
+        Abort(
+          "partStream: " + std::to_string(nDropped) + " of " +
+          std::to_string(nStreamPairs) +
+          " seed points lie outside the domain in a non-periodic direction "
+          "(see the table above).  Their streams would be missing from the "
+          "output and the surface elements using them could not be evaluated. "
+          " Check that 'is_per' matches the geometry of 'infile', and that the "
+          "seed surface was generated for the same domain.");
+      }
+    }
+
     // Initialise particles
     Print() << "Initialising particles..." << std::endl;
-    spc.InitParticles(locs);
+    const Long nPairsCreated = spc.InitParticles(locs);
+
+    // Every particle that was created has to survive: one that is lost leaves
+    // its partner unpaired and its stream cannot be written.  The expectation
+    // is what InitParticles actually created rather than 2*nStreamPairs, since
+    // for oneSeedPerCell the seed list is per rank while InitParticles keeps
+    // only every nProc-th pair.
+    Long nPartExpected = 2 * nPairsCreated;
+    ParallelDescriptor::ReduceLongSum(nPartExpected);
+    auto checkParticleCount = [&](const std::string& when) {
+      const Long nPart = spc.TotalNumberOfParticles(true, false);
+      Print() << "Valid particles " << when << ": " << nPart << " / "
+              << nPartExpected << std::endl;
+      if (nPart != nPartExpected) {
+        Abort(
+          "partStream: " + std::to_string(nPartExpected - nPart) +
+          " particle(s) lost " + when +
+          ".  Every seed must produce a complete stream.");
+      }
+    };
+    checkParticleCount("after seeding");
 
     // Check if particles initialised fine
     if (spc.OK()) {
@@ -278,6 +375,8 @@ main(int argc, char* argv[])
       spc.InterpDataAtLocation(step + 1, vectorField);
     }
 
+    checkParticleCount("after integration");
+
     // check in again
     if (spc.OK()) {
       Print() << "SPC is happy afterwards :-)" << std::endl;
@@ -287,8 +386,6 @@ main(int argc, char* argv[])
     Print() << "Checking if we broke things afterwards..." << std::endl;
     spc.InspectParticles(nStreamPairs);
 #endif
-    // check we didn't break them again
-    spc.OK();
 
     if (writeParticles) {
       Print() << "Writing particles in plotfile to " << particlefile

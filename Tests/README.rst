@@ -39,6 +39,13 @@ Available suites
      - 15 assertions: all four operators, divide-by-zero detection/bypass,
        output naming, round-trip value verification, error handling, 3D MPI
        (2 and 4 ranks)
+   * - ``stream/``
+     - Stream construction (``partStream``) and stream tube statistics
+       (``streamBinTubeStats``)
+     - 60 assertions: the whole chain against analytically known values,
+       periodic crossing, vanishing vector field, interpolation next to a
+       non-periodic wall, four abort paths; 2D + 3D serial + 3D MPI (2 and
+       4 ranks)
 
 Adding a new suite
 ##################
