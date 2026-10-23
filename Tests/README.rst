@@ -46,6 +46,11 @@ Available suites
        periodic crossing, vanishing vector field, interpolation next to a
        non-periodic wall, four abort paths; 2D + 3D serial + 3D MPI (2 and
        4 ranks)
+   * - ``isosurface/``
+     - Iso lines and surfaces (``isosurface``) on periodic domains
+     - 18 assertions: measure against a non-periodic reference to round-off,
+       node positions and edge lengths; 2D + 3D serial, uniform and two-level
+       grids
 
 Adding a new suite
 ##################
