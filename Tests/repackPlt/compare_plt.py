@@ -9,6 +9,7 @@ Exits 0 when all levels, MultiFabs, boxes and values match, 1 otherwise.
 --max-files N additionally asserts that PLT_B has at most N data files per
 MultiFab.
 """
+
 import argparse
 import glob
 import os
@@ -95,7 +96,9 @@ def main():
         ca, fa = read_mf(os.path.join(args.a, mf))
         cb, fb = read_mf(os.path.join(args.b, mf))
         if ca != cb or len(fa) != len(fb):
-            print(f"FAIL: {mf}: ncomp/nboxes differ ({ca},{len(fa)}) vs ({cb},{len(fb)})")
+            print(
+                f"FAIL: {mf}: ncomp/nboxes differ ({ca},{len(fa)}) vs ({cb},{len(fb)})"
+            )
             ok = False
             continue
         maxerr = 0.0
@@ -105,7 +108,12 @@ def main():
                 ok = False
                 break
             if da.size:
-                maxerr = max(maxerr, float(np.max(np.abs(da.astype(np.float64) - db.astype(np.float64)))))
+                maxerr = max(
+                    maxerr,
+                    float(
+                        np.max(np.abs(da.astype(np.float64) - db.astype(np.float64)))
+                    ),
+                )
         if maxerr > args.tol:
             print(f"FAIL: {mf}: max abs difference {maxerr:g} > {args.tol:g}")
             ok = False

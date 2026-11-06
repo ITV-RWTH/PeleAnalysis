@@ -152,8 +152,7 @@ main(int argc, char* argv[])
     }
 
     VisMF::SetNOutFiles(n_files);
-    if (ParallelDescriptor::IOProcessor() &&
-        VisMF::GetNOutFiles() < n_files) {
+    if (ParallelDescriptor::IOProcessor() && VisMF::GetNOutFiles() < n_files) {
       Print() << "WARNING: n_files=" << n_files << " is larger than the number"
               << " of MPI ranks; writing " << VisMF::GetNOutFiles()
               << " file(s) per MultiFab instead\n";
@@ -185,8 +184,7 @@ main(int argc, char* argv[])
           const std::string lname = le.path().filename().string();
           bool isMF = false;
           for (const auto& mf : mfs) {
-            if (
-              lname == mf + "_H" || lname.rfind(mf + "_D_", 0) == 0) {
+            if (lname == mf + "_H" || lname.rfind(mf + "_D_", 0) == 0) {
               isMF = true;
               break;
             }
@@ -235,8 +233,9 @@ main(int argc, char* argv[])
       const std::string outpath = outfile + "/" + mfname;
 
       int vers = readHeaderVersion(inpath);
-      if (vers < VisMF::Header::Version_v1 ||
-          vers > VisMF::Header::NoFabHeaderFAMinMax_v1) {
+      if (
+        vers < VisMF::Header::Version_v1 ||
+        vers > VisMF::Header::NoFabHeaderFAMinMax_v1) {
         Abort("Unknown VisMF header version in " + inpath + "_H");
       }
       int nbytes = float_type / 8;
@@ -257,8 +256,8 @@ main(int argc, char* argv[])
       VisMF::Read(mf, inpath);
 
       VisMF::SetHeaderVersion(static_cast<VisMF::Header::Version>(vers));
-      FArrayBox::setFormat(nbytes == 4 ? FABio::FAB_NATIVE_32
-                                       : FABio::FAB_NATIVE);
+      FArrayBox::setFormat(
+        nbytes == 4 ? FABio::FAB_NATIVE_32 : FABio::FAB_NATIVE);
       VisMF::Write(mf, outpath);
 
       if (verbose) {
@@ -269,8 +268,8 @@ main(int argc, char* argv[])
     }
     VisMF::SetHeaderVersion(origVersion);
 
-    Print() << "Wrote " << outfile << " with at most "
-            << VisMF::GetNOutFiles() << " data file(s) per MultiFab\n";
+    Print() << "Wrote " << outfile << " with at most " << VisMF::GetNOutFiles()
+            << " data file(s) per MultiFab\n";
   }
   Finalize();
   return 0;
