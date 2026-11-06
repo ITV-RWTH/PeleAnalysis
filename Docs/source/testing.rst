@@ -42,6 +42,11 @@ Available suites
      - Whole chain against analytic values; periodicity, vanishing field,
        boundary interpolation, four abort paths; 2D + 3D serial + 3D MPI
        (2 and 4 ranks)
+   * - :doc:`repackPlt <testing/repackPlt>`
+     - Rewriting plotfiles with a chosen number of data files
+     - 49 assertions; exact data comparison; batches of plotfiles; header
+       versions, 32/64 bit, verbatim copy of extra content; 3D serial + MPI
+       (2 and 4 ranks)
 
 .. toctree::
    :hidden:
@@ -49,6 +54,7 @@ Available suites
    testing/jpdf
    testing/arithmetics
    testing/stream
+   testing/repackPlt
 
 Adding a new suite
 ##################
