@@ -3,17 +3,20 @@
 repackPlt
 *********
 
-Rewrite an existing AMReX plot file with a user-chosen number of data files. PeleLMeX (and AMReX in general) writes plot file level data as ``Level_<l>/Cell_D_<nnnnn>`` files, by default one file per MPI rank per level (capped at 256). Large runs can therefore produce thousands of small files, which strains file-system quotas, archiving and transfers. ``repackPlt`` reads the level data of a plot file and writes it again with at most ``n_files`` data files per level.
+Rewrite one or more existing AMReX plot files with a user-chosen number of data files. PeleLMeX (and AMReX in general) writes plot file level data as ``Level_<l>/Cell_D_<nnnnn>`` files, by default one file per MPI rank per level (capped at 256). Large runs can therefore produce thousands of small files, which strains file-system quotas, archiving and transfers. ``repackPlt`` reads the level data of each given plot file and writes it again with at most ``n_files`` data files per level. Each plot file is processed independently and written under its own name into an output directory, e.g. ``repack_nf8/plt00500``.
 
 Only the level data (``Level_*/<mf>_H`` and ``Level_*/<mf>_D_*``) is rewritten. Everything else (the top-level ``Header``, ``job_info``, particle directories, any other file or directory) is copied unchanged, so apart from the data-file layout the output is identical to the input. Cell values are bit-identical unless the precision is changed with ``float_type``. The VisMF header version and the precision of the input are kept.
 
 Usage: ::
 
-   mpirun -np <N> ./repackPlt3d.gnu.MPI.ex infile=<s> n_files=<n> [outfile=<s>] [options]
+   mpirun -np <N> ./repackPlt3d.gnu.MPI.ex infiles=<s> [<s> ...] n_files=<n> [outdir=<s>] [options]
 
-Example: ::
+Examples: ::
 
    mpirun -np 8 ./repackPlt3d.gnu.MPI.ex ./InputSamples/repackPlt.inp
+   mpirun -np 8 ./repackPlt3d.gnu.MPI.ex infiles= $(ls -d plt0*) n_files=8
+
+A shell glob is not expanded inside ``infiles=plt0*`` because the word starts with ``infiles=``. Either put a space after ``=`` and let the shell list the plot files (second example), or list them in an inputs file.
 
 .. note::
 
@@ -25,10 +28,12 @@ Tool Options
 ::
 
    #------------------- IO CONTROL -----------------------------------------------------------
-   infile      = plt00500                     # Input AMReX plot file
-   outfile     = plt00500_nf8                 # DEF: <infile>_nf<n_files>; Output plot file name
+   infiles     = plt00500 plt01000 plt01500   # Input AMReX plot files (one or more)
+   outdir      = repack_nf8                   # DEF: repack_nf<n_files>; Output directory
 
-`infile` is the plot file directory to re-pack. `outfile` is the name of the new plot file; it defaults to ``<infile>_nf<n_files>`` (e.g. ``plt00500_nf8``) in the current directory. `outfile` must differ from `infile`; the input is never modified. If `outfile` already exists it is renamed to ``<outfile>.old.<id>`` (standard AMReX behaviour) before writing.
+`infiles` lists one or more plot file directories to re-pack. Each one is written to ``<outdir>/<name>``, keeping its name. `outdir` defaults to ``repack_nf<n_files>`` (e.g. ``repack_nf8``) in the current directory and is created if needed. The inputs are never modified. If ``<outdir>/<name>`` already exists, it is renamed to ``<name>.old.<id>`` (standard AMReX behaviour) before writing.
+
+All inputs are checked before anything is written. The tool aborts without writing any output if an input is not a plot file, if two inputs have the same name (e.g. ``run1/plt00500`` and ``run2/plt00500``, which would collide in `outdir`), or if `outdir` is the folder that holds the inputs.
 
 ::
 
@@ -49,8 +54,8 @@ By default the output has the same precision as the input: plot files written in
    #------------------- Additional Flags -----------------------------------------------------
    verbose = 1                                # DEF: 0; Print progress information
 
-With `verbose` set to 1, the tool reports each copied file and each re-packed MultiFab (number of boxes, components, precision and header version).
+The tool always prints one progress line per plot file. With `verbose` set to 1, it also reports each copied file and each re-packed MultiFab (number of boxes, components, precision and header version).
 
 .. note::
 
-   The tool works on one MultiFab at a time, so peak memory is about the size of the largest level divided over the ranks. Running with MPI parallelizes reading and writing; OpenMP and GPUs are not used.
+   The tool works on one plot file and one MultiFab at a time, so peak memory is about the size of the largest level divided over the ranks. Running with MPI parallelizes reading and writing; OpenMP and GPUs are not used.

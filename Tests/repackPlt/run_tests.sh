@@ -176,44 +176,62 @@ echo "level note" > plt_repack/Level_0/note.txt
 # ---------------------------------------------------------------------------
 section "Phase 3: Serial repack"
 
-echo "  Test 1 — n_files=1 (default), default outfile name"
-"$REPACK" infile=plt_repack > t1.log 2>&1 || fail "T1 tool exit status"
-check_nfiles    "T1 one file per level"           plt_repack_nf1 1
-check_same      "T1 data identical"               plt_repack plt_repack_nf1 --max-files 1
-check_identical "T1 Header copied verbatim"       plt_repack/Header plt_repack_nf1/Header
-check_identical "T1 extra dir copied"             plt_repack/extra_dir/note.txt plt_repack_nf1/extra_dir/note.txt
-check_identical "T1 extra level file copied"      plt_repack/Level_0/note.txt plt_repack_nf1/Level_0/note.txt
+echo "  Test 1 — n_files=1 (default), default outdir repack_nf1"
+"$REPACK" infiles=plt_repack > t1.log 2>&1 || fail "T1 tool exit status"
+check_nfiles    "T1 one file per level"           repack_nf1/plt_repack 1
+check_same      "T1 data identical"               plt_repack repack_nf1/plt_repack --max-files 1
+check_identical "T1 Header copied verbatim"       plt_repack/Header repack_nf1/plt_repack/Header
+check_identical "T1 extra dir copied"             plt_repack/extra_dir/note.txt repack_nf1/plt_repack/extra_dir/note.txt
+check_identical "T1 extra level file copied"      plt_repack/Level_0/note.txt repack_nf1/plt_repack/Level_0/note.txt
 
-echo "  Test 2 — header version 4 is preserved"
-"$REPACK" infile=plt_repack_v4 outfile=plt_t2 > t2.log 2>&1 || fail "T2 tool exit status"
-if [[ "$(head -1 plt_t2/Level_0/Cell_H)" == "4" ]]; then pass "T2 Cell_H version 4"; else fail "T2 Cell_H version"; fi
-check_same      "T2 data identical"               plt_repack_v4 plt_t2 --max-files 1
+echo "  Test 2 — header version 4 is preserved (user outdir)"
+"$REPACK" infiles=plt_repack_v4 outdir=out_t2 > t2.log 2>&1 || fail "T2 tool exit status"
+if [[ "$(head -1 out_t2/plt_repack_v4/Level_0/Cell_H 2>/dev/null)" == "4" ]]; then
+    pass "T2 Cell_H version 4"; else fail "T2 Cell_H version"; fi
+check_same      "T2 data identical"               plt_repack_v4 out_t2/plt_repack_v4 --max-files 1
 
 echo "  Test 3 — 32-bit input stays 32-bit"
-"$REPACK" infile=plt_repack_f32 outfile=plt_t3 > t3.log 2>&1 || fail "T3 tool exit status"
-if head -c 60 plt_t3/Level_0/Cell_D_00000 | grep -q "(4, (4 3 2 1))"; then
+"$REPACK" infiles=plt_repack_f32 outdir=out_t3 > t3.log 2>&1 || fail "T3 tool exit status"
+if head -c 60 out_t3/plt_repack_f32/Level_0/Cell_D_00000 2>/dev/null | grep -q "(4, (4 3 2 1))"; then
     pass "T3 output is 32-bit"; else fail "T3 output precision"; fi
-check_same      "T3 data identical"               plt_repack_f32 plt_t3
+check_same      "T3 data identical"               plt_repack_f32 out_t3/plt_repack_f32
 
 echo "  Test 4 — float_type=32 converts 64-bit data"
-"$REPACK" infile=plt_repack outfile=plt_t4 float_type=32 > t4.log 2>&1 || fail "T4 tool exit status"
-if head -c 60 plt_t4/Level_0/Cell_D_00000 | grep -q "(4, (4 3 2 1))"; then
+"$REPACK" infiles=plt_repack outdir=out_t4 float_type=32 > t4.log 2>&1 || fail "T4 tool exit status"
+if head -c 60 out_t4/plt_repack/Level_0/Cell_D_00000 2>/dev/null | grep -q "(4, (4 3 2 1))"; then
     pass "T4 output is 32-bit"; else fail "T4 output precision"; fi
-check_same      "T4 data within float32 round-off" plt_repack plt_t4 --tol 1e-5
+check_same      "T4 data within float32 round-off" plt_repack out_t4/plt_repack --tol 1e-5
+
+echo "  Test 5 — batch of three plotfiles into one outdir"
+"$REPACK" infiles="plt_repack plt_repack_v4/ plt_repack_f32" outdir=out_t5/ > t5.log 2>&1 \
+    || fail "T5 tool exit status"
+for p in plt_repack plt_repack_v4 plt_repack_f32; do
+    check_nfiles "T5 $p one file per level" out_t5/$p 1
+    check_same   "T5 $p data identical"     $p out_t5/$p --max-files 1
+done
+n=$(ls out_t5 2>/dev/null | wc -l)
+if [[ "$n" == "3" ]]; then pass "T5 outdir holds exactly 3 plotfiles"; else fail "T5 outdir holds $n entries"; fi
 
 # ---------------------------------------------------------------------------
-# Phase 4 — Error handling
+# Phase 4 — Error handling (validation happens before anything is written)
 # ---------------------------------------------------------------------------
 section "Phase 4: Error handling"
 
-if "$REPACK" infile=plt_repack outfile=plt_repack > t5.log 2>&1; then
-    fail "T5 outfile == infile — expected abort"; else pass "T5 outfile == infile aborted"; fi
-check_same "T5 input untouched" plt_repack plt_repack_nf1
-if "$REPACK" infile=no_such_plt > t6.log 2>&1; then
-    fail "T6 missing infile — expected abort"; else pass "T6 missing infile aborted"; fi
-no_dir "T6 no output written" no_such_plt_nf1
-if "$REPACK" infile=plt_repack n_files=0 outfile=plt_t7 > t7.log 2>&1; then
-    fail "T7 n_files=0 — expected abort"; else pass "T7 n_files=0 aborted"; fi
+if "$REPACK" infiles=plt_repack outdir=. > t6.log 2>&1; then
+    fail "T6 outdir = folder of the input — expected abort"; else pass "T6 outdir = input folder aborted"; fi
+check_same "T6 input untouched" plt_repack repack_nf1/plt_repack
+mkdir -p dup && cp -r plt_repack_v4 dup/plt_repack
+if "$REPACK" infiles="plt_repack dup/plt_repack" outdir=out_t7 > t7.log 2>&1; then
+    fail "T7 duplicate names — expected abort"; else pass "T7 duplicate names aborted"; fi
+no_dir "T7 no output written" out_t7
+if "$REPACK" infiles="plt_repack no_such_plt" outdir=out_t8 > t8.log 2>&1; then
+    fail "T8 missing input in batch — expected abort"; else pass "T8 missing input in batch aborted"; fi
+no_dir "T8 no output written for the valid input either" out_t8
+if "$REPACK" n_files=2 > t9.log 2>&1; then
+    fail "T9 no infiles — expected abort"; else pass "T9 no infiles aborted"; fi
+if "$REPACK" infiles=plt_repack n_files=0 outdir=out_t10 > t10.log 2>&1; then
+    fail "T10 n_files=0 — expected abort"; else pass "T10 n_files=0 aborted"; fi
+no_dir "T10 no output written" out_t10
 
 # ---------------------------------------------------------------------------
 # Phase 5 — MPI repack
@@ -225,23 +243,31 @@ if ! $MPI_AVAILABLE || [[ -z "$REPACK_MPI" ]]; then
 else
     for NF in 1 2 4; do
         echo "  Test — 4 ranks, n_files=$NF"
-        $MPI_CMD $MPI_FLAGS -np 4 "$REPACK_MPI" infile=plt_repack n_files=$NF \
-            outfile=plt_mpi_nf$NF > mpi_nf$NF.log 2>&1 || fail "T-MPI nf$NF exit status"
-        check_nfiles "T-MPI nf$NF file count" plt_mpi_nf$NF $NF
-        check_same   "T-MPI nf$NF data identical" plt_repack plt_mpi_nf$NF --max-files $NF
+        $MPI_CMD $MPI_FLAGS -np 4 "$REPACK_MPI" infiles=plt_repack n_files=$NF \
+            > mpi_nf$NF.log 2>&1 || fail "T-MPI nf$NF exit status"
+        check_nfiles "T-MPI nf$NF file count" repack_nf$NF/plt_repack $NF
+        check_same   "T-MPI nf$NF data identical" plt_repack repack_nf$NF/plt_repack --max-files $NF
     done
 
     echo "  Test — n_files larger than the rank count is capped"
-    $MPI_CMD $MPI_FLAGS -np 2 "$REPACK_MPI" infile=plt_repack n_files=16 \
-        outfile=plt_mpi_cap > mpi_cap.log 2>&1 || fail "T-MPI cap exit status"
-    check_nfiles "T-MPI cap: 2 ranks -> 2 files" plt_mpi_cap 2
+    $MPI_CMD $MPI_FLAGS -np 2 "$REPACK_MPI" infiles=plt_repack n_files=16 \
+        outdir=mpi_cap > mpi_cap.log 2>&1 || fail "T-MPI cap exit status"
+    check_nfiles "T-MPI cap: 2 ranks -> 2 files" mpi_cap/plt_repack 2
     if grep -q "WARNING: n_files=16" mpi_cap.log; then pass "T-MPI cap warning printed"; else fail "T-MPI cap warning"; fi
 
     echo "  Test — round trip 1 file -> 4 files"
-    $MPI_CMD $MPI_FLAGS -np 4 "$REPACK_MPI" infile=plt_repack_nf1 n_files=4 \
-        outfile=plt_mpi_rt > mpi_rt.log 2>&1 || fail "T-MPI round trip exit status"
-    check_nfiles "T-MPI round trip file count" plt_mpi_rt 4
-    check_same   "T-MPI round trip data identical" plt_repack plt_mpi_rt
+    $MPI_CMD $MPI_FLAGS -np 4 "$REPACK_MPI" infiles=repack_nf1/plt_repack n_files=4 \
+        outdir=mpi_rt > mpi_rt.log 2>&1 || fail "T-MPI round trip exit status"
+    check_nfiles "T-MPI round trip file count" mpi_rt/plt_repack 4
+    check_same   "T-MPI round trip data identical" plt_repack mpi_rt/plt_repack
+
+    echo "  Test — batch of three plotfiles, 4 ranks, n_files=2"
+    $MPI_CMD $MPI_FLAGS -np 4 "$REPACK_MPI" infiles="plt_repack plt_repack_v4 plt_repack_f32" \
+        n_files=2 outdir=mpi_batch > mpi_batch.log 2>&1 || fail "T-MPI batch exit status"
+    for p in plt_repack plt_repack_v4 plt_repack_f32; do
+        check_nfiles "T-MPI batch $p file count"     mpi_batch/$p 2
+        check_same   "T-MPI batch $p data identical" $p mpi_batch/$p --max-files 2
+    done
 fi
 
 # ---------------------------------------------------------------------------

@@ -20,9 +20,9 @@ any AMReX tool.
      - Feature
      - Pass criterion
    * - 1
-     - Serial, default ``n_files=1`` and ``outfile``
-     - 1 ``Cell_D`` file per level; data identical; ``Header`` and extra
-       files/directories copied byte for byte
+     - Serial, default ``n_files=1`` and ``outdir``
+     - ``repack_nf1/plt_repack`` has 1 ``Cell_D`` file per level; data
+       identical; ``Header`` and extra files/directories copied byte for byte
    * - 2
      - VisMF header version 4 input
      - Output header version 4; data identical
@@ -32,11 +32,15 @@ any AMReX tool.
    * - 4
      - ``float_type=32`` on 64-bit input
      - Output 32-bit; values within 1e-5
-   * - 5--7
-     - ``outfile = infile``, missing ``infile``, ``n_files=0``
-     - Tool aborts; input untouched; no output
+   * - 5
+     - Batch of 3 plotfiles into one ``outdir``
+     - 3 plotfiles with unchanged names; 1 file per level; data identical
+   * - 6--10
+     - ``outdir`` = input folder, duplicate names, missing input in a batch,
+       no ``infiles``, ``n_files=0``
+     - Tool aborts before writing; inputs untouched; no output
    * - MPI
      - 4 ranks with ``n_files`` = 1, 2, 4; 2 ranks with ``n_files=16``;
-       single-file input split into 4 files
+       single-file input split into 4 files; batch of 3 with ``n_files=2``
      - Exactly the expected number of files per level (capped at the rank
        count, with a warning); data identical

@@ -29,16 +29,20 @@ MPI tests are skipped. Python 3 with numpy is required.
 
 | # | Test | Pass criterion |
 |---|------|----------------|
-| 1 | Serial, default `n_files=1`, default `outfile` | `plt_repack_nf1` has 1 `Cell_D` file per level; all boxes and values identical; `Header`, an extra top-level dir and an extra file in `Level_0` copied byte for byte |
-| 2 | Input with VisMF header version 4 | Output `Cell_H` is version 4; data identical |
+| 1 | Serial, default `n_files=1`, default `outdir` | `repack_nf1/plt_repack` has 1 `Cell_D` file per level; all boxes and values identical; `Header`, an extra top-level dir and an extra file in `Level_0` copied byte for byte |
+| 2 | Input with VisMF header version 4, user `outdir` | Output `Cell_H` is version 4; data identical |
 | 3 | 32-bit input | Output FAB data is 32-bit; data identical |
 | 4 | `float_type=32` on 64-bit input | Output is 32-bit; values within 1e-5 of input |
-| 5 | `outfile` = `infile` | Tool aborts; input unchanged |
-| 6 | Missing `infile` | Tool aborts; no output written |
-| 7 | `n_files=0` | Tool aborts |
+| 5 | Batch of 3 plotfiles (one with trailing `/`, `outdir` with trailing `/`) | Exactly 3 plotfiles in `outdir`, names unchanged; 1 file per level; data identical |
+| 6 | `outdir` = folder holding the input | Tool aborts; input unchanged |
+| 7 | Two inputs with the same name | Tool aborts; no output written |
+| 8 | One missing input in a batch | Tool aborts; no output written for the valid input either |
+| 9 | No `infiles` | Tool aborts |
+| 10 | `n_files=0` | Tool aborts; no output written |
 | MPI | 4 ranks, `n_files` = 1, 2, 4 | Exactly `n_files` files per level; data identical |
 | MPI | 2 ranks, `n_files=16` | Capped at 2 files per level; warning printed |
 | MPI | 4 ranks, single-file input, `n_files=4` | 4 files per level; data identical to original |
+| MPI | 4 ranks, batch of 3 plotfiles, `n_files=2` | 2 files per level for each; data identical |
 
 ---
 
