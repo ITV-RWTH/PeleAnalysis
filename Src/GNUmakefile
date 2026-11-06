@@ -52,6 +52,7 @@ USE_CUDA      = FALSE
 #EBASE   = progVar
 #EBASE   = qCriterion
 #EBASE   = regridPlt
+#EBASE   = repackPlt
 #EBASE   = rmsVel
 #EBASE   = sequentialFilterPlt
 #EBASE   = scaleMEF

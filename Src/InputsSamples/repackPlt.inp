@@ -1,0 +1,16 @@
+# Example input file for repackPlt (re-pack a plotfile into fewer/more data files)
+# Rewrites the level data of an existing AMReX plotfile with at most n_files
+# Cell_D_* files per level. All other content is copied verbatim.
+
+#------------------- IO CONTROL -----------------------------------------------------------
+infile      = plt00500                     # Input AMReX plot file
+outfile     = plt00500_nf8                 # DEF: <infile>_nf<n_files>; Output plot file name
+
+#------------------- FILE LAYOUT ----------------------------------------------------------
+n_files     = 8                            # DEF: 1; Max number of data files per level (capped at MPI ranks)
+
+#------------------- PRECISION ------------------------------------------------------------
+# float_type = 32                          # DEF: same as input; 32 or 64 bit output data
+
+#------------------- Additional Flags -----------------------------------------------------
+# verbose = 1                              # DEF: 0; Print progress information

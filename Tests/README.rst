@@ -46,6 +46,11 @@ Available suites
        periodic crossing, vanishing vector field, interpolation next to a
        non-periodic wall, four abort paths; 2D + 3D serial + 3D MPI (2 and
        4 ranks)
+   * - ``repackPlt/``
+     - Rewriting a plotfile with a chosen number of data files (``n_files``)
+     - 32 assertions: exact box-by-box data comparison, file counts, verbatim
+       copy of Header and extra content, VisMF header version 4, 32/64-bit
+       precision, error handling, 3D MPI (2 and 4 ranks, rank cap)
 
 Adding a new suite
 ##################

@@ -242,6 +242,11 @@ General tools (``Src``)
      - ✅
      - ✅
      - R
+   * - :doc:`repackPlt <analysis/repackPlt>`
+     - ➖
+     - ✅
+     - ➖
+     - R
    * - :doc:`rmsVel <analysis/rmsVel>`
      - ➖
      - ✅
@@ -412,6 +417,7 @@ Model-specific tools (``Src/ModelSpecificAnalysis``)
    analysis/progVar
    analysis/qCriterion
    analysis/regridPlt
+   analysis/repackPlt
    analysis/rmsVel
    analysis/scaleMEF
    analysis/sequentialFilterPlt
