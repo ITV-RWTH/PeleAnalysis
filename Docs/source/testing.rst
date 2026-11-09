@@ -46,6 +46,11 @@ Available suites
      - Iso lines and surfaces on periodic domains
      - Measure against a non-periodic reference to round-off; node positions
        and edge lengths; 2D + 3D serial, uniform and two-level grids
+   * - :doc:`repackPlt <testing/repackPlt>`
+     - Rewriting plotfiles with a chosen number of data files
+     - 49 assertions; exact data comparison; batches of plotfiles; header
+       versions, 32/64 bit, verbatim copy of extra content; 3D serial + MPI
+       (2 and 4 ranks)
 
 .. toctree::
    :hidden:
@@ -54,6 +59,7 @@ Available suites
    testing/arithmetics
    testing/stream
    testing/isosurface
+   testing/repackPlt
 
 Adding a new suite
 ##################
