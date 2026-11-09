@@ -253,13 +253,61 @@ Triangle::my_area()
 typedef list<Triangle> TriList;
 
 /*
+  Periodic directions of the domain. The coordinates in periodic ghost cells
+  are those of their periodic images, so an edge across a periodic boundary
+  joins two cell centres about one domain length apart. Node positions are
+  therefore interpolated towards the periodic image of the far vertex that is
+  closest to the near one (VI_doIt), and wrapped into the domain when they are
+  merged into the surface.
+*/
+struct PeriodicDomain
+{
+  bool is_per[AMREX_SPACEDIM] = {AMREX_D_DECL(false, false, false)};
+  Real lo[AMREX_SPACEDIM] = {AMREX_D_DECL(0.0, 0.0, 0.0)};
+  Real len[AMREX_SPACEDIM] = {AMREX_D_DECL(0.0, 0.0, 0.0)};
+
+  // Shift (0 or +-len) that turns the separation d into its minimum image
+  Real imageShift(Real d, int dir) const
+  {
+    if (is_per[dir] && d > 0.5 * len[dir]) {
+      return -len[dir];
+    }
+    if (is_per[dir] && d < -0.5 * len[dir]) {
+      return len[dir];
+    }
+    return 0.0;
+  }
+
+  Real minImage(Real d, int dir) const { return d + imageShift(d, dir); }
+
+  // Position x mapped into [lo, lo + len)
+  Real wrap(Real x, int dir) const
+  {
+    if (is_per[dir] && x >= lo[dir] + len[dir]) {
+      return x - len[dir];
+    }
+    if (is_per[dir] && x < lo[dir]) {
+      return x + len[dir];
+    }
+    return x;
+  }
+};
+static PeriodicDomain perDomain;
+
+/*
   Linearly interpolate the position where an isosurface cuts
-  an edge between two vertices, each with their own scalar value
+  an edge between two vertices, each with their own scalar value.
+  In periodic directions, p2 is replaced by its periodic image closest to p1.
 */
 Point
-VI_doIt(Real isoVal, int isoComp, const Point& p1, const Point& p2)
+VI_doIt(Real isoVal, int isoComp, const Point& p1, const Point& p2_in)
 {
-  AMREX_ASSERT(p1.size() > isoComp && p2.size() > isoComp);
+  AMREX_ASSERT(p1.size() > isoComp && p2_in.size() > isoComp);
+
+  Point p2(p2_in);
+  for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+    p2[d] += perDomain.imageShift(p2[d] - p1[d], d);
+  }
 
   const Real valp1 = p1[isoComp];
   const Real valp2 = p2[isoComp];
@@ -296,7 +344,12 @@ VertexInterp(
     rev = vertCache.find(Edge(p2, p1));
 
     if (rev == vertCache.end()) {
-      std::pair<Edge, Point> ent(edge, VI_doIt(isoVal, isoComp, p1d, p2d));
+      // Interpolate from IV_l to IV_r: boxes sharing this edge then compute its
+      // node bit for bit the same, so that the nodes merge exactly
+      const bool fwdOrder = (p1 == edge.IV_l);
+      std::pair<Edge, Point> ent(
+        edge, fwdOrder ? VI_doIt(isoVal, isoComp, p1d, p2d)
+                       : VI_doIt(isoVal, isoComp, p2d, p1d));
       std::pair<PMapIt, bool> it = vertCache.insert(ent);
       AMREX_ASSERT(it.second);
       return it.first;
@@ -1373,6 +1426,9 @@ main(int argc, char* argv[])
     Print() << "Periodicity assumed for this case: ";
     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
       Print() << is_per[idim] << " ";
+      perDomain.is_per[idim] = (is_per[idim] != 0);
+      perDomain.lo[idim] = pf.probLo()[idim];
+      perDomain.len[idim] = pf.probSize()[idim];
     }
     Print() << std::endl;
 
@@ -1412,7 +1468,6 @@ main(int argc, char* argv[])
     for (int lev = 0; lev < Nlev; ++lev) {
 
       // Get a domain box grown in periodic dir
-      const Box& domain = geoms[lev].Domain();
       const Box& gpdomain = geoms[lev].growPeriodicDomain(nGrow[lev]);
 
       // Define data holders
@@ -1443,10 +1498,10 @@ main(int argc, char* argv[])
         });
       }
 
-      states[lev].FillBoundary(
-        0, AMREX_SPACEDIM,
-        geoms[lev].periodicity()); // After this, bad data in periodic
-                                   // directions however
+      // After this, periodic ghost cells hold the coordinates of their periodic
+      // images: VI_doIt interpolates across a periodic boundary towards the
+      // minimum image, and the nodes are wrapped into the domain when merged
+      states[lev].FillBoundary(0, AMREX_SPACEDIM, geoms[lev].periodicity());
 
       if (lev > 0) {
         Vector<BCRec> bc(AMREX_SPACEDIM);
@@ -1456,36 +1511,6 @@ main(int argc, char* argv[])
           states[lev], time, {&states[lev - 1]}, {time}, {&states[lev]}, {time},
           0, 0, AMREX_SPACEDIM, geoms[lev - 1], geoms[lev], bcFunc, 0, bcFunc,
           0, ratio, &pci, bc, 0);
-      }
-
-      // In periodic direction, manually shift the coordinate back to its
-      // original location
-      if (geoms[lev].isAnyPeriodic()) {
-        Vector<IntVect> pshifts(27);
-
-#ifdef AMREX_USE_OMP
-#pragma omp parallel if (Gpu::notInLaunchRegion())
-#endif
-        for (MFIter mfi(states[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
-          Box const& bx = mfi.tilebox();
-          auto& sfab = states[lev][mfi];
-          geoms[lev].periodicShift(domain, bx, pshifts);
-          for (const auto& iv : pshifts) {
-            const auto shbox = bx + iv;
-            auto pisect = domain & shbox;
-            if (pisect.ok()) {
-              pisect -= iv;
-              for (int d = 0; d < AMREX_SPACEDIM; ++d) {
-                auto L = geoms[lev].ProbLength(d);
-                if (iv[d] != 0) {
-                  sfab.plus<amrex::RunOn::Device>(
-                    (iv[d] > 0 ? -L : L), pisect, d,
-                    1); // shift the location back
-                }
-              }
-            }
-          }
-        }
       }
 
       // Use FillPatch to get properly filled ghost cells
@@ -1681,8 +1706,12 @@ main(int argc, char* argv[])
         std::map<PMapIt, std::set<Node>::iterator, PMapItCompare> PMI_N_map;
 
         for (PMapIt it = vertCache.begin(); it != vertCache.end(); ++it) {
-          // Build a Node from the vertex
-          const Node n(it->second, nodeSet.size());
+          // Build a Node from the vertex, wrapped into the periodic domain
+          Point pos = it->second;
+          for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+            pos[d] = perDomain.wrap(pos[d], d);
+          }
+          const Node n(pos, nodeSet.size());
           // Add to global list if not already contained
           std::pair<std::set<Node>::iterator, bool> nsit = nodeSet.insert(n);
           // If the node was added, store the key just added to nodeSet
@@ -2218,18 +2247,16 @@ main(int argc, char* argv[])
               const Real* p0 = sortedNodes[seg.ID_l()]->m_vec;
               const Real* p1 = sortedNodes[seg.ID_r()]->m_vec;
 
-              const Real x0 = p0[xComp];
-              const Real x1 = p1[xComp];
-              const Real y0 = p0[yComp];
-              const Real y1 = p1[yComp];
+              // Segments across a periodic boundary: take the minimum image
+              const Real dx = perDomain.minImage(p1[xComp] - p0[xComp], 0);
+              const Real dy = perDomain.minImage(p1[yComp] - p0[yComp], 1);
               const Real avgp0 = p0[pComp];
               const Real avgp1 = p1[pComp];
 
-              Real len =
-                std::sqrt(((x1 - x0) * (x1 - x0)) + (y1 - y0) * (y1 - y0));
+              Real len = std::sqrt(dx * dx + dy * dy);
               Array<Real, 2> normal = {0, 0};
               if (len > 0) {
-                normal = {(y0 - y1) / len, (x1 - x0) / len};
+                normal = {-dy / len, dx / len};
               }
               for (int i = 0; i < 2; ++i) {
                 integral[i] += normal[i] * 0.5 * (avgp0 + avgp1) * len;

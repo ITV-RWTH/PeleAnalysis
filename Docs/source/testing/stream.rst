@@ -25,9 +25,8 @@ For the constant field ``q = 1`` the tube integral reported as ``q_volInt``
 equals that stream length. The ``c = 0.5`` isosurface of a plane that also
 wraps across the periodic boundary consists of two sheets of unit extent, so
 the total area is 2 and the total stream-tube volume is
-:math:`2\,\ell = 1.1875`. (The second sheet is placed at ``x = 0.5`` rather
-than at the boundary by ``isosurface``; the expected values depend only on the
-area.) Before streams
+:math:`2\,\ell = 1.1875`. (The second sheet lies on the periodic boundary
+``x = 0``; the expected values depend only on the area.) Before streams
 were allowed to cross periodic boundaries the same case gave 0.497 to 0.594 per
 tube and 1.090 in total.
 

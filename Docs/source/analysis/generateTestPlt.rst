@@ -165,7 +165,7 @@ Available field types
    * - ``cylinder_smooth``
      - Smoothly blended transition based on radial distance from an infinite axis line (3D Cartesian)
    * - ``sine``
-     - Sinusoidal field: offset + amplitude * sin(2π f_x x) * cos(2π f_y y) * sin(2π f_z z)
+     - Sinusoidal field: offset + amplitude * sin(2π f_x x) * cos(2π f_y y) * sin(2π f_z z) (2D: without the z factor)
    * - ``linear``
      - Linear field: offset + G_x x + G_y y + G_z z
 
@@ -237,6 +237,7 @@ Type-specific parameters
    myField.offset    = 0.0               # DEF: 0.0; Additive offset
 
    # Result: offset + amplitude * sin(2π f_x x + φ_x) * cos(2π f_y y + φ_y) * sin(2π f_z z + φ_z)
+   # In 2D the z factor is omitted. In 3D, f_z = 0 with φ_z = 0 gives sin(0) = 0, i.e. a constant field.
 
 **linear** ::
 

@@ -1,0 +1,21 @@
+# Reference: the closed iso line c = 0.5 around (0.5, 0.5), alone in the
+# non-periodic window [0.25, 0.75]^2. The cell centres (dx = 1/64) coincide
+# with those of the unit domain in the periodic tests.
+amr.n_cell = 32 32
+amr.max_grid_size = 16
+amr.max_level = 0
+
+geometry.coord_sys = 0
+geometry.prob_lo = 0.25 0.25
+geometry.prob_hi = 0.75 0.75
+geometry.is_periodic = 0 0
+
+plotfile_name = plt_iso_ref_2d
+
+# c = cos(2 pi x) cos(2 pi y)
+field.names = c
+c.type = sine
+c.frequency = 1.0 1.0
+c.phase = 1.5707963267948966 0.0
+c.amplitude = 1.0
+c.offset = 0.0

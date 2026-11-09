@@ -36,6 +36,7 @@ TARGETS = \
     jpdf \
     makePlotfile \
     partStream \
+    progVar \
     qCriterion \
     regridPlt \
     rmsVel \
