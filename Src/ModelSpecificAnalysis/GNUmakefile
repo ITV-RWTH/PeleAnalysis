@@ -16,6 +16,7 @@ PRECISION  = DOUBLE
 PROFILE    = FALSE
 VERBOSE    = TRUE
 DEBUG      = FALSE
+USE_EB 	   = FALSE
 
 # Compiler
 COMP	   = gnu
@@ -31,6 +32,7 @@ TINY_PROFILE = FALSE
 #EBASE=plotXtoY
 #EBASE=plotYtoX
 #EBASE=computeMixtureFraction
+#EBASE=plotDisplacementSpeed
 #EBASE=testQPDtools
 #EBASE=testTsolve
 

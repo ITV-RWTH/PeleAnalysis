@@ -2,8 +2,9 @@
 
 namespace analysis_util {
 
-// Integrate the MF over selected axes, excluding fine-covered and EB-covered
-// cells.  ref_ratios[k] is the refinement ratio between level k and level k+1.
+// Integrate the MF over selected axes, excluding fine-covered cells.  If
+// vfrac_mf is given (EB), each cell is weighted by its volume fraction.
+// ref_ratios[k] is the refinement ratio between level k and level k+1.
 std::unique_ptr<amrex::Gpu::ManagedVector<amrex::Real>>
 integrate(
   const amrex::Vector<amrex::MultiFab>& a_mf,
@@ -11,12 +12,8 @@ integrate(
   const amrex::Vector<int>&             ref_ratios,
   const int                             scomp,
   const int                             ncomp,
-  const amrex::Vector<int>&             axes_to_integrate
-#ifdef AMREX_USE_EB
-  ,
-  const amrex::Vector<amrex::MultiFab>& vfrac_mf
-#endif
-)
+  const amrex::Vector<int>&             axes_to_integrate,
+  const amrex::Vector<amrex::MultiFab>* vfrac_mf)
 {
   const int nlev = static_cast<int>(a_mf.size());
   amrex::Vector<amrex::iMultiFab> mask_mf =
@@ -55,9 +52,10 @@ integrate(
     auto const& ma       = a_mf[lev].arrays();
     auto const& mask_ma  = mask_mf[lev].const_arrays();
     auto const& volume_ma = volume.const_arrays();
-#ifdef AMREX_USE_EB
-    auto const& vfrac_ma = vfrac_mf[lev]->const_arrays();
-#endif
+    amrex::MultiArray4<amrex::Real const> vfrac_ma{};
+    if (vfrac_mf != nullptr) {
+      vfrac_ma = (*vfrac_mf)[lev].const_arrays();
+    }
 
     int ratio_x = integrate_x ? 1 : ratio;
     int ratio_y = integrate_y ? 1 : ratio;
@@ -72,9 +70,9 @@ integrate(
           amrex::Real val = ma[box_no](i, j, k, scomp + n) *
                             volume_ma[box_no](i, j, k) /
                             static_cast<amrex::Real>(ratio_prod);
-#ifdef AMREX_USE_EB
-          val *= vfrac_ma[box_no](i, j, k);
-#endif
+          if (vfrac_ma) {
+            val *= vfrac_ma[box_no](i, j, k);
+          }
           for (int rx = 0; rx < ratio_x; rx++) {
             for (int ry = 0; ry < ratio_y; ry++) {
               for (int rz = 0; rz < ratio_z; rz++) {

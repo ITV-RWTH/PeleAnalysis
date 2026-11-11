@@ -3,30 +3,16 @@
 
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
-#include <AMReX_DataServices.H>
 #include <AMReX_PlotFileUtil.H>
 
 using namespace amrex;
 
-static void
-print_usage(int, char* argv[])
-{
-  std::cerr << "Usage:\n"
-            << "  " << argv[0] << " infile=FILE compName=NAME [OPTIONS]\n\n"
-
-            << "Required arguments:\n"
-            << "  infile=FILE        AMReX plotfile\n"
-            << "  compName=NAME      Component to integrate\n\n"
-
-            << "Options:\n"
-            << "  -h, --help         Show this help message\n\n"
-            << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
-            << "the documentation.\n";
-
-  std::exit(1);
-}
+//-----------------------------------------------------------------
+// DIM = 3
+//-----------------------------------------------------------------
 
 #if AMREX_SPACEDIM == 3
+// Computes the integral along dir
 void
 integrate1d(
   int dir,
@@ -35,8 +21,9 @@ integrate1d(
   Vector<Vector<Vector<Real>>>& outdata,
   Vector<Real>& x,
   Vector<Real>& y,
-  AmrData& amrData,
+  PlotFileData& pf,
   Vector<MultiFab*> indata,
+  Vector<MultiFab*> volFracData,
   int nVars,
   int finestLevel,
   int cComp,
@@ -45,47 +32,107 @@ integrate1d(
   int avg)
 {
 
-  Box probDomain = amrData.ProbDomain()[finestLevel];
-  int ldir1 = probDomain.length(dir1);
-  int ldir2 = probDomain.length(dir2);
-  IntVect d;
+  Box probDomain = pf.probDomain(finestLevel);
+  int const ldir1 = probDomain.length(dir1);
+  int const ldir2 = probDomain.length(dir2);
   int refRatio = 1;
+
+  int out_size = (nVars + 1) * ldir1 * ldir2;
+  Gpu::DeviceVector<Real> gpu_outdata(out_size, 0.0);
+  Real* d_out = gpu_outdata.data();
+
+  // Loop from highest level to lowest
   for (int lev = finestLevel; lev >= 0; lev--) {
-    Real dzLev = amrData.DxLevel()[lev][dir];
+    Real dzLev = pf.cellSize(lev)[dir];
     if (lev < finestLevel)
-      refRatio *= amrData.RefRatio()[lev];
+      refRatio *= pf.refRatio(
+        lev); // Akkumulates the refRatio -> Highest Level has ratio of 1
+    Print() << "Current refRatio " << refRatio << std::endl;
     Print() << "Integrating level " << lev << std::endl;
-    for (MFIter mfi(*indata[lev]); mfi.isValid(); ++mfi) {
+
+    for (MFIter mfi(*indata[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
       const Box& bx = mfi.tilebox();
       Array4<Real> const& inbox = (*indata[lev]).array(mfi);
-      AMREX_PARALLEL_FOR_3D(bx, i, j, k, {
-        if (
-          inbox(i, j, k, nVars) > 1e-8 &&
-          (cComp < 0 ||
-           (inbox(i, j, k, cComp) >= cMin && inbox(i, j, k, cComp) < cMax))) {
-          d[0] = i;
-          d[1] = j;
-          d[2] = k;
-          for (int rx = 0; rx < refRatio; rx++) {
-            for (int ry = 0; ry < refRatio; ry++) {
-              outdata[0][refRatio * d[dir1] + rx][refRatio * d[dir2] + ry] +=
-                dzLev;
-              for (int n = 1; n < nVars + 1; n++) {
-                outdata[n][refRatio * d[dir1] + rx][refRatio * d[dir2] + ry] +=
-                  dzLev * inbox(i, j, k, n - 1);
+      Array4<Real> const& volFracBox = (*volFracData[lev]).array(mfi);
+
+      amrex::ParallelFor(
+        bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+          if (
+            inbox(i, j, k, nVars) > 1e-8 &&
+            (cComp < 0 ||
+             (inbox(i, j, k, cComp) >= cMin && inbox(i, j, k, cComp) < cMax))) {
+            // d[0] = i;
+            // d[1] = j;
+            // d[2] = k;
+            Real volFrac = volFracBox(i, j, k, 0);
+
+            // GPU-safe
+            for (int rx = 0; rx < refRatio; ++rx) {
+              for (int ry = 0; ry < refRatio; ++ry) {
+                Array<int, 3> idx = {i, j, k};
+                int idx1 = refRatio * idx[dir1] + rx;
+                int idx2 = refRatio * idx[dir2] + ry;
+
+                if (idx1 < ldir1 && idx2 < ldir2) {
+                  int flat = idx1 + idx2 * ldir1;
+
+                  Gpu::Atomic::Add(
+                    &d_out[0 + flat],
+                    dzLev * volFrac); // Adding entry dzLev*volFrac to d_out for
+                                      // outdata[0][i][j]
+                  for (int n = 1; n <= nVars; ++n) {
+                    Gpu::Atomic::Add(
+                      &d_out[n * ldir1 * ldir2 + flat],
+                      dzLev * volFrac *
+                        inbox(i, j, k, n - 1)); // Integral for every Var
+                  }
+                }
               }
             }
-          }
-        });
-	
-	}
+
+            //   for (int rx = 0; rx < refRatio; rx++) {
+            //     for (int ry = 0; ry < refRatio; ry++) {
+            // outdata[0][refRatio*d[dir1]+rx][refRatio*d[dir2]+ry] +=
+            // dzLev*volFrac; for (int n = 1; n < nVars+1; n++) {
+            //   outdata[n][refRatio*d[dir1]+rx][refRatio*d[dir2]+ry] +=
+            //   dzLev*volFrac*inbox(i,j,k,n-1);
+            // } // for nVars-loop
+            //     } //for ry-loop
+            //   } // for rx-loop
+          } // if
+        }); // PARALLEL_FOR
+
+    } // MFIter
+
+  } // lev-loop
+  //}
+
+  // Host copy & reduction
+  Vector<Real> host_outdata(out_size);
+  Gpu::copy(
+    Gpu::deviceToHost, gpu_outdata.begin(), gpu_outdata.end(),
+    host_outdata.begin());
+
+  for (int n = 0; n <= nVars; ++n) {
+    ParallelDescriptor::ReduceRealSum(
+      &host_outdata[n * ldir1 * ldir2], ldir1 * ldir2);
+  }
+
+  // Repack into nested output
+  for (int n = 0; n <= nVars; ++n) {
+    for (int j = 0; j < ldir2; ++j) {
+      for (int i = 0; i < ldir1; ++i) {
+        int flat = i + j * ldir1;
+        outdata[n][i][j] = host_outdata[n * ldir1 * ldir2 + flat];
+      }
     }
   }
-  for (int i = 0; i < ldir1; i++) {
-    for (int n = 0; n < nVars + 1; n++) {
-      ParallelDescriptor::ReduceRealSum(outdata[n][i].data(), ldir2);
-    }
-  }
+
+  // for (int i = 0; i < ldir1; i++) {
+  //   for (int n = 0; n<nVars+1; n++) {
+  //     ParallelDescriptor::ReduceRealSum(outdata[n][i].data(),ldir2);
+  //   }
+  // }
   if (avg) {
     for (int n = 1; n < nVars + 1; n++) {
       for (int i = 0; i < ldir1; i++) {
@@ -96,11 +143,13 @@ integrate1d(
       }
     }
   }
-  Vector<Real> plo = amrData.ProbLo();
-  Vector<Real> phi = amrData.ProbHi();
+  Array<Real, AMREX_SPACEDIM> plo = pf.probLo();
+  Array<Real, AMREX_SPACEDIM> phi = pf.probHi();
 
-  Real dxFine = amrData.DxLevel()[finestLevel][dir1];
-  Real dyFine = amrData.DxLevel()[finestLevel][dir2];
+  // Real dxFine = amrData.DxLevel()[finestLevel][dir1];
+  // Real dyFine = amrData.DxLevel()[finestLevel][dir2];
+  Real dxFine = pf.cellSize(finestLevel)[dir1];
+  Real dyFine = pf.cellSize(finestLevel)[dir2];
   for (int i = 0; i < ldir1; i++) {
     x[i] = plo[dir1] + (i + 0.5) * dxFine;
   }
@@ -108,8 +157,9 @@ integrate1d(
     y[i] = plo[dir2] + (i + 0.5) * dyFine;
   }
   return;
-}
+} // integrate1d
 
+// Computes the integral for each position in dir
 void
 integrate2d(
   int dir,
@@ -117,8 +167,9 @@ integrate2d(
   int dir2,
   Vector<Vector<Real>>& outdata,
   Vector<Real>& x,
-  AmrData& amrData,
+  PlotFileData& pf,
   Vector<MultiFab*> indata,
+  Vector<MultiFab*> volFracData,
   int nVars,
   int finestLevel,
   int cComp,
@@ -126,64 +177,118 @@ integrate2d(
   Real cMax,
   int avg)
 {
-  Box probDomain = amrData.ProbDomain()[finestLevel];
+  Box probDomain = pf.probDomain(finestLevel);
   int ldir = probDomain.length(dir);
-  IntVect d;
   int refRatio = 1;
+
+  int out_size = (nVars + 1) * ldir;
+  Gpu::DeviceVector<Real> gpu_outdata(out_size, 0.0);
+  Real* d_out = gpu_outdata.data();
+
   for (int lev = finestLevel; lev >= 0; lev--) {
-    Real dxLev = amrData.DxLevel()[lev][dir1];
-    Real dyLev = amrData.DxLevel()[lev][dir2];
+    Real dxLev = pf.cellSize(lev)[dir1];
+    Real dyLev = pf.cellSize(lev)[dir2];
     Real areaLev = dxLev * dyLev;
     if (lev < finestLevel)
-      refRatio *= amrData.RefRatio()[lev];
+      refRatio *= pf.refRatio(lev);
     Print() << "Integrating level " << lev << std::endl;
-    for (MFIter mfi(*indata[lev]); mfi.isValid(); ++mfi) {
+
+    for (MFIter mfi(*indata[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
       const Box& bx = mfi.tilebox();
       Array4<Real> const& inbox = (*indata[lev]).array(mfi);
-      AMREX_PARALLEL_FOR_3D(bx, i, j, k, {
-        if (
-          inbox(i, j, k, nVars) > 1e-8 &&
-          (cComp < 0 ||
-           (inbox(i, j, k, cComp) >= cMin && inbox(i, j, k, cComp) < cMax))) {
-          d[0] = i;
-          d[1] = j;
-          d[2] = k;
-          for (int rx = 0; rx < refRatio; rx++) {
-            outdata[0][refRatio * d[dir] + rx] += areaLev;
-            for (int n = 1; n < nVars + 1; n++) {
-              outdata[n][refRatio * d[dir] + rx] +=
-                areaLev * inbox(i, j, k, n - 1);
+      Array4<Real> const& volFracBox = (*volFracData[lev]).array(mfi);
+
+      amrex::ParallelFor(
+        bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+          if (
+            inbox(i, j, k, nVars) > 1e-8 &&
+            (cComp < 0 ||
+             (inbox(i, j, k, cComp) >= cMin && inbox(i, j, k, cComp) < cMax))) {
+
+            Real volFrac = volFracBox(i, j, k, 0);
+
+            // GPU-safe
+            for (int rx = 0; rx < refRatio; ++rx) {
+
+              Array<int, 3> idx = {i, j, k};
+              int idx1 = refRatio * idx[dir] + rx;
+
+              if (idx1 < ldir) {
+                int flat = idx1;
+
+                Gpu::Atomic::Add(
+                  &d_out[0 + flat],
+                  areaLev * volFrac); // Adding entry areaLev*volFrac to d_out
+                                      // for outdata[0][i]
+                for (int n = 1; n <= nVars; ++n) {
+                  Gpu::Atomic::Add(
+                    &d_out[n * ldir + flat],
+                    areaLev * volFrac *
+                      inbox(i, j, k, n - 1)); // Integral for every Var
+                }
+              }
             }
+
+            //     d[0] = i;
+            //     d[1] = j;
+            //     d[2] = k;
+            //     Real volFrac = volFracBox(i,j,k,0);
+            //     for (int rx = 0; rx < refRatio; rx++) {
+            //       outdata[0][refRatio*d[dir]+rx] += areaLev*volFrac;
+            //       for (int n = 1; n < nVars+1; n++) {
+            //   outdata[n][refRatio*d[dir]+rx] +=
+            //   areaLev*volFrac*inbox(i,j,k,n-1);
+            //   }
+            // }
           }
-        }
-      });
+        }); // ParallelFor
+    } // MFIter
+  } // lev-loop
+
+  // Host copy & reduction
+  Vector<Real> host_outdata(out_size);
+  Gpu::copy(
+    Gpu::deviceToHost, gpu_outdata.begin(), gpu_outdata.end(),
+    host_outdata.begin());
+
+  for (int n = 0; n <= nVars; ++n) {
+    ParallelDescriptor::ReduceRealSum(&host_outdata[n * ldir], ldir);
+  }
+
+  // Repack into nested output
+  for (int n = 0; n <= nVars; ++n) {
+    for (int i = 0; i < ldir; ++i) {
+      int flat = i;
+      outdata[n][i] = host_outdata[n * ldir + flat];
     }
   }
-  for (int n = 0; n < nVars + 1; n++) {
-    ParallelDescriptor::ReduceRealSum(outdata[n].data(), ldir);
-  }
-  Real dzFine = amrData.DxLevel()[finestLevel][dir];
+
+  // for (int n = 0; n < nVars+1; n++) {
+  //   ParallelDescriptor::ReduceRealSum(outdata[n].data(),ldir);
+  // }
+  Real dzFine = pf.cellSize(finestLevel)[dir];
   if (avg) {
     for (int n = 1; n < nVars + 1; n++) {
       for (int i = 0; i < ldir; i++) {
         if (outdata[0][i] > 0.0)
-          outdata[n][i] /= outdata[0][i];
+          outdata[n][i] /= outdata[0][i]; // Value / overall Area
       }
     }
   }
-  Vector<Real> plo = amrData.ProbLo();
-  Vector<Real> phi = amrData.ProbHi();
+  Array<Real, AMREX_SPACEDIM> plo = pf.probLo();
+  Array<Real, AMREX_SPACEDIM> phi = pf.probHi();
   for (int i = 0; i < ldir; i++) {
     x[i] = plo[dir] + (i + 0.5) * dzFine;
   }
   return;
-}
+} // integrate2d
 
 void
 integrate3d(
   Vector<Real>& outdata,
-  AmrData& amrData,
+  PlotFileData& pf,
   Vector<MultiFab*> indata,
+  Vector<MultiFab*> volFracData,
   int nVars,
   int finestLevel,
   int cComp,
@@ -191,46 +296,88 @@ integrate3d(
   Real cMax,
   int avg)
 {
+
+  int out_size = (nVars + 1);
+  Gpu::DeviceVector<Real> gpu_outdata(out_size, 0.0);
+  Real* d_out = gpu_outdata.data();
+
   for (int lev = 0; lev <= finestLevel; lev++) {
-    Real dxLev = amrData.DxLevel()[lev][0];
-    Real dyLev = amrData.DxLevel()[lev][1];
-    Real dzLev = amrData.DxLevel()[lev][2];
+    Real dxLev = pf.cellSize(lev)[0];
+    Real dyLev = pf.cellSize(lev)[1];
+    Real dzLev = pf.cellSize(lev)[2];
     Real volLev = dxLev * dyLev * dzLev;
     Print() << "Integrating level " << lev << std::endl;
-    for (MFIter mfi(*indata[lev]); mfi.isValid(); ++mfi) {
+
+    for (MFIter mfi(*indata[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
       const Box& bx = mfi.tilebox();
       Array4<Real> const& inbox = (*indata[lev]).array(mfi);
-      AMREX_PARALLEL_FOR_3D(bx, i, j, k, {
-        if (
-          inbox(i, j, k, nVars) > 1e-8 &&
-          (cComp < 0 ||
-           (inbox(i, j, k, cComp) >= cMin && inbox(i, j, k, cComp) < cMax))) {
-          outdata[0] += volLev;
-          for (int n = 1; n < nVars + 1; n++) {
-            outdata[n] += volLev * inbox(i, j, k, n - 1);
+      Array4<Real> const& volFracBox = (*volFracData[lev]).array(mfi);
+      amrex::ParallelFor(
+        bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+          if (
+            inbox(i, j, k, nVars) > 1e-8 &&
+            (cComp < 0 ||
+             (inbox(i, j, k, cComp) >= cMin && inbox(i, j, k, cComp) < cMax))) {
+            Real volFrac = volFracBox(i, j, k, 0);
+
+            // GPU-safe
+            Gpu::Atomic::Add(
+              &d_out[0],
+              volLev *
+                volFrac); // Adding entry volLev*volFrac to d_out for outdata[0]
+            for (int n = 1; n <= nVars; ++n) {
+              Gpu::Atomic::Add(
+                &d_out[n], volLev * volFrac *
+                             inbox(i, j, k, n - 1)); // Integral for every Var
+            }
+            // outdata[0] += volLev*volFrac;
+            // for (int n = 1; n < nVars+1; n++) {
+            //   outdata[n] += volLev*volFrac*inbox(i,j,k,n-1);
+            // }
           }
-        }
-      });
-    }
+        }); // ParallelFor
+    } // MFIter
+  } // lev-loop
+
+  // Host copy & reduction
+  Vector<Real> host_outdata(out_size);
+  Gpu::copy(
+    Gpu::deviceToHost, gpu_outdata.begin(), gpu_outdata.end(),
+    host_outdata.begin());
+
+  ParallelDescriptor::ReduceRealSum(host_outdata.data(), nVars + 1);
+
+  // Repack into nested output
+  for (int n = 0; n <= nVars; ++n) {
+    outdata[n] = host_outdata[n];
   }
-  ParallelDescriptor::ReduceRealSum(outdata.data(), nVars + 1);
+  // ParallelDescriptor::ReduceRealSum(outdata.data(),nVars+1);
+
   if (avg) {
     for (int n = 1; n < nVars + 1; n++) {
       if (outdata[0] > 0.0)
-        outdata[n] /= outdata[0];
+        outdata[n] /= outdata[0]; // Value / overall Volume
     }
   }
   return;
-}
+} // integrate3d
+
+//-----------------------------------------------------------------
+// DIM = 2
+//-----------------------------------------------------------------
+
 #elif AMREX_SPACEDIM == 2
+
+// 1D Integral along dirInt
 void
 integrate1d(
   int dirInt,
   int dir,
   Vector<Vector<Real>>& outdata,
   Vector<Real>& x,
-  AmrData& amrData,
+  PlotFileData& pf,
   Vector<MultiFab*> indata,
+  Vector<MultiFab*> volFracData,
   int nVars,
   int finestLevel,
   int cComp,
@@ -238,41 +385,88 @@ integrate1d(
   Real cMax,
   int avg)
 {
-  Box probDomain = amrData.ProbDomain()[finestLevel];
+  Box probDomain = pf.probDomain(finestLevel);
   int ldir = probDomain.length(dir);
-  IntVect d;
   int refRatio = 1;
+
+  int out_size = (nVars + 1) * ldir;
+  Gpu::DeviceVector<Real> gpu_outdata(out_size, 0.0);
+  Real* d_out = gpu_outdata.data();
+
   for (int lev = finestLevel; lev >= 0; lev--) {
-    Real dxLev = amrData.DxLevel()[lev][dirInt];
+    Real dxLev = pf.cellSize(lev)[dirInt];
     if (lev < finestLevel)
-      refRatio *= amrData.RefRatio()[lev];
+      refRatio *= pf.refRatio(lev);
     Print() << "Integrating level " << lev << std::endl;
-    for (MFIter mfi(*indata[lev]); mfi.isValid(); ++mfi) {
+    for (MFIter mfi(*indata[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
       const Box& bx = mfi.tilebox();
       Array4<Real> const& inbox = (*indata[lev]).array(mfi);
-      AMREX_PARALLEL_FOR_3D(bx, i, j, k, {
-        if (
-          inbox(i, j, k, nVars) > 1e-8 &&
-          (cComp < 0 ||
-           (inbox(i, j, k, cComp) >= cMin && inbox(i, j, k, cComp) < cMax))) {
-          d[0] = i;
-          d[1] = j;
-          d[2] = k;
-          for (int rx = 0; rx < refRatio; rx++) {
-            outdata[0][refRatio * d[dir] + rx] += dxLev;
-            for (int n = 1; n < nVars + 1; n++) {
-              outdata[n][refRatio * d[dir] + rx] +=
-                dxLev * inbox(i, j, k, n - 1);
+      Array4<Real> const& volFracBox = (*volFracData[lev]).array(mfi);
+
+      amrex::ParallelFor(
+        bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+          if (
+            inbox(i, j, k, nVars) > 1e-8 &&
+            (cComp < 0 ||
+             (inbox(i, j, k, cComp) >= cMin && inbox(i, j, k, cComp) < cMax))) {
+            Real volFrac = volFracBox(i, j, k, 0);
+
+            // GPU-safe
+            for (int rx = 0; rx < refRatio; ++rx) {
+
+              Array<int, 3> idx = {i, j, k};
+              int idx1 = refRatio * idx[dir] + rx;
+
+              if (idx1 < ldir) {
+                int flat = idx1;
+
+                Gpu::Atomic::Add(
+                  &d_out[0 + flat],
+                  dxLev * volFrac); // Adding entry dxLev*volFrac to d_out
+                for (int n = 1; n <= nVars; ++n) {
+                  Gpu::Atomic::Add(
+                    &d_out[n * ldir + flat],
+                    dxLev * volFrac *
+                      inbox(i, j, k, n - 1)); // Integral for every Var
+                }
+              }
             }
+
+            //   for (int rx = 0; rx < refRatio; rx++) {
+            //     outdata[0][refRatio*d[dir]+rx] += dxLev*volFrac;
+            //     for (int n = 1; n < nVars+1; n++) {
+            // outdata[n][refRatio*d[dir]+rx] += dxLev*volFrac*inbox(i,j,k,n-1);
+            //     }
+            //   }
           }
-        }
-      });
+        }); // ParallelFor
+    } // MFIter
+  }
+
+  // Host copy & reduction
+  Vector<Real> host_outdata(out_size);
+  Gpu::copy(
+    Gpu::deviceToHost, gpu_outdata.begin(), gpu_outdata.end(),
+    host_outdata.begin());
+
+  // for (int n = 0; n <= nVars; ++n) {
+  //     ParallelDescriptor::ReduceRealSum(&host_outdata[n * ldir], ldir);
+  // }
+
+  ParallelDescriptor::ReduceRealSum(host_outdata.data(), out_size);
+
+  // Repack into nested output
+  for (int n = 0; n <= nVars; ++n) {
+    for (int i = 0; i < ldir; ++i) {
+      int flat = i;
+      outdata[n][i] = host_outdata[n * ldir + flat];
     }
   }
-  for (int n = 0; n < nVars + 1; n++) {
-    ParallelDescriptor::ReduceRealSum(outdata[n].data(), ldir);
-  }
-  Real dyFine = amrData.DxLevel()[finestLevel][dir];
+
+  // for (int n = 0; n < nVars+1; n++) {
+  //   ParallelDescriptor::ReduceRealSum(outdata[n].data(),ldir);
+  // }
+  Real dyFine = pf.cellSize(finestLevel)[dir];
   if (avg) {
     for (int n = 1; n < nVars + 1; n++) {
       for (int i = 0; i < ldir; i++) {
@@ -281,19 +475,21 @@ integrate1d(
       }
     }
   }
-  Vector<Real> plo = amrData.ProbLo();
-  Vector<Real> phi = amrData.ProbHi();
+  Array<Real, AMREX_SPACEDIM> plo = pf.probLo();
+  Array<Real, AMREX_SPACEDIM> phi = pf.probHi();
   for (int i = 0; i < ldir; i++) {
     x[i] = plo[dir] + (i + 0.5) * dyFine;
   }
   return;
-}
+} // integrate1d
 
+// 2D Integral
 void
 integrate2d(
   Vector<Real>& outdata,
-  AmrData& amrData,
+  PlotFileData& pf,
   Vector<MultiFab*> indata,
+  Vector<MultiFab*> volFracData,
   int nVars,
   int finestLevel,
   int cComp,
@@ -301,28 +497,61 @@ integrate2d(
   Real cMax,
   int avg)
 {
+
+  int out_size = (nVars + 1);
+  Gpu::DeviceVector<Real> gpu_outdata(out_size, 0.0);
+  Real* d_out = gpu_outdata.data();
+
   for (int lev = 0; lev <= finestLevel; lev++) {
-    Real dxLev = amrData.DxLevel()[lev][0];
-    Real dyLev = amrData.DxLevel()[lev][1];
+    Real dxLev = pf.cellSize(lev)[0];
+    Real dyLev = pf.cellSize(lev)[1];
     Real areaLev = dxLev * dyLev;
     Print() << "Integrating level " << lev << std::endl;
-    for (MFIter mfi(*indata[lev]); mfi.isValid(); ++mfi) {
+    for (MFIter mfi(*indata[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
       const Box& bx = mfi.tilebox();
       Array4<Real> const& inbox = (*indata[lev]).array(mfi);
-      AMREX_PARALLEL_FOR_3D(bx, i, j, k, {
-        if (
-          inbox(i, j, k, nVars) > 1e-8 &&
-          (cComp < 0 ||
-           (inbox(i, j, k, cComp) >= cMin && inbox(i, j, k, cComp) < cMax))) {
-          outdata[0] += areaLev;
-          for (int n = 1; n < nVars + 1; n++) {
-            outdata[n] += areaLev * inbox(i, j, k, n - 1);
+      Array4<Real> const& volFracBox = (*volFracData[lev]).array(mfi);
+      amrex::ParallelFor(
+        bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+          if (
+            inbox(i, j, k, nVars) > 1e-8 &&
+            (cComp < 0 ||
+             (inbox(i, j, k, cComp) >= cMin && inbox(i, j, k, cComp) < cMax))) {
+            Real volFrac = volFracBox(i, j, k, 0);
+
+            // GPU-safe
+            Gpu::Atomic::Add(
+              &d_out[0], areaLev * volFrac); // Adding entry areaLev*volFrac to
+                                             // d_out for outdata[0]
+            for (int n = 1; n <= nVars; ++n) {
+              Gpu::Atomic::Add(
+                &d_out[n], areaLev * volFrac *
+                             inbox(i, j, k, n - 1)); // Integral for every Var
+            }
+
+            // outdata[0] += areaLev*volFrac;
+            // for (int n = 1; n < nVars+1; n++) {
+            //   outdata[n] += areaLev*volFrac*inbox(i,j,k,n-1);
+            // }
           }
-        }
-      });
+        });
     }
   }
-  ParallelDescriptor::ReduceRealSum(outdata.data(), nVars + 1);
+
+  // Host copy & reduction
+  Vector<Real> host_outdata(out_size);
+  Gpu::copy(
+    Gpu::deviceToHost, gpu_outdata.begin(), gpu_outdata.end(),
+    host_outdata.begin());
+
+  ParallelDescriptor::ReduceRealSum(host_outdata.data(), nVars + 1);
+
+  // Repack into nested output
+  for (int n = 0; n <= nVars; ++n) {
+    outdata[n] = host_outdata[n];
+  }
+
+  // ParallelDescriptor::ReduceRealSum(outdata.data(),nVars+1);
   if (avg) {
     for (int n = 1; n < nVars + 1; n++) {
       if (outdata[0] > 0.0)
@@ -330,13 +559,18 @@ integrate2d(
     }
   }
   return;
-}
+} // integrate2d
 #endif
 
+//-----------------------------------------------------------------
+// Write data functions
+//-----------------------------------------------------------------
+
 void
-writeDat1D(Vector<Real> vect, std::string filename, int dim)
+writeDat1D(Vector<Real> vect, std::string filename, std::string folder, int dim)
 {
-  FILE* file = fopen(filename.c_str(), "w");
+  std::string fullPath = folder + "/" + filename;
+  FILE* file = fopen(fullPath.c_str(), "w");
   for (int i = 0; i < dim; i++) {
     fprintf(file, "%e ", vect[i]);
   }
@@ -345,9 +579,17 @@ writeDat1D(Vector<Real> vect, std::string filename, int dim)
 }
 
 void
-writeDat2D(Vector<Vector<Real>> vect, std::string filename, int dim1, int dim2)
+writeDat2D(
+  Vector<Vector<Real>> vect,
+  std::string filename,
+  std::string folder,
+  int dim1,
+  int dim2)
 {
-  FILE* file = fopen(filename.c_str(), "w");
+
+  std::string fullPath = folder + "/" + filename;
+
+  FILE* file = fopen(fullPath.c_str(), "w");
   for (int i = 0; i < dim1; i++) {
     for (int j = 0; j < dim2; j++) {
       fprintf(file, "%e ", vect[i][j]);
@@ -442,58 +684,59 @@ findMinMax(Vector<Vector<Real>> vect, int dim1, int dim2, Real& min, Real& max)
   return;
 }
 
+//-----------------------------------------------------------------
+// MAIN
+//-----------------------------------------------------------------
+
 int
 main(int argc, char* argv[])
 {
   amrex::Initialize(argc, argv);
   {
-    if (argc < 2) {
-      print_usage(argc, argv);
-    } else if (
-      (std::strcmp(argv[1], "-h") == 0) ||
-      (std::strcmp(argv[1], "--help") == 0)) {
-      print_usage(argc, argv);
-    }
-
     ParmParse pp;
 
+    // Init of input infile
     std::string infile;
     pp.get("infile", infile);
     Print() << "infile = " << infile << std::endl;
 
-    DataServices::SetBatchMode();
-    Amrvis::FileType fileType(Amrvis::NEWPLT);
+    // Init of path for output
+    std::string path;
+    pp.get("path", path);
+    Print() << "output path = " << path << std::endl;
 
-    DataServices dataServices(infile, fileType);
-    if (!dataServices.AmrDataOk()) {
-      DataServices::Dispatch(DataServices::ExitRequest, NULL);
-      // ^^^ this calls ParallelDescriptor::EndParallel() and exit()
-    }
-    AmrData& amrData = dataServices.AmrDataRef();
+    PlotFileData pf(infile);
 
     // read in the variable names to use
-    int nVars = pp.countval("vars");
+    int const nVars = pp.countval("vars");
     Vector<std::string> vars(nVars);
     pp.getarr("vars", vars);
     Vector<int> destFillComps(nVars);
     Print() << "nVars= " << nVars << std::endl;
     for (int n = 0; n < nVars; n++) {
       destFillComps[n] = n;
-      Print() << "var[" << n << "]= " << vars[n] << std::endl;
+      Print() << "vars[" << n << "]= " << vars[n] << std::endl;
     }
 
+    // Init of integralDimension
     int integralDimension;
     pp.get("integralDimension", integralDimension);
     AMREX_ALWAYS_ASSERT(integralDimension <= AMREX_SPACEDIM);
-    int finestLevel = amrData.FinestLevel();
+
+    // Init of finest Level
+    int finestLevel = pf.finestLevel();
     pp.query("finestLevel", finestLevel);
     int Nlev = finestLevel + 1;
+
+    // Init for optional conditons
     std::string cVar;
     Real cMin, cMax;
     int cComp = -1;
     pp.query("cVar", cVar);
     pp.query("cMin", cMin);
     pp.query("cMax", cMax);
+    // Sets cComp to number of choosen variable, also checks if cVar is in
+    // listed vars
     if (!cVar.empty()) {
       for (int n = 0; n < nVars; n++) {
         if (vars[n] == cVar) {
@@ -505,10 +748,14 @@ main(int argc, char* argv[])
         Abort("cVar not in list of vars!");
       }
     }
+
     int avg = 0;
-    pp.query("avg", avg); // integral average, or just integral?
+    pp.query("avg", avg);
+
+    // Init of integral directions + output-file string
     int dir, dir1, dir2;
     std::string format = "dat";
+
     Print() << "integralDimension = " << integralDimension << std::endl;
 #if AMREX_SPACEDIM == 3
     switch (integralDimension) {
@@ -534,7 +781,13 @@ main(int argc, char* argv[])
       dir1 = (dir + 1) % 2;
     }
 #endif
-    std::string outfile = infile + "_integral";
+
+    // Extract timestep number from string
+    int start = infile.find("plt");
+    std::string timestep = infile.substr(start, 8);
+    Print() << "Timestep = " << timestep << std::endl;
+
+    std::string outfile = timestep + "_integral";
     if (integralDimension < AMREX_SPACEDIM) {
       outfile += "_dir" + std::to_string(dir);
     }
@@ -546,21 +799,48 @@ main(int argc, char* argv[])
       outfile += "_avg";
     }
 
+    //-----------------------------------------------------------------
+    // IO
+    //-----------------------------------------------------------------
+
     Vector<MultiFab*> indata(Nlev);
+    Vector<MultiFab*> volFracData(Nlev);
     for (int lev = 0; lev < Nlev; lev++) {
-      BoxArray probBoxArray = amrData.boxArray(lev);
-      indata[lev] = new MultiFab(
-        probBoxArray, DistributionMapping(probBoxArray), nVars + 1, 0);
+      BoxArray probBoxArray = pf.boxArray(lev);
+      DistributionMapping dmap = pf.DistributionMap(lev);
+      indata[lev] = new MultiFab(probBoxArray, dmap, nVars + 1, 0);
       Print() << "Loading data on level " << lev << std::endl;
-      amrData.FillVar(*indata[lev], lev, vars, destFillComps);
+      for (int n = 0; n < nVars; ++n) {
+        const MultiFab& src = pf.get(lev, vars[n]);
+        MultiFab::Copy(*indata[lev], src, 0, n, 1, 0);
+      }
       Print() << "Data loaded" << std::endl;
       indata[lev]->setVal(1.0, nVars, 1);
+
+#ifdef AMREX_USE_EB
+      volFracData[lev] = new MultiFab(probBoxArray, dmap, 1, 0);
+      Print() << "Loading volFrac data on level " << lev << std::endl;
+      MultiFab::Copy(*volFracData[lev], pf.get(lev, "volFrac"), 0, 0, 1, 0);
+
+      Print() << "volFrac data loaded" << std::endl;
+#else
+      volFracData[lev] = new MultiFab(probBoxArray, dmap, 1, 0);
+      volFracData[lev]->setVal(1.0);
+#endif
     }
+
+//-----------------------------------------------------------------
+// Cell Intersections
+//-----------------------------------------------------------------
+
+// Finding the intersections of cells
+// Forced to run on CPU
+#ifndef AMREX_USE_GPU
     Print() << "Determining intersects..." << std::endl;
     for (int lev = 0; lev < finestLevel; lev++) {
       BoxArray baf = (*indata[lev + 1]).boxArray();
-      baf.coarsen(amrData.RefRatio()[lev]);
-      for (MFIter mfi(*indata[lev]); mfi.isValid(); ++mfi) {
+      baf.coarsen(pf.refRatio(lev));
+      for (MFIter mfi(*indata[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
         FArrayBox& myFab = (*indata[lev])[mfi];
         int idx = mfi.index();
         std::vector<std::pair<int, Box>> isects =
@@ -571,12 +851,18 @@ main(int argc, char* argv[])
       }
     }
     Print() << "Intersects determined" << std::endl;
+#endif
+
+    //-----------------------------------------------------------------
+    // Real work
+    //-----------------------------------------------------------------
+
 #if AMREX_SPACEDIM == 3
     switch (integralDimension) {
     case 1: // 1D integral, results in 2D data (assuming 3D plotfile), output
             // either dat or ppm
     {
-      Box probDomain = amrData.ProbDomain()[finestLevel];
+      Box probDomain = pf.probDomain(finestLevel);
       int ldir1 = probDomain.length(dir1);
       int ldir2 = probDomain.length(dir2);
       Vector<Real> x(ldir1);
@@ -586,19 +872,20 @@ main(int argc, char* argv[])
       Vector<Vector<Vector<Real>>> outdata(nVars + 1, tmp2);
       // do 1d integration
       integrate1d(
-        dir, dir1, dir2, outdata, x, y, amrData, indata, nVars, finestLevel,
-        cComp, cMin, cMax, avg);
+        dir, dir1, dir2, outdata, x, y, pf, indata, volFracData, nVars,
+        finestLevel, cComp, cMin, cMax, avg);
       Print() << "Integration completed" << std::endl;
       // output data in desired format
       Print() << "Writing data as " + format << std::endl;
       if (ParallelDescriptor::IOProcessor()) {
         if (format == "dat") {
-          writeDat1D(x, outfile + "_x.dat", ldir1);
-          writeDat1D(y, outfile + "_y.dat", ldir2);
-          writeDat2D(outdata[0], outfile + "_length.dat", ldir1, ldir2);
+          writeDat1D(x, outfile + "_x.dat", path, ldir1);
+          writeDat1D(y, outfile + "_y.dat", path, ldir2);
+          writeDat2D(outdata[0], outfile + "_length.dat", path, ldir1, ldir2);
           for (int n = 1; n < nVars + 1; n++) {
             writeDat2D(
-              outdata[n], outfile + "_" + vars[n - 1] + ".dat", ldir1, ldir2);
+              outdata[n], outfile + "_" + vars[n - 1] + ".dat", path, ldir1,
+              ldir2);
           }
         } else if (format == "ppm") {
           int goPastMax = 1;
@@ -636,75 +923,86 @@ main(int argc, char* argv[])
       }
       break;
     }
-    case 2: {
-      Box probDomain = amrData.ProbDomain()[finestLevel];
+    case 2: // 2D integral
+    {
+      Box probDomain = pf.probDomain(finestLevel);
       int ldir = probDomain.length(dir);
       Vector<Real> x(ldir);
       Vector<Real> tmp(ldir, 0.0);
       Vector<Vector<Real>> outdata(nVars + 1, tmp);
       integrate2d(
-        dir, dir1, dir2, outdata, x, amrData, indata, nVars, finestLevel, cComp,
-        cMin, cMax, avg);
+        dir, dir1, dir2, outdata, x, pf, indata, volFracData, nVars,
+        finestLevel, cComp, cMin, cMax, avg);
       Print() << "Integration completed" << std::endl;
       Print() << "Writing data as " + format << std::endl;
       if (ParallelDescriptor::IOProcessor()) {
         if (format == "dat") {
-          writeDat1D(x, outfile + "_x.dat", ldir);
-          writeDat2D(outdata, outfile + "_allVars.dat", nVars + 1, ldir);
-          // writeDat1D(outdata[0],outfile+"_area.dat",ldir);
-          // for (int n = 1; n < nVars+1; n++) {
-          //   writeDat1D(outdata[n],outfile+"_"+vars[n-1]+".dat",ldir);
-          // }
+          writeDat1D(x, outfile + "_x.dat", path, ldir);
+          std::string stringAttachment = "_allVars.dat";
+          pp.query("stringAttachment", stringAttachment);
+          writeDat2D(
+            outdata, outfile + stringAttachment + ".dat", path, nVars + 1,
+            ldir);
         } // can add more formats here if we want
       }
       break;
     }
-    case 3: {
+    case 3: // 3D integral
+    {
       format = "dat"; // probably add an option for binary output
       Vector<Real> outdata(nVars + 1, 0.0);
       integrate3d(
-        outdata, amrData, indata, nVars, finestLevel, cComp, cMin, cMax, avg);
+        outdata, pf, indata, volFracData, nVars, finestLevel, cComp, cMin, cMax,
+        avg);
       Print() << "Integration completed" << std::endl;
       Print() << "Writing data as " + format << std::endl;
       if (ParallelDescriptor::IOProcessor()) {
         if (format == "dat") {
-          writeDat1D(outdata, outfile + "_allVars.dat", nVars + 1);
+          std::string stringAttachment = "_allVars.dat";
+          pp.query("stringAttachment", stringAttachment);
+          writeDat1D(
+            outdata, outfile + stringAttachment + ".dat", path, nVars + 1);
         } // can add more formats here
       }
       break;
     }
     }
+
+// For 2D Domain
 #elif AMREX_SPACEDIM == 2
     switch (integralDimension) {
-    case 1: {
-      Box probDomain = amrData.ProbDomain()[finestLevel];
+    case 1: // 1D Integral
+    {
+      Box probDomain = pf.probDomain(finestLevel);
       int ldir = probDomain.length(dir1);
       Vector<Real> x(ldir);
       Vector<Real> tmp(ldir, 0.0);
       Vector<Vector<Real>> outdata(nVars + 1, tmp);
       integrate1d(
-        dir, dir1, outdata, x, amrData, indata, nVars, finestLevel, cComp, cMin,
-        cMax, avg);
+        dir, dir1, outdata, x, pf, indata, volFracData, nVars, finestLevel,
+        cComp, cMin, cMax, avg);
       Print() << "Integration completed" << std::endl;
       Print() << "Writing data as " + format << std::endl;
       if (ParallelDescriptor::IOProcessor()) {
         if (format == "dat") {
-          writeDat1D(x, outfile + "_x.dat", ldir);
-          writeDat2D(outdata, outfile + "_allVars.dat", nVars + 1, ldir);
+          writeDat1D(x, outfile + "_x.dat", path, ldir);
+          writeDat2D(outdata, outfile + "_allVars.dat", path, nVars + 1, ldir);
         } // can add more formats here if we want
       }
       break;
     }
-    case 2: {
+    case 2: // 2D Integral
+    {
       format = "dat"; // probably add an option for binary output
       Vector<Real> outdata(nVars + 1, 0.0);
       integrate2d(
-        outdata, amrData, indata, nVars, finestLevel, cComp, cMin, cMax, avg);
+        outdata, pf, indata, volFracData, nVars, finestLevel, cComp, cMin, cMax,
+        avg);
       Print() << "Integration completed" << std::endl;
       Print() << "Writing data as " + format << std::endl;
       if (ParallelDescriptor::IOProcessor()) {
         if (format == "dat") {
-          writeDat1D(outdata, outfile + "_allVars.dat", nVars + 1);
+          writeDat1D(outdata, outfile + "_allVars.dat", path, nVars + 1);
         } // can add more formats here
       }
       break;

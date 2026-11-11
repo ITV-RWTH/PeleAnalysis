@@ -30,7 +30,8 @@ integrate(
   const amrex::Vector<int>&             ref_ratios,
   int                                   scomp,
   int                                   ncomp,
-  const amrex::Vector<int>&             axes_to_integrate);
+  const amrex::Vector<int>&             axes_to_integrate,
+  const amrex::Vector<amrex::MultiFab>* vfrac_mf = nullptr);
 
 // --- Gradient tools ---
 void gradient(
