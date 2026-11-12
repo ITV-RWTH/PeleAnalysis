@@ -7,11 +7,11 @@ PELE_ANALYSIS_HOME = ../..
 # to link PeleAnalysis to your versions of PELE_PHYSICS_HOME and AMREX_HOME used by 
 # PeleLMeX or PeleC, make the following lines to point to the respective directories.
 #
-# PELE_PHYSICS_HOME = $(abspath ../../../PelePhysics)
-# AMREX_HOME = $(abspath ../../../PelePhysics/Submodules/amrex)
+PELE_PHYSICS_HOME = $(abspath ../../../PelePhysics)
+AMREX_HOME = $(abspath ../../../PelePhysics/Submodules/amrex)
 
 # AMReX
-DIM        = 3
+DIM        = 2
 PRECISION  = DOUBLE
 PROFILE    = FALSE
 VERBOSE    = TRUE
@@ -27,7 +27,7 @@ TINY_PROFILE = FALSE
 
 #EBASE=plotQPD
 #EBASE=plotTYtoLe
-#EBASE=plotTransportCoeff
+EBASE=plotTransportCoeff
 #EBASE=plotXtoY
 #EBASE=plotYtoX
 #EBASE=computeMixtureFraction
@@ -38,7 +38,7 @@ TINY_PROFILE = FALSE
 CEXE_sources += $(EBASE).cpp
 
 Eos_Model       = Fuego
-Chemistry_Model = drm19
+Chemistry_Model = LiDryer
 Transport_Model = Simple
 
 Blocs   := .

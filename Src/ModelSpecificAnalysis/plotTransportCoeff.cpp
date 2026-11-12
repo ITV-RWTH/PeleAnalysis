@@ -14,6 +14,10 @@
 #include <PelePhysics.H>
 
 using namespace amrex;
+namespace m2c = pele::physics::utilities::mks2cgs;
+namespace c2m = pele::physics::utilities::cgs2mks;
+
+
 
 pele::physics::PeleParams<pele::physics::transport::TransParm<
   pele::physics::PhysicsType::eos_type,
@@ -177,6 +181,7 @@ main(int argc, char* argv[])
       // Get the transport data pointer
       auto const* ltransparm = trans_parms.device_parm();
 
+      
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -193,12 +198,56 @@ main(int argc, char* argv[])
         Array4<Real> const& xi_a = outdata[lev]->array(mfi, idXiout);
         Array4<Real> const& lam_a = outdata[lev]->array(mfi, idLamout);
 
-        amrex::launch(bx, [=] AMREX_GPU_DEVICE(amrex::Box const& tbx) {
+
+	const auto lo = lbound(bx);
+	const auto hi = ubound(bx);   // bei Box inklusiv
+/*
+
+	std::cout << "Rho vor m2c: " << rho_a(lo.z, lo.y, lo.x) << std::endl;
+
+	for (int k = lo.z; k <= hi.z; ++k)
+	for (int j = lo.y; j <= hi.y; ++j)
+	for (int i = lo.x; i <= hi.x; ++i)
+    	  rho_a(i,j,k) = m2c::Rho(rho_a(i,j,k));
+
+	amrex::launch(bx, [=] AMREX_GPU_DEVICE(amrex::Box const& tbx) {
           auto trans = pele::physics::PhysicsType::transport();
-          trans.get_transport_coeffs(
-            tbx, Y_a, T_a, rho_a, D_a, chi_a, mu_a, xi_a, lam_a, ltransparm);
+	  trans.get_transport_coeffs(
+            tbx, Y_a, T_a, rho_a, D_a, chi_a, mu_a, xi_a, lam_a, ltransparm);       
+	  });
+
+	
+
+
+	for (int k = lo.z; k <= hi.z; ++k)
+	for (int j = lo.y; j <= hi.y; ++j)
+	for (int i = lo.x; i <= hi.x; ++i)
+    	  rho_a(i,j,k) = c2m::Rho(rho_a(i,j,k));
+*/
+	
+	std::cout << "Rho vor m2c: " << rho_a(lo.x, lo.y, lo.z) << std::endl;
+		
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+          rho_a(i,j,k) = m2c::Rho(rho_a(i,j,k));
         });
+	
+	
+	std::cout << "Rho nach m2c: " << rho_a(lo.x, lo.y, lo.z) << std::endl;
+
+	amrex::launch(bx, [=] AMREX_GPU_DEVICE(amrex::Box const& tbx) {
+          auto trans = pele::physics::PhysicsType::transport();
+	  trans.get_transport_coeffs(
+            tbx, Y_a, T_a, rho_a, D_a, chi_a, mu_a, xi_a, lam_a, ltransparm);       
+	  });
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+          rho_a(i,j,k) = c2m::Rho(rho_a(i,j,k));
+        });
+
+	std::cout << "Rho nach c2m: " << rho_a(lo.x, lo.y, lo.z) << std::endl;
+
       }
+
 
       // Copy auxiliary variables unchanged from the input to the output
       for (int ivar = 0; ivar < nAuxVar; ++ivar) {
@@ -206,9 +255,10 @@ main(int argc, char* argv[])
           *outdata[lev], indata, idAuxLocal + ivar, idAuxOut + ivar, 1, nGrow);
       }
 
+      
       Print() << "Derive finished for level " << lev << std::endl;
     }
-
+    
     std::string outfile(getFileRoot(plotFileName) + "_D");
 
     // Cap the number of plotfile data files via the n_files option (AMReX)
