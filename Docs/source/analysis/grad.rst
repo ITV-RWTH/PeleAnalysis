@@ -24,7 +24,7 @@ Example Input File ``grad.inp``::
         n_files = 64                              # DEF: AMReX default, cap on the number of plotfile data files (VisMF), clamped to the MPI rank count
 
         #------------------- Operation control ----------------------------------------------------
-        gradVar = temp		      	          # variable to calculate gradient on
+        gradVar = temp		      	          # Required, variable to calculate gradient on
         finestLevel = 4				  # DEF: 1000, max level to consider for gradient 
         Aux_Variables = density x_velocity	  # DEF: None, variables that are just carried through the script and written to the output file   
         sym_dir = 0 0 0				  # DEF: 0 0 0, sets case symmetry 
