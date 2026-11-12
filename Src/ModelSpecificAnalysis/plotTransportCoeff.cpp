@@ -177,8 +177,10 @@ main(int argc, char* argv[])
       Print() << "Data has been read for level " << lev << std::endl;
 
       // Plotfile data are in MKS, PelePhysics transport works in CGS:
-      // convert density to g/cm^3. (The ideal-gas EOS ignores density in
-      // the Simple model, but non-ideal EOS such as SRK use it.)
+      // convert density to g/cm^3. With the ideal-gas EOS (Fuego) the Simple
+      // model ignores density; with SRK it enters the Chung corrections
+      // (mu, lambda) and the dense-gas correction of the binary diffusion
+      // coefficients (rhoD), so it must be in CGS.
       indata.mult(m2c::Rho(1.0), idRlocal, 1, nGrow);
 
       // Get the transport data pointer
