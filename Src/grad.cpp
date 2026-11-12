@@ -26,17 +26,21 @@ using namespace amrex;
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "Usage:\n"
-            << "  " << argv[0] << " infile=FILE compName=NAME [OPTIONS]\n\n"
+  std::cerr
+    << "Usage:\n"
+    << "  " << argv[0]
+    << " infile=FILE gradVar=NAME is_per=\"I I (I)\" [OPTIONS]\n\n"
 
-            << "Required arguments:\n"
-            << "  infile=FILE        AMReX plotfile\n"
-            << "  compName=NAME      Component for gradient evaluation\n\n"
+    << "Required arguments:\n"
+    << "  infile=FILE        AMReX plotfile\n"
+    << "  gradVar=NAME       Plotfile variable to take the gradient of\n"
+    << "  is_per=I I (I)     Periodicity per direction (must match the "
+    << "simulation)\n\n"
 
-            << "Options:\n"
-            << "  -h, --help         Show this help message\n\n"
-            << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
-            << "the documentation.\n";
+    << "Options:\n"
+    << "  -h, --help         Show this help message\n\n"
+    << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+    << "the documentation.\n";
 
   std::exit(1);
 }
@@ -65,7 +69,7 @@ main(int argc, char* argv[])
     //------------------------------------------------------------------------------------------
     // Set defaults input values
     //------------------------------------------------------------------------------------------
-    std::string gradVar = "temp";
+    std::string gradVar = "";
     std::string infile = "";
     int finestLevel = 1000;
     int nAuxVar = 0;
@@ -90,7 +94,7 @@ main(int argc, char* argv[])
     if (verbose > 0)
       Print() << "infile = " << infile << std::endl;
 
-    pp.query("gradVar", gradVar);
+    pp.get("gradVar", gradVar);
     if (verbose > 0)
       Print() << "Choosen gradVar: " << gradVar << std::endl;
 
