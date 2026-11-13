@@ -146,7 +146,6 @@ been run on a GPU as part of this review.
      - As ``grad``. The file min/max reduction synchronises once per box, which
        is correct but slow.
    * - ``integral``
-     - Wrong on multi-level data
-     - The step that excludes coarse cells covered by a finer level is
-       compiled out on GPU builds, so covered regions are counted twice when
-       ``finestLevel > 0``. Single-level integrals are correct.
+     - Runs on GPU
+     - Coarse cells covered by a finer level are masked on the device; the
+       integrals are accumulated with ``ParallelFor`` and atomic adds.
