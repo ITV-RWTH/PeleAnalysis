@@ -58,9 +58,3 @@ The `integralDimension` defines in how many dimensions the integral is performed
    goPastMax = 0                              # [0, 1], DEF: 1; For format = ppm, specify behaviour over vMax. 0: cap, 1: extra color scale over magenta to white.
 
 The format option allows to output ASCI coded `dat` files or `ppm` (portable pixmap) image files. For the latter, `useminmax1`, `useminmax2`, and so on allow to normalize fariables 1, 2, and so on, respectively. `goPastMax` extends the colorscale to a superunitiy region.
-
-.. warning::
-
-   On GPU builds, coarse cells covered by a finer level are not excluded, so
-   multi-level plotfiles are integrated incorrectly. Single-level integrals
-   are correct.
