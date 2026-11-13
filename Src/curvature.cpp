@@ -416,8 +416,7 @@ main(int argc, char* argv[])
 
         amrex::ParallelFor(
           bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-
-// Making sure that progress variable outside of domain is set to 0
+// Set the progress variable to 0 in EB-covered cells (volFrac == 0)
 #ifdef AMREX_USE_EB
             if (volFracBox(i, j, k) > 0) {
               ProgVarFab(i, j, k) = (StateVarFab(i, j, k) - progMin) * invdenom;
@@ -425,7 +424,7 @@ main(int argc, char* argv[])
               ProgVarFab(i, j, k) = 0;
             }
 #else
-                ProgVarFab(i,j,k) = ( StateVarFab(i,j,k) - progMin ) * invdenom;
+            ProgVarFab(i, j, k) = (StateVarFab(i, j, k) - progMin) * invdenom;
 #endif
           });
       }
