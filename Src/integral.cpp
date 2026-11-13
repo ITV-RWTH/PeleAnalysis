@@ -829,29 +829,26 @@ main(int argc, char* argv[])
 #endif
     }
 
-//-----------------------------------------------------------------
-// Cell Intersections
-//-----------------------------------------------------------------
+    //-----------------------------------------------------------------
+    // Cell Intersections
+    //-----------------------------------------------------------------
 
-// Finding the intersections of cells
-// Forced to run on CPU
-#ifndef AMREX_USE_GPU
+    // Exclude coarse cells covered by a finer level: set the indicator
+    // component (nVars) to 0 there. setVal runs on the device in GPU builds.
     Print() << "Determining intersects..." << std::endl;
     for (int lev = 0; lev < finestLevel; lev++) {
       BoxArray baf = (*indata[lev + 1]).boxArray();
       baf.coarsen(pf.refRatio(lev));
-      for (MFIter mfi(*indata[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+      for (MFIter mfi(*indata[lev]); mfi.isValid(); ++mfi) {
         FArrayBox& myFab = (*indata[lev])[mfi];
-        int idx = mfi.index();
         std::vector<std::pair<int, Box>> isects =
-          baf.intersections((*indata[lev]).boxArray()[idx]);
-        for (int ii = 0; ii < isects.size(); ii++) {
-          myFab.setVal(0.0, isects[ii].second, nVars, 1);
+          baf.intersections(mfi.validbox());
+        for (const auto& isect : isects) {
+          myFab.setVal<RunOn::Device>(0.0, isect.second, nVars, 1);
         }
       }
     }
     Print() << "Intersects determined" << std::endl;
-#endif
 
     //-----------------------------------------------------------------
     // Real work
