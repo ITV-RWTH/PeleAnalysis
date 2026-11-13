@@ -4,6 +4,8 @@
 #------------------- IO CONTROL -----------------------------------------------------------
 infile = plt00000                          # Plot file for surface construction
 finestLevel = 0                            # DEF: finest level of plot file; Sets the finest level to read.
+path = .                                   # DEF: .; Folder in which the output files are written.
+stringAttachment = _allVars                # DEF: _allVars; Output file suffix (3D plotfiles, integralDimension = 2 or 3).
 
 #------------------- Variables ------------------------------------------------------------
 vars = I_R(H2)                             # Variables to integrate

@@ -23,6 +23,8 @@ Tool Options
    #------------------- IO CONTROL -----------------------------------------------------------
    infile = plt00000                          # Plot file for surface construction
    finestLevel = 0                            # DEF: finest level of plot file; Sets the finest level to read.
+   path = .                                   # DEF: .; Folder in which the output files are written.
+   stringAttachment = _allVars                # DEF: _allVars; Output file suffix (3D plotfiles, integralDimension = 2 or 3).
 
    #------------------- Variables ------------------------------------------------------------
    vars = I_R(H2)                             # Variables to integrate
@@ -56,4 +58,3 @@ The `integralDimension` defines in how many dimensions the integral is performed
    goPastMax = 0                              # [0, 1], DEF: 1; For format = ppm, specify behaviour over vMax. 0: cap, 1: extra color scale over magenta to white.
 
 The format option allows to output ASCI coded `dat` files or `ppm` (portable pixmap) image files. For the latter, `useminmax1`, `useminmax2`, and so on allow to normalize fariables 1, 2, and so on, respectively. `goPastMax` extends the colorscale to a superunitiy region.
-
