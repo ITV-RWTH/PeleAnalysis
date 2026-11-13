@@ -53,6 +53,12 @@ wrote into the plotfile.
        centroids and averaged to cell centres.
      - yes
      - no
+   * - :doc:`../analysis/curvature`
+     - Progress variable is zeroed in covered cells; gradients, smoothing,
+       mean/Gaussian curvature, strain rate and normal velocity use EB-aware
+       operators; results are only computed where ``volFrac > 0``.
+     - yes
+     - no
 
 All other tools ignore EB, even when built with ``USE_EB=TRUE``.
 
@@ -130,3 +136,7 @@ been run on a GPU as part of this review.
      - Runs on GPU
      - All field operations are AMReX solvers, ``MultiFab`` operations or
        ``ParallelFor`` kernels.
+   * - ``curvature``
+     - Runs on GPU
+     - As ``grad``. The file min/max reduction synchronises once per box, which
+       is correct but slow.
