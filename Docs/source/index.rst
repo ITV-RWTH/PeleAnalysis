@@ -175,7 +175,7 @@ General tools (``Src``)
    * - :doc:`integral <analysis/integral>`
      - ➖
      - ✅
-     - ❌
+     - ✅
      - R
    * - isoMEF
      - ➖
