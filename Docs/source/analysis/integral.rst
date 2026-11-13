@@ -67,8 +67,3 @@ volume fraction, so cut cells contribute only their fluid part. The plotfile
 must contain the ``volFrac`` field; no geometry inputs are needed. See
 :ref:`embedded_boundaries`.
 
-.. warning::
-
-   On GPU builds, coarse cells covered by a finer level are not excluded, so
-   multi-level plotfiles are integrated incorrectly. Single-level integrals
-   are correct. See :ref:`eb_gpu_support`.
