@@ -538,19 +538,11 @@ main(int argc, char* argv[])
     // Compute curvature
     //---------------------------------------------------------------------------
 
-#ifdef AMREX_USE_EB
-    LPInfo info_apply;
-    info_apply.setMaxCoarseningLevel(0);
-    // info_apply.setAgglomeration(1);
-    // info_apply.setConsolidation(1);
-    info_apply.setMetricTerm(false);
-#else
     LPInfo info;
     info.setAgglomeration(1);
     info.setConsolidation(1);
     info.setMetricTerm(false);
     info.setMaxCoarseningLevel(0);
-#endif
 
     for (int lev = 0; lev < Nlev; ++lev) {
       const BoxArray ba = pf.boxArray(lev);
@@ -562,7 +554,7 @@ main(int argc, char* argv[])
 // Get face gradients of progress variable
 #ifdef AMREX_USE_EB
       MLEBABecLap poisson(
-        {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply, {eb_factory[lev].get()});
+        {*geoms[lev]}, {ba}, {dmap[lev]}, info, {eb_factory[lev].get()});
       poisson.setVerbose(4);
       poisson.setMaxOrder(4);
 
@@ -742,8 +734,7 @@ main(int argc, char* argv[])
 
 #ifdef AMREX_USE_EB
         MLEBABecLap poisson2(
-          {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply,
-          {eb_factory[lev].get()});
+          {*geoms[lev]}, {ba}, {dmap[lev]}, info, {eb_factory[lev].get()});
         poisson2.setVerbose(4);
         poisson2.setMaxOrder(4);
 
@@ -876,8 +867,7 @@ main(int argc, char* argv[])
 
 #ifdef AMREX_USE_EB
           MLEBABecLap poisson2(
-            {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply,
-            {eb_factory[lev].get()});
+            {*geoms[lev]}, {ba}, {dmap[lev]}, info, {eb_factory[lev].get()});
           poisson2.setVerbose(4);
           poisson2.setMaxOrder(4);
 
@@ -1049,8 +1039,7 @@ main(int argc, char* argv[])
 
 #ifdef AMREX_USE_EB
           MLEBABecLap poisson2(
-            {*geoms[lev]}, {ba}, {dmap[lev]}, info_apply,
-            {eb_factory[lev].get()});
+            {*geoms[lev]}, {ba}, {dmap[lev]}, info, {eb_factory[lev].get()});
           poisson2.setVerbose(4);
           poisson2.setMaxOrder(4);
 
