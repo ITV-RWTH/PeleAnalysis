@@ -386,7 +386,6 @@ main(int argc, char* argv[])
 
         amrex::ParallelFor(
           bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-            // Making sure that progress variable outside of domain is set to 0
             ProgVarFab(i, j, k) = (StateVarFab(i, j, k) - progMin) * invdenom;
           });
       }
