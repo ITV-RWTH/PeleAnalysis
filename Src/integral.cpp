@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <cstring>
 #include <string>
 #include <iostream>
 
@@ -6,6 +8,33 @@
 #include <AMReX_PlotFileUtil.H>
 
 using namespace amrex;
+
+static void
+print_usage(int, char* argv[])
+{
+  std::cerr
+    << "Usage:\n"
+    << "  " << argv[0]
+    << " infile=FILE vars=\"NAME [NAME ...]\" integralDimension=N "
+    << "[dir=D | dir1=D1 dir2=D2] [OPTIONS]\n\n"
+
+    << "Required arguments:\n"
+    << "  infile=FILE            AMReX plotfile\n"
+    << "  vars=NAME [NAME ...]   Plotfile variables to integrate\n"
+    << "  integralDimension=N    Number of directions to integrate over "
+    << "(1 to AMREX_SPACEDIM)\n"
+    << "  dir=D                  Integration direction "
+    << "(integralDimension = 1)\n"
+    << "  dir1=D1 dir2=D2        Integration directions "
+    << "(integralDimension = 2, 3D only)\n\n"
+
+    << "Options:\n"
+    << "  -h, --help             Show this help message\n\n"
+    << "Visit PeleAnalysis/Src/InputSamples for examples or refer to "
+    << "the documentation.\n";
+
+  std::exit(1);
+}
 
 //-----------------------------------------------------------------
 // DIM = 3
@@ -693,6 +722,14 @@ main(int argc, char* argv[])
 {
   amrex::Initialize(argc, argv);
   {
+    if (argc < 2) {
+      print_usage(argc, argv);
+    } else if (
+      (std::strcmp(argv[1], "-h") == 0) ||
+      (std::strcmp(argv[1], "--help") == 0)) {
+      print_usage(argc, argv);
+    }
+
     ParmParse pp;
 
     // Init of input infile
