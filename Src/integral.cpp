@@ -90,9 +90,6 @@ integrate1d(
             inbox(i, j, k, nVars) > 1e-8 &&
             (cComp < 0 ||
              (inbox(i, j, k, cComp) >= cMin && inbox(i, j, k, cComp) < cMax))) {
-            // d[0] = i;
-            // d[1] = j;
-            // d[2] = k;
             Real volFrac = volFracBox(i, j, k, 0);
 
             // GPU-safe
@@ -119,22 +116,12 @@ integrate1d(
               }
             }
 
-            //   for (int rx = 0; rx < refRatio; rx++) {
-            //     for (int ry = 0; ry < refRatio; ry++) {
-            // outdata[0][refRatio*d[dir1]+rx][refRatio*d[dir2]+ry] +=
-            // dzLev*volFrac; for (int n = 1; n < nVars+1; n++) {
-            //   outdata[n][refRatio*d[dir1]+rx][refRatio*d[dir2]+ry] +=
-            //   dzLev*volFrac*inbox(i,j,k,n-1);
-            // } // for nVars-loop
-            //     } //for ry-loop
-            //   } // for rx-loop
           } // if
         }); // PARALLEL_FOR
 
     } // MFIter
 
   } // lev-loop
-  //}
 
   // Host copy & reduction
   Vector<Real> host_outdata(out_size);
@@ -157,11 +144,6 @@ integrate1d(
     }
   }
 
-  // for (int i = 0; i < ldir1; i++) {
-  //   for (int n = 0; n<nVars+1; n++) {
-  //     ParallelDescriptor::ReduceRealSum(outdata[n][i].data(),ldir2);
-  //   }
-  // }
   if (avg) {
     for (int n = 1; n < nVars + 1; n++) {
       for (int i = 0; i < ldir1; i++) {
@@ -175,8 +157,6 @@ integrate1d(
   Array<Real, AMREX_SPACEDIM> plo = pf.probLo();
   Array<Real, AMREX_SPACEDIM> phi = pf.probHi();
 
-  // Real dxFine = amrData.DxLevel()[finestLevel][dir1];
-  // Real dyFine = amrData.DxLevel()[finestLevel][dir2];
   Real dxFine = pf.cellSize(finestLevel)[dir1];
   Real dyFine = pf.cellSize(finestLevel)[dir2];
   for (int i = 0; i < ldir1; i++) {
@@ -257,18 +237,6 @@ integrate2d(
                 }
               }
             }
-
-            //     d[0] = i;
-            //     d[1] = j;
-            //     d[2] = k;
-            //     Real volFrac = volFracBox(i,j,k,0);
-            //     for (int rx = 0; rx < refRatio; rx++) {
-            //       outdata[0][refRatio*d[dir]+rx] += areaLev*volFrac;
-            //       for (int n = 1; n < nVars+1; n++) {
-            //   outdata[n][refRatio*d[dir]+rx] +=
-            //   areaLev*volFrac*inbox(i,j,k,n-1);
-            //   }
-            // }
           }
         }); // ParallelFor
     } // MFIter
@@ -292,9 +260,6 @@ integrate2d(
     }
   }
 
-  // for (int n = 0; n < nVars+1; n++) {
-  //   ParallelDescriptor::ReduceRealSum(outdata[n].data(),ldir);
-  // }
   Real dzFine = pf.cellSize(finestLevel)[dir];
   if (avg) {
     for (int n = 1; n < nVars + 1; n++) {
@@ -359,10 +324,6 @@ integrate3d(
                 &d_out[n], volLev * volFrac *
                              inbox(i, j, k, n - 1)); // Integral for every Var
             }
-            // outdata[0] += volLev*volFrac;
-            // for (int n = 1; n < nVars+1; n++) {
-            //   outdata[n] += volLev*volFrac*inbox(i,j,k,n-1);
-            // }
           }
         }); // ParallelFor
     } // MFIter
@@ -380,7 +341,6 @@ integrate3d(
   for (int n = 0; n <= nVars; ++n) {
     outdata[n] = host_outdata[n];
   }
-  // ParallelDescriptor::ReduceRealSum(outdata.data(),nVars+1);
 
   if (avg) {
     for (int n = 1; n < nVars + 1; n++) {
@@ -460,13 +420,6 @@ integrate1d(
                 }
               }
             }
-
-            //   for (int rx = 0; rx < refRatio; rx++) {
-            //     outdata[0][refRatio*d[dir]+rx] += dxLev*volFrac;
-            //     for (int n = 1; n < nVars+1; n++) {
-            // outdata[n][refRatio*d[dir]+rx] += dxLev*volFrac*inbox(i,j,k,n-1);
-            //     }
-            //   }
           }
         }); // ParallelFor
     } // MFIter
@@ -478,10 +431,6 @@ integrate1d(
     Gpu::deviceToHost, gpu_outdata.begin(), gpu_outdata.end(),
     host_outdata.begin());
 
-  // for (int n = 0; n <= nVars; ++n) {
-  //     ParallelDescriptor::ReduceRealSum(&host_outdata[n * ldir], ldir);
-  // }
-
   ParallelDescriptor::ReduceRealSum(host_outdata.data(), out_size);
 
   // Repack into nested output
@@ -492,9 +441,6 @@ integrate1d(
     }
   }
 
-  // for (int n = 0; n < nVars+1; n++) {
-  //   ParallelDescriptor::ReduceRealSum(outdata[n].data(),ldir);
-  // }
   Real dyFine = pf.cellSize(finestLevel)[dir];
   if (avg) {
     for (int n = 1; n < nVars + 1; n++) {
@@ -557,11 +503,6 @@ integrate2d(
                 &d_out[n], areaLev * volFrac *
                              inbox(i, j, k, n - 1)); // Integral for every Var
             }
-
-            // outdata[0] += areaLev*volFrac;
-            // for (int n = 1; n < nVars+1; n++) {
-            //   outdata[n] += areaLev*volFrac*inbox(i,j,k,n-1);
-            // }
           }
         });
     }
@@ -580,7 +521,6 @@ integrate2d(
     outdata[n] = host_outdata[n];
   }
 
-  // ParallelDescriptor::ReduceRealSum(outdata.data(),nVars+1);
   if (avg) {
     for (int n = 1; n < nVars + 1; n++) {
       if (outdata[0] > 0.0)
