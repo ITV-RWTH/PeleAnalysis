@@ -1,6 +1,9 @@
 #include <string>
 #include <iostream>
 #include <set>
+#include <limits>
+#include <cstring>
+#include <algorithm>
 
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
@@ -32,9 +35,24 @@ pele::physics::PeleParams<pele::physics::transport::TransParm<
 static void
 print_usage(int, char* argv[])
 {
-  std::cerr << "usage:\n";
-  std::cerr << argv[0] << " infile infile=f1 [options] \n\tOptions:\n";
-  exit(1);
+  std::cerr
+    << "Usage:\n"
+    << "  " << argv[0] << " infile=FILE fuelName=NAME is_per=\"I I (I)\" "
+    << "[OPTIONS]\n\n"
+
+    << "Required arguments:\n"
+    << "  infile=FILE        AMReX plotfile\n"
+    << "  fuelName=NAME      Fuel species name as in the mechanism, e.g. H2 "
+    << "(not Y(H2))\n"
+    << "  is_per=I I (I)     Periodicity per direction (must match the "
+    << "simulation)\n\n"
+
+    << "Options:\n"
+    << "  -h, --help         Show this help message\n\n"
+    << "Visit PeleAnalysis/Src/ModelSpecificAnalysis/InputsSamples for "
+    << "examples or refer to the documentation.\n";
+
+  std::exit(1);
 }
 
 std::string
@@ -49,15 +67,25 @@ main(int argc, char* argv[])
 {
   Initialize(argc, argv);
   {
-    if (argc < 2)
+    if (argc < 2) {
       print_usage(argc, argv);
+    } else if (
+      (std::strcmp(argv[1], "-h") == 0) ||
+      (std::strcmp(argv[1], "--help") == 0)) {
+      print_usage(argc, argv);
+    }
 
     // ---------------------------------------------------------------------
     // Set defaults input values
     // ---------------------------------------------------------------------
-    std::string fuelName = "H2";
+    std::string fuelName; // required: species name, e.g. H2
     int verbose = 0;
-    Real sL = 1.0; // laminar flame speed
+    // Source of the reaction rate of the fuel: "instantaneous" evaluates it
+    // from the plotfile state (consistent with the diffusion terms), "plotfile"
+    // uses I_R(<fuel>), the reaction term averaged over the last time step
+    std::string reactionSource = "instantaneous";
+    // Sd is only evaluated where |grad Y_F| > gradThreshold * max|grad Y_F|
+    Real gradThreshold = 1.0e-3;
     int do_soret = 0;
     int do_wbar = 1;
     int n_files = amrex::VisMF::GetNOutFiles();
@@ -90,15 +118,15 @@ main(int argc, char* argv[])
 
     std::string progressVar = "Y(" + fuelName + ")";
     Print() << "ProgressVar: " << progressVar << std::endl;
-    pp.query("sL", sL);
+    pp.query("reactionSource", reactionSource);
+    if (reactionSource != "instantaneous" && reactionSource != "plotfile") {
+      Abort("reactionSource must be 'instantaneous' or 'plotfile'");
+    }
+    const bool use_plotfile_rate = (reactionSource == "plotfile");
+    pp.query("gradThreshold", gradThreshold);
     ParmParse pptrans("transport");
     pptrans.query("use_soret", do_soret);
     pp.query("use_wbar", do_wbar);
-    int idYin = -1;
-    int idTin = -1;
-    int idRin = -1;
-    int idCin = -1;
-    int idEin = -1;
 
     Vector<std::string> spec_names;
     pele::physics::eos::speciesNames<pele::physics::PhysicsType::eos_type>(
@@ -116,61 +144,67 @@ main(int argc, char* argv[])
       amrex::Abort("Species '" + fuelName + "' not found in mechanism!");
     }
 
-    const Vector<std::string>& plotVarNames = pf.varNames();
-    const std::string spName = "Y(" + spec_names[0] + ")";
-    const std::string TName = "temp";
-    const std::string RName = "density";
-    const std::string CName = "I_R(" + fuelName + ")";
-    const std::string EName = "rhoh";
-
-    for (int i = 0; i < plotVarNames.size(); ++i) {
-      if (plotVarNames[i] == spName)
-        idYin = i;
-      if (plotVarNames[i] == TName)
-        idTin = i;
-      if (plotVarNames[i] == RName)
-        idRin = i;
-      if (plotVarNames[i] == CName)
-        idCin = i;
-      if (plotVarNames[i] == EName)
-        idEin = i;
+    // Soret coefficient scaling of PeleLMeX (getTransportCoeff in
+    // PeleLMeX_K.H, see Howarth, Day, Pitsch & Aspden): with Soret enabled,
+    // PeleLMeX scales the thermal diffusion coefficient of H2 by 0.664 and of
+    // H by 0.58. The same scaling is applied here so that the Soret term
+    // matches the one of the simulation. Other species have no thermal
+    // diffusion in PelePhysics (chi = 0), so their factor does not matter.
+    Real soret_scale = 1.0;
+#if defined(H2_ID)
+    if (fuelID == H2_ID) {
+      soret_scale = 0.664;
     }
-    if (idYin < 0 || idTin < 0 || idRin < 0 || idCin < 0)
-      Abort("Cannot find required data in pltfile");
+#endif
+#if defined(H_ID)
+    if (fuelID == H_ID) {
+      soret_scale = 0.58;
+    }
+#endif
 
-    const int nCompIn =
-      NUM_SPECIES +
-      4; // all species, temperature, density, chemical source term for fuel
-    const int nCompOut = 6;
-    Vector<std::string> outNames(nCompOut);
-    Vector<std::string> inNames(nCompIn);
-    Vector<int> destFillComps(nCompIn);
-    const int idYlocal = 0; // Xs start here
-    const int idClocal = NUM_SPECIES;
-    const int idTlocal = NUM_SPECIES + 1; // T starts here
-    const int idRlocal = NUM_SPECIES + 2; // R starts here
-    const int idElocal = NUM_SPECIES + 3;
+    // Local layout of indata: all species, temperature, density and the
+    // reaction rate of the fuel (read from the plotfile or computed below)
+    const int idYlocal = 0;
+    const int idTlocal = NUM_SPECIES;
+    const int idRlocal = NUM_SPECIES + 1;
+    const int idClocal = NUM_SPECIES + 2;
+    const int nCompIn = NUM_SPECIES + 3;
+
+    // Plotfile fields to read, in the order of the local layout above
+    Vector<std::string> inNames;
     for (int i = 0; i < NUM_SPECIES; ++i) {
-      destFillComps[i] = idYlocal + i;
-      inNames[i] = "Y(" + spec_names[i] + ")";
+      inNames.push_back("Y(" + spec_names[i] + ")");
     }
-    destFillComps[idClocal] = idClocal;
-    destFillComps[idTlocal] = idTlocal;
-    destFillComps[idRlocal] = idRlocal;
-    destFillComps[idElocal] = idElocal;
-    inNames[idTlocal] = TName;
-    inNames[idRlocal] = RName;
-    inNames[idClocal] = CName; // "I_R(" + fuelName + ")";
-    inNames[idElocal] = EName;
+    inNames.push_back("temp");
+    inNames.push_back("density");
+    if (use_plotfile_rate) {
+      inNames.push_back("I_R(" + fuelName + ")");
+    }
+
+    // Check that all required fields are in the plotfile
+    const Vector<std::string>& plotVarNames = pf.varNames();
+    std::string missing;
+    for (const auto& name : inNames) {
+      if (
+        std::find(plotVarNames.begin(), plotVarNames.end(), name) ==
+        plotVarNames.end()) {
+        missing += " " + name;
+      }
+    }
+    if (!missing.empty()) {
+      Abort("Cannot find required data in pltfile:" + missing);
+    }
+
+    const int nCompOut = 5;
+    Vector<std::string> outNames(nCompOut);
     outNames[0] = "Sd(" + fuelName + ")_dY";
     outNames[1] = "Sd(" + fuelName + ")_dT";
     outNames[2] = "Sd(" + fuelName + ")_dW";
     outNames[3] = "Sd(" + fuelName + ")_C";
     outNames[4] = "Sd(" + fuelName + ")";
-    outNames[5] = "Sd(" + fuelName + ")rhoh";
 
     int idProglocal = -1;
-    for (int i = 0; i < nCompIn; i++) {
+    for (int i = 0; i < inNames.size(); i++) {
       if (progressVar == inNames[i]) {
         idProglocal = i;
         break;
@@ -297,8 +331,7 @@ main(int argc, char* argv[])
         Array4<Real const> const& T_a = indata[lev].const_array(mfi, idTlocal);
         Array4<Real const> const& rho_a =
           indata[lev].const_array(mfi, idRlocal);
-        Array4<Real> const& I_R =
-          indata[lev].array(mfi, idClocal); // I_R(fuelName)
+        Array4<Real> const& rr_a = indata[lev].array(mfi, idClocal);
 
         Array4<Real> const& w_a = deriveMF[lev].array(mfi, 0);
         Array4<Real> const& spec_coeff_a = coeffMF[lev].array(mfi, 0);
@@ -310,9 +343,6 @@ main(int argc, char* argv[])
         Array4<const Real> const& volFracBox =
           eb_factory[lev]->getVolFrac()[mfi].array();
 #endif
-
-        // Debugging
-        Array4<Real> const& sd_a = outdata[lev].array(mfi, 0);
 
         amrex::ParallelFor(
           bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
@@ -369,14 +399,15 @@ main(int argc, char* argv[])
                 ci[n] *= 1e3 * 1e-6; // correction + mks -> cgs
               }
 
-              CKWC(T_a(i, j, k), ci, wdot); // returns molar production rate
-              Real wdot_local =
-                wdot[fuelID] * (1 / imw[fuelID]) *
-                1e6; // convert to mks and to mass production rate as kg/(m^3*s)
+              if (!use_plotfile_rate) {
+                CKWC(T_a(i, j, k), ci, wdot); // returns molar production rate
+                // convert to mks and to mass production rate as kg/(m^3*s)
+                rr_a(i, j, k) = wdot[fuelID] * (1 / imw[fuelID]) * 1e6;
+              }
 
               spec_coeff_a(i, j, k) = Dcoeff[fuelID] * mmw * imw[fuelID];
               soret_coeff_a(i, j, k) =
-                0.664 * chi[fuelID] /
+                soret_scale * chi[fuelID] /
                 T_a(i, j, k); // divide by T here for convenience
               molar_coeff_a(i, j, k) =
                 (do_wbar == 1) ? Dcoeff[fuelID] * Yloc[fuelID] * imw[fuelID]
@@ -658,7 +689,6 @@ main(int argc, char* argv[])
         phi.push_back(std::make_unique<MultiFab>(
           deriveMF[lev], amrex::make_alias, n + 1, 1));
         poisson.setLevelBC(lev, phi[lev].get());
-        laps.emplace_back(grids[lev], dmap[lev], 1, 1);
       }
       MLMG mlmg(poisson);
       mlmg.apply(GetVecOfPtrs(laps), GetVecOfPtrs(phi));
@@ -695,7 +725,6 @@ main(int argc, char* argv[])
           deriveMF[lev], amrex::make_alias, n + 1 + AMREX_SPACEDIM,
           1)); // plus 1 because 1 is W
         poisson.setLevelBC(lev, phi[lev].get());
-        laps.emplace_back(grids[lev], dmap[lev], 1, 1);
       }
       MLMG mlmg(poisson);
       mlmg.apply(GetVecOfPtrs(laps), GetVecOfPtrs(phi));
@@ -734,7 +763,6 @@ main(int argc, char* argv[])
           deriveMF[lev], amrex::make_alias, n + 1 + 2 * AMREX_SPACEDIM,
           1)); // plus 1 because 1 is W
         poisson.setLevelBC(lev, phi[lev].get());
-        laps.emplace_back(grids[lev], dmap[lev], 1, 1);
       }
       MLMG mlmg(poisson);
       mlmg.apply(GetVecOfPtrs(laps), GetVecOfPtrs(phi));
@@ -767,6 +795,36 @@ main(int argc, char* argv[])
     // Compute Flame Displacement Speed
     //------------------------------------------------------------------------------------------------------------------------
 
+    // Threshold on |grad Y_F|, relative to its maximum over all levels
+    Real maxGrad = 0.0;
+    for (int lev = 0; lev < Nlev; ++lev) {
+      auto const& gradY_ma = gradMF[lev].const_arrays();
+#ifdef AMREX_USE_EB
+      auto const& vfrac_ma = eb_factory[lev]->getVolFrac().const_arrays();
+#endif
+      Real levMax = ParReduce(
+        TypeList<ReduceOpMax>{}, TypeList<Real>{}, gradMF[lev], IntVect(0),
+        [=] AMREX_GPU_DEVICE(
+          int box_no, int i, int j, int k) noexcept -> GpuTuple<Real> {
+          auto const& g = gradY_ma[box_no];
+#ifdef AMREX_USE_EB
+          if (vfrac_ma[box_no](i, j, k) <= 0) {
+            return {0.0};
+          }
+#endif
+          return {std::sqrt(AMREX_D_TERM(
+            g(i, j, k, 0) * g(i, j, k, 0), +g(i, j, k, 1) * g(i, j, k, 1),
+            +g(i, j, k, 2) * g(i, j, k, 2)))};
+        });
+      maxGrad = std::max(maxGrad, levMax);
+    }
+    ParallelDescriptor::ReduceRealMax(maxGrad);
+    const Real gradMin = gradThreshold * maxGrad;
+    const Real qnan = std::numeric_limits<Real>::quiet_NaN();
+    Print() << "max|grad " << progressVar << "| = " << maxGrad
+            << ", Sd evaluated where |grad " << progressVar << "| > " << gradMin
+            << std::endl;
+
     // now we have all the second derivatives, lets combine everything for Sd
     for (int lev = 0; lev < Nlev; ++lev) {
 
@@ -788,7 +846,6 @@ main(int argc, char* argv[])
 
         Array4<Real> const& c_a = indata[lev].array(mfi, idClocal);
         Array4<Real> const& rho_a = indata[lev].array(mfi, idRlocal);
-        Array4<Real> const& rhoh_a = indata[lev].array(mfi, idElocal);
 
 #ifdef AMREX_USE_EB
         Array4<const Real> const& volFracBox =
@@ -828,14 +885,18 @@ main(int argc, char* argv[])
                 +diff_molar_a(i, j, k, 2 * AMREX_SPACEDIM + 2));
             }
 
-            if (maggrad > 1e-2 && volFrac > 0) {
+            if (maggrad > gradMin && volFrac > 0) {
               sd_a(i, j, k, 0) = -lapdiff_spec / (rho_a(i, j, k) * maggrad);
               sd_a(i, j, k, 1) = -lapdiff_soret / (rho_a(i, j, k) * maggrad);
               sd_a(i, j, k, 2) = -lapdiff_molar / (rho_a(i, j, k) * maggrad);
               sd_a(i, j, k, 3) = -c_a(i, j, k) / (rho_a(i, j, k) * maggrad);
               sd_a(i, j, k, 4) = sd_a(i, j, k, 0) + sd_a(i, j, k, 1) +
                                  sd_a(i, j, k, 2) + sd_a(i, j, k, 3);
-              sd_a(i, j, k, 5) = sd_a(i, j, k, 4) * rhoh_a(i, j, k);
+            } else if (volFrac > 0) {
+              // Gradient too small: Sd is undefined, not zero
+              for (int n = 0; n < nCompOut; ++n) {
+                sd_a(i, j, k, n) = qnan;
+              }
             }
           }); // ParallelFor
 
@@ -855,6 +916,8 @@ main(int argc, char* argv[])
     amrex::WriteMultiLevelPlotfile(
       outfile, Nlev, GetVecOfConstPtrs(outdata), outNames, geoms, time, isteps,
       refRatios);
+
+    trans_parms.deallocate();
   }
 
   ParallelDescriptor::Barrier();

@@ -4,13 +4,20 @@
 
 #------------------- IO CONTROL -----------------------------------------------------------
 infile = plt00500    # Input AMReX plot file (must contain Y(...), temp, density,
-                     # I_R(<fuel>), rhoh)
+                     # and I_R(<fuel>) with reactionSource = plotfile)
 outfile = plt00500_sd  # DEF: <infile>_sd; name of the output plot file
 n_files = 64         # DEF: AMReX default; max number of plotfile data
                      # files written (VisMF), clamped to the MPI rank count
 
 #------------------- Species --------------------------------------------------------------
-fuelName = H2        # Fuel species used as progress variable
+fuelName = H2        # Required; fuel species name as in the mechanism, e.g. H2
+                     # (not Y(H2)); used as progress variable
+
+#------------------- Reaction rate and threshold ------------------------------------------
+reactionSource = instantaneous  # DEF: instantaneous; [instantaneous, plotfile]:
+                     # rate from the plot file state, or I_R(<fuel>) from the plot file
+gradThreshold = 1e-3 # DEF: 1e-3; Sd is evaluated where |grad Y_F| > gradThreshold *
+                     # max|grad Y_F|, NaN elsewhere
 
 #------------------- Transport contributions ----------------------------------------------
 transport.use_soret = 0  # DEF: 0; include the Soret (thermal diffusion) term

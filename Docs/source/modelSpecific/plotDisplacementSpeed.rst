@@ -27,21 +27,33 @@ with
 
 where :math:`\rho` is the density, :math:`T` the temperature,
 :math:`\overline{W}` the mean molecular weight and :math:`\dot{\omega}_F` the
-fuel reaction rate taken from the plot file (``I_R(<fuel>)``). The coefficients
-are built from the mixture-averaged diffusion coefficient :math:`D_F` of the
-fuel and its molecular weight :math:`W_F`:
+fuel reaction rate (see ``reactionSource`` below). The coefficients are built
+from the mixture-averaged diffusion coefficient :math:`D_F` of the fuel and its
+molecular weight :math:`W_F`:
 
 - Fickian term: :math:`\mathcal{D}_Y = D_F\,\overline{W}/W_F`
-- Soret term: :math:`\mathcal{D}_T = 0.664\,\theta_F/T`, with the thermal
+- Soret term: :math:`\mathcal{D}_T = s_F\,\theta_F/T`, with the thermal
   diffusion coefficient :math:`\theta_F` (only with ``transport.use_soret = 1``,
-  otherwise zero)
+  otherwise zero). :math:`s_F` is the Soret scaling of PeleLMeX
+  (``getTransportCoeff`` in ``PeleLMeX_K.H``, after Howarth, Day, Pitsch &
+  Aspden): 0.664 for H2, 0.58 for H and 1 otherwise. PelePhysics only computes
+  thermal diffusion for these light species, so the Soret term is zero for
+  other fuels. Set ``transport.use_soret`` as in the simulation; data from a
+  solver without this scaling gives an inconsistent Soret term.
 - Mean molecular weight term: :math:`\mathcal{D}_W = D_F\,Y_F/W_F` (only with
   ``use_wbar = 1``, otherwise zero)
 
 Quantities are converted from the CGS units of PelePhysics to SI, so the plot
-file is expected in SI units (as written by PeleLMeX). The displacement speed
-is only evaluated where :math:`|\nabla Y_F| > 10^{-2}` (in 1/m); all other
-cells are set to zero.
+file is expected in SI units (as written by PeleLMeX).
+
+The displacement speed divides by :math:`|\nabla Y_F|` and is only meaningful
+where the gradient is not negligible. It is evaluated where
+:math:`|\nabla Y_F| > \varepsilon\,\max|\nabla Y_F|` (``gradThreshold``
+:math:`= \varepsilon`, the maximum is taken over all levels); all other cells
+are set to NaN, so that they cannot be mistaken for :math:`S_d = 0`. Mask NaN
+values before computing averages or PDFs. In practice, :math:`S_d` is usually
+sampled on an isosurface of :math:`Y_F` or of a progress variable, for example
+by mapping the output onto the surface with :doc:`isosurface <../analysis/isosurface>`.
 
 Usage: ::
 
@@ -54,8 +66,9 @@ Example: ::
 .. note::
 
    The input plot file must contain ``Y(<species>)`` for all species of the
-   compiled mechanism, ``temp``, ``density``, ``I_R(<fuel>)`` and ``rhoh``.
-   The tool aborts if one of them is missing.
+   compiled mechanism, ``temp`` and ``density``, and ``I_R(<fuel>)`` with
+   ``reactionSource = plotfile``. The tool aborts and lists the missing fields
+   if one of them is missing.
 
 Tool Options
 ############
@@ -74,11 +87,37 @@ the number of MPI ranks.
 ::
 
    #------------------- Species --------------------------------------------------------------
-   fuelName = H2                              # Fuel species; must exist in the compiled mechanism
+   fuelName = H2                              # Required; fuel species name as in the mechanism, e.g. H2 (not Y(H2))
 
 `fuelName` selects the species whose mass fraction is used as the progress
-variable and whose displacement speed is computed. It must be given and must be
-part of the compiled mechanism.
+variable and whose displacement speed is computed. It is required and must be
+the species name as it appears in the compiled mechanism, e.g. ``H2``, not the
+plot file variable ``Y(H2)``; the tool builds ``Y(<fuel>)`` and
+``I_R(<fuel>)`` from it.
+::
+
+   #------------------- Reaction rate --------------------------------------------------------
+   reactionSource = instantaneous             # DEF: instantaneous; [instantaneous, plotfile]
+
+`reactionSource` selects the fuel reaction rate :math:`\dot{\omega}_F`:
+
+- ``instantaneous`` (default): evaluated with the compiled mechanism from the
+  temperature, density and mass fractions of the plot file. All terms of
+  :math:`S_d` then refer to the same state.
+- ``plotfile``: ``I_R(<fuel>)`` from the plot file. In PeleLMeX, this is the
+  reaction term averaged over the last time step (the change of
+  :math:`\rho Y_F` over the step minus the advection-diffusion forcing),
+  while the other fields are the state at the end of the step. The reaction
+  contribution is therefore shifted by about half a time step relative to
+  the diffusion terms.
+::
+
+   #------------------- Gradient threshold ---------------------------------------------------
+   gradThreshold = 1e-3                       # DEF: 1e-3; relative to max|grad Y_F|
+
+`gradThreshold` sets the threshold :math:`\varepsilon` described above. The
+default only masks regions where :math:`Y_F` is essentially flat; a larger
+value may mask weakly burning or strongly stretched flame regions.
 ::
 
    #------------------- Transport contributions ----------------------------------------------
@@ -121,7 +160,7 @@ The tool runs on GPU builds.
 
 Output
 ######
-The output plot file contains six variables:
+The output plot file contains five variables:
 
 .. list-table::
    :header-rows: 1
@@ -139,8 +178,12 @@ The output plot file contains six variables:
      - Reaction contribution :math:`S_{d,C}`
    * - ``Sd(<fuel>)``
      - Total displacement speed :math:`S_d`
-   * - ``Sd(<fuel>)rhoh``
-     - :math:`S_d` multiplied by the plot file field ``rhoh``
+
+The output has the same AMR hierarchy as the input. Products with fields of the
+input plot file, for example the density-weighted displacement speed
+:math:`\rho S_d/\rho_u`, can be formed afterwards: combine the variables with
+:doc:`combinePlts <../analysis/combinePlts>` and multiply them with
+:doc:`arithmetics <../analysis/arithmetics>` (``operator=multiply``).
 
 Dependencies
 ############
