@@ -105,8 +105,19 @@ When built with ``USE_EB=TRUE``, cells that are fully covered by the geometry
 must contain the ``volFrac`` field; no geometry inputs are needed. See
 :ref:`embedded_boundaries`.
 
+Near the embedded boundary this has two consequences:
+
+- Every dual-grid element that touches a covered cell is dropped. The surface
+  therefore ends up to about one cell before the wall instead of reaching it,
+  so it is smaller than the true isosurface there.
+- Cut cells (``0 < volFrac < 1``) are treated like regular cells: their values
+  are interpolated as if they were located at the cell centre, although they
+  represent the fluid part of the cell only. This introduces interpolation
+  errors of up to about half a cell in the surface position in the cut-cell
+  layer.
+
 .. warning::
 
-   ``isosurface`` compiles for GPUs but does not run there: the surface
-   extraction and output are host code that reads device memory. Use a CPU
-   build. See :ref:`eb_gpu_support`.
+   ``isosurface`` cannot be built for GPUs: the surface extraction and output
+   are host code. A GPU build stops with a compile error. Use a CPU build. See
+   :ref:`eb_gpu_support`.

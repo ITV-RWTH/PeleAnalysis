@@ -165,6 +165,5 @@ been run on a GPU as part of this review.
        integrals are accumulated with ``ParallelFor`` and atomic adds.
    * - ``isosurface``
      - Not supported
-     - The data preparation runs on the GPU, but the surface extraction, the
-       distance function and the output are host loops over device memory and
-       would crash or read invalid data.
+     - The surface extraction, the distance function and the output are host
+       loops over the plotfile data. A GPU build stops with a compile error.
