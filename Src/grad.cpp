@@ -241,7 +241,7 @@ main(int argc, char* argv[])
     info_apply.setMaxCoarseningLevel(0);
     MLEBABecLap poisson_eb(
       geoms, grids, dmap, info_apply, amrex::GetVecOfConstPtrs(eb_factory));
-    poisson_eb.setVerbose(verbose > 1 ? verbose : 0);
+    poisson_eb.setVerbose(verbose);
     poisson_eb.setMaxOrder(4);
 
     // Poisson like solver able to handle EB'S
