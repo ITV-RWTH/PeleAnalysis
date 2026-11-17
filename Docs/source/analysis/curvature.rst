@@ -90,7 +90,9 @@ Parameters
    Limits applied to the progress variable.
 
 ``useFileMinMax``
-   Use minimum and maximum values from the plotfile.
+   Widen the range ``progMin`` to ``progMax`` to the minimum and maximum of the
+   progress variable in the plotfile (default ``1``). Without ``progMin`` and
+   ``progMax`` the range is exactly that of the plotfile.
 
 ``threshold_prog``
    Enable clipping outside the flame front.
