@@ -2,9 +2,8 @@
 
 plotDisplacementSpeed
 *********************
-Compute the flame displacement speed of a fuel species from an AMReX plot file
-produced by a reacting flow solver such as PeleLMeX, split into its diffusive
-and reactive contributions. The fuel mass fraction :math:`Y_F` is used as the
+Compute the flame displacement speed of a fuel species from an AMReX plot file,
+split into its diffusive and reactive contributions. The fuel mass fraction :math:`Y_F` is used as the
 progress variable. Transport coefficients and the mean molecular weight are
 evaluated with PelePhysics, the gradients and flux divergences are computed
 with AMReX linear operators, and the result is written as a new AMReX plot
