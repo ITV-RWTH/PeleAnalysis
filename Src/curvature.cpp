@@ -70,7 +70,6 @@ main(int argc, char* argv[])
     Real progMax = -1.0e20;
     int finestLevel = 1000;
     int verbose = 0;
-    int floorIt = 0;
     int useFileMinMax = 1;
     bool do_strain = false;
     bool do_gaussCurv = false;
@@ -103,7 +102,6 @@ main(int argc, char* argv[])
     pp.query("progressName", progressName);
     pp.query("progMin", progMin);
     pp.query("progMax", progMax);
-    pp.query("floorIt", floorIt);
     pp.query("useFileMinMax", useFileMinMax);
 
     // Clip results outside the flame front ? ( C ~ 0 or C ~ 1)
@@ -294,76 +292,19 @@ main(int argc, char* argv[])
     //---------------------------------------------------------------------------
     // Finding min and max values in the domain
     //---------------------------------------------------------------------------
-    if (useFileMinMax || floorIt) {
-      if (useFileMinMax) {
-
-        if (verbose)
-          Print() << "Getting Minimum and Maximum values..." << std::endl;
-
-        Real global_min = 1.0e20;
-        Real global_max = -1.0e20;
-
-        for (int lev = 0; lev < Nlev; ++lev) {
-          if (verbose)
-            Print() << "Starting MFIter to find min/max for Level " << lev
-                    << std::endl;
-
-#ifdef AMREX_USE_OMP
-#pragma omp parallel if (Gpu::notInLaunchRegion())
-#endif
-          {
-            Real thread_min = 1.0e20;
-            Real thread_max = -1.0e20;
-
-            for (MFIter mfi(*state[lev], TilingIfNotGPU()); mfi.isValid();
-                 ++mfi) {
-              const Box& bx = mfi.tilebox();
-              auto const& varBox = state[lev]->array(mfi, idCst);
-
-              // Min/Max inside of tile (should be GPU safe)
-              ReduceOps<ReduceOpMin, ReduceOpMax> reduce_op;
-              ReduceData<Real, Real> reduce_data(reduce_op);
-              using ReduceTuple = amrex::GpuTuple<Real, Real>;
-
-              reduce_op.eval(
-                bx, reduce_data,
-                [=] AMREX_GPU_DEVICE(
-                  int i, int j, int k) noexcept -> ReduceTuple {
-                  Real val = varBox(i, j, k, 0);
-                  return {val, val};
-                });
-
-              auto [tile_min, tile_max] =
-                reduce_data.value(); // Result of tile reduction
-              thread_min = std::min(thread_min, tile_min);
-              thread_max = std::max(thread_max, tile_max);
-            } // MFIter
-
-#ifdef AMREX_USE_OMP
-#pragma omp critical
-#endif
-            {
-              global_min = std::min(global_min, thread_min);
-              global_max = std::max(global_max, thread_max);
-            }
-          } // End OMP parallel region
-        } // End Level loop
-
-        // Global reduction across all ranks
-        amrex::ParallelDescriptor::ReduceRealMin(global_min);
-        amrex::ParallelDescriptor::ReduceRealMax(global_max);
-
-        progMin = global_min;
-        progMax = global_max;
+    if (useFileMinMax) {
+      // Widen the range given by progMin/progMax (default: empty) to the
+      // range of the progress variable in the plotfile
+      for (int lev = 0; lev < Nlev; ++lev) {
+        progMin = std::min(progMin, state[lev]->min(idCst));
+        progMax = std::max(progMax, state[lev]->max(idCst));
       }
-
-      Print() << "progressName = " << progressName << " at index: " << idC
-              << "\n";
-      Print() << "useFileMinMax = " << useFileMinMax << "\n";
-      Print() << "Min/Max = " << progMin << " / " << progMax << "\n";
-
-      ParallelDescriptor::Barrier();
     }
+
+    Print() << "progressName = " << progressName << " at index: " << idC
+            << "\n";
+    Print() << "useFileMinMax = " << useFileMinMax << "\n";
+    Print() << "Min/Max = " << progMin << " / " << progMax << "\n";
 
     if (progMin >= progMax) {
       amrex::Abort("progMin must be less than progMax");
@@ -378,7 +319,7 @@ main(int argc, char* argv[])
       MultiFab StateVar(*state[lev], amrex::make_alias, idCst, 1);
       MultiFab ProgressVar(*state[lev], amrex::make_alias, idProg, 1);
       for (MFIter mfi(*state[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
-        const Box& bx = mfi.validbox();
+        const Box& bx = mfi.tilebox();
         const auto& StateVarFab = StateVar.array(mfi);
         const auto& ProgVarFab = ProgressVar.array(mfi);
 
@@ -419,7 +360,7 @@ main(int argc, char* argv[])
 
       mlabec.setMaxOrder(4);
 
-      const Real tol_rel = 1.e-12; // 1.e-12
+      const Real tol_rel = 1.e-12;
       const Real tol_abs = 1.e-12;
 
       // Problem with Periodic or Neumann BC
@@ -456,7 +397,7 @@ main(int argc, char* argv[])
             state[lev]->boxArray(), IntVect::TheDimensionVector(idim));
 
           face_bcoef[idim].define(ba, state[lev]->DistributionMap(), 1, 0);
-          face_bcoef[idim].setVal(1); // was 1.0 1e-30
+          face_bcoef[idim].setVal(1);
         }
         mlabec.setBCoeffs(lev, amrex::GetArrOfConstPtrs(face_bcoef));
       }
@@ -573,7 +514,7 @@ main(int argc, char* argv[])
 
       for (MFIter mfi(cellnorm_gradient, TilingIfNotGPU()); mfi.isValid();
            ++mfi) {
-        const Box& bx = mfi.validbox();
+        const Box& bx = mfi.tilebox();
         AMREX_D_TERM(auto const& Cx = cellavg_gradient.array(mfi, 0);
                      , auto const& Cy = cellavg_gradient.array(mfi, 1);
                      , auto const& Cz = cellavg_gradient.array(mfi, 2););
@@ -697,7 +638,7 @@ main(int argc, char* argv[])
 
       // Clip curvature & flame normal for c < threshold or c > 1.0-threshold
       for (MFIter mfi(Curv, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
-        const Box& bx = mfi.validbox();
+        const Box& bx = mfi.tilebox();
         const auto& CurvFab = Curv.array(mfi);
         AMREX_D_TERM(const auto& FnormXFab = flame_normal[lev]->array(mfi, 0);
                      , const auto& FnormYFab = flame_normal[lev]->array(mfi, 1);
@@ -784,7 +725,7 @@ main(int argc, char* argv[])
         MultiFab AdjHessian(ba, dmap[lev], 9, 0);
 
         for (MFIter mfi(Hessian, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
-          const Box& bx = mfi.validbox();
+          const Box& bx = mfi.tilebox();
           const auto& HxiFab = Hessian.array(mfi, 0); // Cxx, Cxy, Cxz
           const auto& HyiFab = Hessian.array(mfi, 3); // Cyx, Cyy, Cyz
           const auto& HziFab = Hessian.array(mfi, 6); // Czx, Czy, Czz
@@ -817,7 +758,7 @@ main(int argc, char* argv[])
         // Now get the gausian curvature
         MultiFab gCurv(ba, dmap[lev], 1, 0);
         for (MFIter mfi(gCurv, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
-          const Box& bx = mfi.validbox();
+          const Box& bx = mfi.tilebox();
           const auto& progvar = ProgVar.array(mfi);
           const auto& gCurvFab = gCurv.array(mfi);
           const auto& CgradNorm = cellnorm_gradient.array(mfi);
@@ -926,7 +867,7 @@ main(int argc, char* argv[])
         strainrate.setVal(0.0);
 
         for (MFIter mfi(strainrate, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
-          const Box& bx = mfi.validbox();
+          const Box& bx = mfi.tilebox();
           const auto& progvar = ProgVar.array(mfi);
           const auto& srFab = strainrate.array(mfi);
           AMREX_D_TERM(const auto& NxFab = flame_normal[lev]->array(mfi, 0);
@@ -976,7 +917,7 @@ main(int argc, char* argv[])
         MultiFab velNormal(ba, dmap[lev], 1, 0);
 
         for (MFIter mfi(velNormal, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
-          const Box& bx = mfi.validbox();
+          const Box& bx = mfi.tilebox();
           const auto& progvar = ProgVar.array(mfi);
           const auto& velNormFab = velNormal.array(mfi);
           AMREX_D_TERM(const auto& NxFab = flame_normal[lev]->array(mfi, 0);
