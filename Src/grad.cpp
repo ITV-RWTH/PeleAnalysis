@@ -96,7 +96,7 @@ main(int argc, char* argv[])
 
     pp.get("gradVar", gradVar);
     if (verbose > 0)
-      Print() << "Choosen gradVar: " << gradVar << std::endl;
+      Print() << "Chosen gradVar: " << gradVar << std::endl;
 
     pp.query("finestLevel", finestLevel);
 
@@ -241,7 +241,7 @@ main(int argc, char* argv[])
     info_apply.setMaxCoarseningLevel(0);
     MLEBABecLap poisson_eb(
       geoms, grids, dmap, info_apply, amrex::GetVecOfConstPtrs(eb_factory));
-    poisson_eb.setVerbose(4);
+    poisson_eb.setVerbose(verbose > 1 ? verbose : 0);
     poisson_eb.setMaxOrder(4);
 
     // Poisson like solver able to handle EB'S
@@ -303,7 +303,6 @@ main(int argc, char* argv[])
     LPInfo info;
     info.setAgglomeration(true);
     info.setConsolidation(true);
-    info.setMaxCoarseningLevel(0);
     info.setMetricTerm(false);
     info.setMaxCoarseningLevel(0);
     MLPoisson poisson({geoms}, {grids}, {dmap}, info);
@@ -325,7 +324,6 @@ main(int argc, char* argv[])
       }
     }
     poisson.setDomainBC(lo_bc, hi_bc);
-    poisson.setLevelBC(0, nullptr);
 
     // Need to apply the operator to ensure CF consistency with composite solve
     int nGrowGrad = 0; // No need for ghost face on gradient
