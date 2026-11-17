@@ -296,7 +296,7 @@ General tools (``Src``)
    * - :doc:`streamBinTubeStats <analysis/streamBinTubeStats>`
      - ❌
      - ❌
-     - ➖
+     - ❌
      - R
    * - :doc:`subPlt <analysis/subPlt>`
      - ➖

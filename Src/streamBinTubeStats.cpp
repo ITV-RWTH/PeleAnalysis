@@ -9,6 +9,10 @@
 #error \
   "streamBinTubeStats does not support MPI builds (see the parallel-support table in Docs/source/index.rst). Build with USE_MPI=FALSE."
 #endif
+#if defined(AMREX_USE_GPU)
+#error \
+  "streamBinTubeStats does not support GPU builds (see the parallel-support table in Docs/source/index.rst). Build with USE_CUDA, USE_HIP and USE_SYCL set to FALSE."
+#endif
 
 #include <string>
 #include <iostream>
