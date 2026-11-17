@@ -134,3 +134,11 @@ the smoothing, the curvatures, the strain rate and the normal velocity with
 EB-aware operators, only where the volume fraction is positive. This requires
 the ``eb2.*`` geometry inputs of the simulation; see :ref:`embedded_boundaries`.
 ``curvature`` runs on GPU builds.
+
+At the EB wall all operators impose a zero gradient (homogeneous Neumann
+condition) on the field they differentiate or smooth: the progress variable,
+the components of the flame normal and of its gradient, and the velocity
+components. At a no-slip wall the true velocity gradient is not zero. The
+values in the first one or two cells next to a wall therefore depend on this
+condition, so read the curvatures, the strain rate and the normal velocity
+there with care.
