@@ -1,3 +1,15 @@
+// Parallel backends marked "No" for this tool in the parallel-support table
+// (Docs/source/index.rst): it does not compile, crashes or gives wrong
+// results with them, so such builds are refused at compile time.
+#if defined(AMREX_USE_OMP)
+#error \
+  "streamBinTubeStats does not support OpenMP builds (see the parallel-support table in Docs/source/index.rst). Build with USE_OMP=FALSE."
+#endif
+#if defined(AMREX_USE_MPI)
+#error \
+  "streamBinTubeStats does not support MPI builds (see the parallel-support table in Docs/source/index.rst). Build with USE_MPI=FALSE."
+#endif
+
 #include <string>
 #include <iostream>
 #include <vector>

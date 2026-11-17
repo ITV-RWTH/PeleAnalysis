@@ -17,7 +17,9 @@ concurrency:
 #   EXPECTED_<DIM>D_FAILURES      tools that only support the other dimension
 #   EXPECTED_EB_FAILURES          tools that do not compile with USE_EB=TRUE
 #   EXPECTED_EB_<DIM>D_FAILURES   ... with USE_EB=TRUE in this dimension only
-#   EXPECTED_GPU_FAILURES         tools that do not compile for any GPU backend
+#   EXPECTED_GPU_FAILURES         tools that do not compile for any GPU backend,
+#                                 including the tools that refuse GPU builds
+#                                 with #error (GPU "No" in Docs/source/index.rst)
 #   EXPECTED_<BACKEND>_FAILURES   tools that do not compile for one GPU backend
 env:
   EXPECTED_2D_FAILURES: 'qCriterion sequentialFilterPlt'
@@ -25,7 +27,7 @@ env:
   EXPECTED_EB_FAILURES: ''
   EXPECTED_EB_2D_FAILURES: ''
   EXPECTED_EB_3D_FAILURES: ''
-  EXPECTED_GPU_FAILURES: 'amrToFE ciao2plt conditionalMean isosurface jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
+  EXPECTED_GPU_FAILURES: 'amrToFE avgToPlane checkIso ciao2plt computeMixtureFraction conditionalMean dumpFABslice generateTestPlt isoMEF isosurface jpdf makeImage makePlotfile partStream plotQPD plotTransportCoeff plotTYtoLe plotXtoY plotYtoX progVar qCriterion rmsVel scaleMEF stream2plt streamBinTubeStats surfDATtoMEF surfMEFtoDAT template testTsolve trimMEFgen turbfile'
 
 jobs:
 
