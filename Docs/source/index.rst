@@ -195,7 +195,7 @@ General tools (``Src``)
      - R
    * - :doc:`isosurface <analysis/isosurface>`
      - ➖
-     - ❌
+     - ✅
      - ❌
      - R
    * - :doc:`jpdf <analysis/jpdf>`
