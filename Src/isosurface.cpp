@@ -11,6 +11,13 @@
 #include <AMReX_VisMF.H>
 #include "makelevelset3.h"
 
+// The surface extraction, the distance function and the output are host loops
+// over the plotfile data, which lives in device memory on GPU builds.
+#ifdef AMREX_USE_GPU
+#error \
+  "isosurface does not support GPU builds (USE_CUDA, USE_HIP or USE_SYCL): the surface extraction and the output are host code. Build it for the CPU."
+#endif
+
 using namespace amrex;
 using std::cerr;
 using std::endl;
