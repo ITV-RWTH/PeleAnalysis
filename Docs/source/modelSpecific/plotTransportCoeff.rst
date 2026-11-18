@@ -111,7 +111,7 @@ would be scaled a second time.
 
 Relation to Other Tools
 ########################
-- :doc:`plotTYtoLe` uses the same inputs and calls the same transport library, but derives Lewis numbers :math:`\mathrm{Le}(n) = D_n / (\lambda / C_{p,\mathrm{mix}})` rather than writing the raw coefficients.
+- :doc:`plotTYtoLe` uses the same inputs and calls the same transport library, but derives Lewis numbers :math:`\mathrm{Le}(n) = \lambda / (\rho \, C_{p,\mathrm{mix}} \, D_n)` rather than writing the raw coefficients.
 - The ``rhoD`` values written by this tool are the density-weighted diffusivities :math:`\rho D_n`. To recover the mass diffusivity :math:`D_n` alone, divide by the ``density`` field from the original plot file.
 
 Dependencies
