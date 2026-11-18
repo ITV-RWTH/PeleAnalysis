@@ -94,6 +94,21 @@ The output plot file ``<infile>_D`` is a standard multi-level AMReX plot file an
 
 The output inherits the domain geometry, coordinate system, and box structure from the input plot file.
 
+Units
+====
+The input plot file is assumed to be in MKS units, as written by PeleLMeX
+(``density`` in kg/m^3, ``temp`` in K). The density is converted to CGS
+internally before calling PelePhysics, and the results are converted back
+to MKS:
+
+- ``rhoD(<species>)``: kg/(m s)
+- ``chi(<species>)``: dimensionless
+- ``mu``, ``xi``: kg/(m s)
+- ``lambda``: W/(m K)
+
+Plot files written in CGS (e.g. by PeleC) are not supported: their density
+would be scaled a second time.
+
 Relation to Other Tools
 ########################
 - :doc:`plotTYtoLe` uses the same inputs and calls the same transport library, but derives Lewis numbers :math:`\mathrm{Le}(n) = D_n / (\lambda / C_{p,\mathrm{mix}})` rather than writing the raw coefficients.
