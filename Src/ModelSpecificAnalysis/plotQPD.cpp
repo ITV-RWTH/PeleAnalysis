@@ -11,6 +11,7 @@
 
 using namespace amrex;
 using namespace mech_util;
+namespace m2c = pele::physics::utilities::mks2cgs;
 
 typedef std::list<Edge> EdgeList;
 
@@ -151,7 +152,8 @@ main(int argc, char* argv[])
         AMREX_PARALLEL_FOR_3D(bx, i, j, k, {
           Real Xl[nspecies];
           Real Tl = inarr(i, j, k, idTlocal);
-          Real Rl = inarr(i, j, k, idRlocal) * 1.e-3;
+          // Plotfile density is in MKS, CKPX expects g/cm^3
+          Real Rl = m2c::Rho(inarr(i, j, k, idRlocal));
           for (int n = 0; n < nspecies; ++n) {
             Xl[n] = inarr(i, j, k, idXlocal + n);
           }

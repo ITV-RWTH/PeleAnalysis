@@ -14,6 +14,7 @@
 #include <PelePhysics.H>
 
 using namespace amrex;
+namespace m2c = pele::physics::utilities::mks2cgs;
 
 pele::physics::PeleParams<pele::physics::transport::TransParm<
   pele::physics::PhysicsType::eos_type,
@@ -168,6 +169,13 @@ main(int argc, char* argv[])
       amrData.FillVar(indata, lev, inNames, destFillComps);
       Print() << "Data has been read for level " << lev << std::endl;
 
+      // Plotfile data are in MKS, PelePhysics transport works in CGS:
+      // convert density to g/cm^3. With the ideal-gas EOS (Fuego) the Simple
+      // model ignores density; with SRK it enters the Chung correction of
+      // lambda and the dense-gas correction of the binary diffusion
+      // coefficients (rhoD), so it must be in CGS.
+      indata.mult(m2c::Rho(1.0), idRlocal, 1, nGrow);
+
       // Get the transport data pointer
       auto const* ltransparm = trans_parms.device_parm();
 
@@ -203,6 +211,8 @@ main(int argc, char* argv[])
               Yloc[n] = Y_a(i, j, k, n);
             }
             CKCPBS(T_a(i, j, k), Yloc, Cpmix);
+            // Le is dimensionless and rhoD, lambda, cp are all in CGS,
+            // so no conversion back to MKS is needed.
             for (int n = 0; n < NUM_SPECIES; ++n) {
               Le_a(i, j, k, n) = D_a(i, j, k, n) / (lam_a(i, j, k) / Cpmix);
             }
