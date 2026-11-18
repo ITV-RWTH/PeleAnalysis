@@ -70,6 +70,16 @@ The output plot file ``<infile>_Le`` is a standard multi-level AMReX plot file a
 
 The variables are ordered according to the species ordering defined in the compiled chemical mechanism (``mechanism.H``), followed by any ``Aux_Variables`` requested. The output inherits the domain geometry, coordinate system, and box structure from the input plot file.
 
+Units
+=====
+The input plot file is assumed to be in MKS units, as written by PeleLMeX
+(``density`` in kg/m^3, ``temp`` in K). The density is converted to CGS
+internally before calling PelePhysics. The Lewis numbers ``Le(<species>)``
+are dimensionless, so no conversion of the output is needed.
+
+Plot files written in CGS (e.g. by PeleC) are not supported: their density
+would be scaled a second time.
+
 Dependencies
 ############
 This tool requires a PelePhysics-enabled build. The chemical mechanism and transport model are compiled in at build time and determine the species list, the number of output components, and the transport coefficient evaluation. The tool cannot be used with a generic AMReX build.
