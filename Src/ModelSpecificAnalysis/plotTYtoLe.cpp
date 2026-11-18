@@ -211,8 +211,8 @@ main(int argc, char* argv[])
               Yloc[n] = Y_a(i, j, k, n);
             }
             CKCPBS(T_a(i, j, k), Yloc, Cpmix);
-            // Le is dimensionless and rhoD, lambda, cp are all in CGS,
-            // so no conversion back to MKS is needed.
+            // Le = lambda / (rho * cp * D); D_a already holds rho*D.
+            // rhoD, lambda and cp are all in CGS, so the ratio is dimensionless.
             for (int n = 0; n < NUM_SPECIES; ++n) {
               Le_a(i, j, k, n) = D_a(i, j, k, n) / (lam_a(i, j, k) / Cpmix);
             }
