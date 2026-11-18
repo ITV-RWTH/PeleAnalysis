@@ -8,9 +8,9 @@ The Lewis number for species *n* is defined as:
 
 .. math::
 
-   \mathrm{Le}(n) = \frac{D_n}{\lambda / C_{p,\mathrm{mix}}}
+   \mathrm{Le}(n) = \frac{\lambda}{\rho \, C_{p,\mathrm{mix}} \, D_n}
 
-where :math:`D_n` is the species mass diffusivity, :math:`\lambda` is the mixture thermal conductivity, and :math:`C_{p,\mathrm{mix}}` is the mixture heat capacity at constant pressure. A Lewis number of unity indicates that the species diffuses at the same rate as heat. Transport coefficients are evaluated using the PelePhysics transport library and the computation is GPU-accelerated when built with GPU support.
+where :math:`D_n` is the species mass diffusivity, :math:`\rho` is the mixture density, :math:`\lambda` is the mixture thermal conductivity, and :math:`C_{p,\mathrm{mix}}` is the mixture heat capacity at constant pressure. A Lewis number of unity indicates that the species diffuses at the same rate as heat. Transport coefficients are evaluated using the PelePhysics transport library and the computation is GPU-accelerated when built with GPU support.
 
 Usage: ::
 
