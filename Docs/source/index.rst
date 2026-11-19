@@ -7,7 +7,11 @@
    OpenMP, MPI or GPU (AMReX ParallelFor, MFIter tiling, omp pragmas,
    DistributionMapping, reductions, AmrData::FillVar, host access to FAB
    data, ...), re-evaluate that tool against the definitions in the legend and
-   update its row (and its Basis entry) in Docs/source/index.rst.
+   update its row (and its Basis entry) in Docs/source/index.rst. Keep the
+   compile-time guards in sync: every backend marked No for a tool has an
+   #error guard at the top of the tool source, and every tool refused on GPU
+   that CI builds is listed in EXPECTED_GPU_FAILURES in
+   .github/workflows/ci.yml.
 
 .. raw:: html
 
@@ -18,7 +22,11 @@
    OpenMP, MPI or GPU (AMReX ParallelFor, MFIter tiling, omp pragmas,
    DistributionMapping, reductions, AmrData::FillVar, host access to FAB
    data, ...), re-evaluate that tool against the definitions in the legend and
-   update its row (and its Basis entry) in Docs/source/index.rst.
+   update its row (and its Basis entry) in Docs/source/index.rst. Keep the
+   compile-time guards in sync: every backend marked No for a tool has an
+   #error guard at the top of the tool source, and every tool refused on GPU
+   that CI builds is listed in EXPECTED_GPU_FAILURES in
+   .github/workflows/ci.yml.
    -->
 
 PeleAnalysis documentation
@@ -42,7 +50,10 @@ reordered reductions), **and** actually uses the backend for its main work.
   not parallelize the main work (e.g. serial loops, all work done on one MPI
   rank or repeated on every rank, host-only code in a GPU build).
 * ❌ **No**: does not compile, crashes/aborts, or gives wrong or
-  non-reproducible results with this backend.
+  non-reproducible results with this backend. Builds with this backend are
+  refused at compile time with an error message (``#error`` at the top of the
+  tool source); build the tool without it (``USE_OMP=FALSE``,
+  ``USE_MPI=FALSE``, or no GPU backend).
 
 The *Basis* column states how the entry was determined:
 
@@ -285,7 +296,7 @@ General tools (``Src``)
    * - :doc:`streamBinTubeStats <analysis/streamBinTubeStats>`
      - ❌
      - ❌
-     - ➖
+     - ❌
      - R
    * - :doc:`subPlt <analysis/subPlt>`
      - ➖

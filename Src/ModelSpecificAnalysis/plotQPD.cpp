@@ -1,3 +1,15 @@
+// Parallel backends marked "No" for this tool in the parallel-support table
+// (Docs/source/index.rst): it does not compile, crashes or gives wrong
+// results with them, so such builds are refused at compile time.
+#if defined(AMREX_USE_OMP)
+#error \
+  "plotQPD does not support OpenMP builds (see the parallel-support table in Docs/source/index.rst). Build with USE_OMP=FALSE."
+#endif
+#if defined(AMREX_USE_GPU)
+#error \
+  "plotQPD does not support GPU builds (see the parallel-support table in Docs/source/index.rst). Build with USE_CUDA, USE_HIP and USE_SYCL set to FALSE."
+#endif
+
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
 #include <AMReX_DataServices.H>
