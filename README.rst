@@ -13,7 +13,7 @@ To clone this repository including the required submodules such as PelePhysics, 
 
    git clone --recursive --shallow-submodules --single-branch git@github.com:ITV-RWTH/PeleAnalysis.git
 
-Using this command will automatically like your PeleAnalysis Repository to the repositories of the submodules. Alternatively, you can include your version of PelePysics and AMReX used in your Pele installation by setting the variables ``PELE_PHYSICS_HOME`` and ``AMREX_HOME`` in your ``GNUmakefile`` to point to the local folder where that is placed. After cloning this repository, ``cd Src`` and edit the ``GNUmakefile`` to select which tool to build.  If AMReX is configured properly, a stand-alone executable will be built locally, based on the selected options, including spatial dimension (2 or 3), compiler choices, whether to build with MPI and/or OpenMP enabled, and whether to build a debugging or optimized version.  Note that some of the tools require building a companion f90 source file - you must manually set the flag in the ``GNUmakefile`` accordingly.  More extensive documentation is available (see building instructions below).
+How to build the tools, also against the PelePhysics and AMReX of an existing Pele installation, is described in the `building instructions <https://itv-rwth.github.io/PeleAnalysis/basics/building.html>`_.
 
 
 Testing

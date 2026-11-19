@@ -1,0 +1,21 @@
+# Periodic unit square, dx = 1/64. c = cos(2 pi (x - 10 dx)) cos(2 pi (y - 10 dx)):
+# the field of gen_ref_2d.inp shifted by 10 cells in x and y. Its two closed iso lines
+# c = 0.5 are congruent to the reference line; the one around (10 dx, 10 dx)
+# reaches less than a cell across both periodic boundaries (see TESTING.md).
+amr.n_cell = 64 64
+amr.max_grid_size = 16
+amr.max_level = 0
+
+geometry.coord_sys = 0
+geometry.prob_lo = 0.0 0.0
+geometry.prob_hi = 1.0 1.0
+geometry.is_periodic = 1 1
+
+plotfile_name = plt_iso_per_2d
+
+field.names = c
+c.type = sine
+c.frequency = 1.0 1.0
+c.phase = 0.5890486225480862 -0.9817477042468103
+c.amplitude = 1.0
+c.offset = 0.0

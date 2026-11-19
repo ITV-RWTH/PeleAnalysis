@@ -15,7 +15,7 @@ tmpFile = isoTEMPFILE                      # DEF: isoTEMPFILE; Only relevant if 
 
 #------------------- GRID CONTROL ---------------------------------------------------------
 finestLevel = 1                            # DEF: finest level of plot file; Sets the finest level to read.
-is_per = 1 1 0                             # Sets case periodicity for correct connectivity and area calculation.
+is_per = 1 1 0                             # DEF: 0 0 0; Periodicity of the case (not stored in the plotfile), see Periodic boundaries in the docs.
 nGrow = 1                                  # DEF: 1; Grow cells.
 
 #------------------- VARIABLES ------------------------------------------------------------

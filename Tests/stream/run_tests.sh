@@ -432,10 +432,10 @@ all_finite "T2 no NaN or Inf in the surface file" "str_3d_stop_binVolInt.dat"
 # corner, which showed up as positions far away from where the field vanished.
 matrix_max_below "T2 no stream runs past the vanishing field" \
     "str_3d_stop/X.dat" 0.95
-# The seeds on the second sheet (at x = 0.5, see TESTING.md) never reach the
-# region where the field vanishes, so their tubes keep the full length; the
-# ones approaching x = 0.9 from below must be shorter, and none may exceed the
-# full length.
+# The streams from both sheets (x = 0.8 and x = 0, see TESTING.md) run into the
+# region where the field vanishes, from below and across the periodic
+# boundary, so their tubes must be shorter, and none may exceed the full
+# length.
 col_range_within "T2 tubes at the vanishing field are shorter" \
     "str_3d_stop_binVolInt.dat" "q_volInt" "$STREAM_LENGTH" 0.59375001
 

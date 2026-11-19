@@ -38,7 +38,7 @@ Tool Options
    
    #------------------- GRID CONTROL ---------------------------------------------------------
    finestLevel = 1                            # DEF: finest level of plot file; Sets the finest level to read.
-   is_per = 1 1 0                             # Sets case periodicity for correct connectivity and area calculation.
+   is_per = 1 1 0                             # DEF: 0 0 0; Periodicity of the case (not stored in the plotfile), see Periodic boundaries in the docs.
    nGrow = 1                                  # DEF: 1; Grow cells.
    
    #------------------- VARIABLES ------------------------------------------------------------
@@ -87,10 +87,20 @@ The isosurface code contains the following steps:
 
 1. Use AMReX-provided class ``PlotFileData`` to load `isoCompName` field data, and ``FillPatchTwoLevels`` to fill grow cells, including those across periodic boundaries.
 2. The location of each valid cell center is computed using :math:`\Delta x` at that level.  The grow cells are set to have all their locations at the center of the coarse cell outside, and the grow data is filled with piecewise constant interpolation. The effect is that the coarse and fine levels are joined in a water-tight way using degenerate quads/hexes, that actually look in 2D either like a triangle (a degenerate quad) or a trapezoid (depending on whether the two grow cells are in the same coarse cell or adjacent ones (see Figure :numref:`fig:isosurface:dual`).
-3. Intersections of the isosurface with these element constructs is computed by searching each pair of adjacent nodes around the outside of the polygon for a sign change of (value - isoVal).  When such a condition is found, the location of the intersection is computed by linear interpolation, and the desired additional variables are mapped to the same point.  The result is stored as a pair<Edge,Point>, where Edge is a pair of IntVects defining the endpoints of the segement that is intersected and their associated Amr level ID, and the Point contains the coordinates first, then any other mapped/interpolated variables at that node.  The intersection structs are stored in a map of these pairs, allowing exact comparisons for unique nodes with no floating point comparison issues.
+3. Intersections of the isosurface with these element constructs is computed by searching each pair of adjacent nodes around the outside of the polygon for a sign change of (value - isoVal).  When such a condition is found, the location of the intersection is computed by linear interpolation, and the desired additional variables are mapped to the same point.  The intersection is always interpolated from the lower to the higher IntVect of the segment, so that all boxes sharing a segment compute the same node. The result is stored as a pair<Edge,Point>, where Edge is a pair of IntVects defining the endpoints of the segement that is intersected and their associated Amr level ID, and the Point contains the coordinates first, then any other mapped/interpolated variables at that node.  The intersection structs are stored in a map of these pairs, allowing exact comparisons for unique nodes with no floating point comparison issues.
 4. Elements on the surface are described as an ordered vector of these iterators into a master map for this rank.
 5. Portions of the surface intersecting each valid grid are computed in parallel, and collated onto a single MPI rank. Multiply defined nodes (those with the same pair of IntVect/AmrID) are eliminated and a global numbering of the unique set is created; the element list is merged and the numbering is reconciled.
 6. The map representation of the surface is converted to a simple surface representation and written to disk by a single processor.
+
+Periodic boundaries
+###################
+
+The plotfile does not store the periodicity of the case; set it with ``is_per``. The default is non-periodic.
+
+- **Non-periodic** (``is_per = 0``): the surface ends at the outermost cell centres. Where the surface reaches a boundary, e.g. a flat flame spanning the domain, a strip of one cell width at that boundary is missing from the surface and its area.
+- **Periodic** (``is_per = 1``): the grow cells across a periodic boundary hold the coordinates of their periodic images. A node on a segment that crosses the boundary is interpolated towards the periodic image of the far end that is closest to the near end, and every node is wrapped into the domain. The surface covers exactly one period, without gaps or overlaps, and all nodes of the MEF lie inside the domain, as tools reading it (e.g. ``partStream``) expect.
+
+Elements that cross a periodic boundary have nodes on both sides of the domain. ``computeArea`` measures each element in the minimum image of the periodic directions; other tools that measure elements of the MEF need to do the same.
 
 Signed distance function
 ########################

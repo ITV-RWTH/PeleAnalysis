@@ -195,7 +195,7 @@ General tools (``Src``)
      - R
    * - :doc:`isosurface <analysis/isosurface>`
      - ➖
-     - ❌
+     - ✅
      - ❌
      - R
    * - :doc:`jpdf <analysis/jpdf>`
@@ -397,6 +397,7 @@ Model-specific tools (``Src/ModelSpecificAnalysis``)
    :hidden:
    :caption: Basics:
 
+   basics/building
    basics/data
    basics/template
    basics/analysis_util
