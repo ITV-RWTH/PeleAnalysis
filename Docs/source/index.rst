@@ -130,7 +130,7 @@ General tools (``Src``)
    * - :doc:`curvature <analysis/curvature>`
      - ➖
      - ✅
-     - ❌
+     - ✅
      - R
    * - decimateMEF
      - ➖
