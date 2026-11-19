@@ -106,7 +106,9 @@ to MKS:
 - ``mu``, ``xi``: kg/(m s)
 - ``lambda``: W/(m K)
 
-Plot files written in CGS (e.g. by PeleC) are not supported: their density
+.. warning::
+
+   Plot files written in CGS (e.g. by PeleC) are not supported: their density
 would be scaled a second time.
 
 Relation to Other Tools
