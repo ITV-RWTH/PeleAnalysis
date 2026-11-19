@@ -10,7 +10,7 @@ The Lewis number for species *n* is defined as:
 
    \mathrm{Le}(n) = \frac{\lambda}{\rho \, C_{p,\mathrm{mix}} \, D_n}
 
-where :math:`D_n` is the species mass diffusivity, :math:`\rho` is the mixture density, :math:`\lambda` is the mixture thermal conductivity, and :math:`C_{p,\mathrm{mix}}` is the mixture heat capacity at constant pressure. A Lewis number of unity indicates that the species diffuses at the same rate as heat. Transport coefficients are evaluated using the PelePhysics transport library and the computation is GPU-accelerated when built with GPU support.
+where :math:`D_n` is the species mass diffusivity, :math:`\rho` is the mixture density, :math:`\lambda` is the mixture thermal conductivity, and :math:`C_{p,\mathrm{mix}}` is the mixture heat capacity at constant pressure. Transport coefficients are evaluated using the PelePhysics transport library and the computation is GPU-accelerated when built with GPU support.
 
 Usage: ::
 
@@ -77,7 +77,9 @@ The input plot file is assumed to be in MKS units, as written by PeleLMeX
 internally before calling PelePhysics. The Lewis numbers ``Le(<species>)``
 are dimensionless, so no conversion of the output is needed.
 
-Plot files written in CGS (e.g. by PeleC) are not supported: their density
+.. warning::
+
+   Plot files written in CGS (e.g. by PeleC) are not supported: their density
 would be scaled a second time.
 
 Dependencies
