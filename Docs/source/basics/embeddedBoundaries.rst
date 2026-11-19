@@ -64,6 +64,11 @@ wrote into the plotfile.
        contribute their partial volume/area/length.
      - no
      - yes
+   * - :doc:`../analysis/isosurface`
+     - Fully covered cells (``volFrac == 0``) are masked out of the isosurface
+       extraction.
+     - no
+     - yes
 
 All other tools ignore EB, even when built with ``USE_EB=TRUE``.
 
@@ -149,3 +154,7 @@ been run on a GPU as part of this review.
      - Runs on GPU
      - Coarse cells covered by a finer level are masked on the device; the
        integrals are accumulated with ``ParallelFor`` and atomic adds.
+   * - ``isosurface``
+     - Not supported
+     - The surface extraction, the distance function and the output are host
+       loops over the plotfile data. A GPU build stops with a compile error.
