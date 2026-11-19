@@ -32,6 +32,7 @@ TINY_PROFILE = FALSE
 #EBASE=plotXtoY
 #EBASE=plotYtoX
 #EBASE=computeMixtureFraction
+#EBASE=plotDisplacementSpeed
 #EBASE=testQPDtools
 #EBASE=testTsolve
 
