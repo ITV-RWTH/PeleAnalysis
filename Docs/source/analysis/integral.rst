@@ -58,3 +58,12 @@ The `integralDimension` defines in how many dimensions the integral is performed
    goPastMax = 0                              # [0, 1], DEF: 1; For format = ppm, specify behaviour over vMax. 0: cap, 1: extra color scale over magenta to white.
 
 The format option allows to output ASCI coded `dat` files or `ppm` (portable pixmap) image files. For the latter, `useminmax1`, `useminmax2`, and so on allow to normalize fariables 1, 2, and so on, respectively. `goPastMax` extends the colorscale to a superunitiy region.
+
+Embedded boundaries
+###################
+
+When built with ``USE_EB=TRUE``, every integrand is weighted by the cell
+volume fraction, so cut cells contribute only their fluid part. The plotfile
+must contain the ``volFrac`` field; no geometry inputs are needed. See
+:ref:`embedded_boundaries`.
+
