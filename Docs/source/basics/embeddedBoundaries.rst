@@ -23,7 +23,8 @@ This compiles the AMReX EB sources, adds ``Src/EBUserDefined`` and
 without ``USE_EB=TRUE`` ignores the geometry completely and treats covered
 cells as regular fluid cells.
 ``USE_EB`` can be combined with ``DIM=2``/``DIM=3`` and with the GPU back ends
-(``USE_CUDA``, ``USE_HIP``, ``USE_SYCL``).
+(``USE_CUDA``, ``USE_HIP``, ``USE_SYCL``); see :ref:`eb_gpu_support` for what
+actually runs on a GPU.
 
 .. note::
 
@@ -31,6 +32,29 @@ cells as regular fluid cells.
    (``tmp_build_dir/o/3d.gnu.EXE``). Run ``make realclean`` when switching
    ``USE_EB`` on or off, otherwise stale objects from the other build are
    linked in.
+
+Supported tools
+###############
+
+The tools use the geometry in one of two ways: they either rebuild it from the
+input file, or they read the volume fraction ``volFrac`` that the simulation
+wrote into the plotfile.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 48 15 15
+
+   * - Tool
+     - What changes with EB
+     - Rebuilds geometry (``eb2.*``)
+     - Needs ``volFrac`` in plotfile
+   * - :doc:`../analysis/grad`
+     - Gradients from an EB-aware operator (``MLEBABecLap``), evaluated at face
+       centroids and averaged to cell centres.
+     - yes
+     - no
+
+All other tools ignore EB, even when built with ``USE_EB=TRUE``.
 
 Rebuilding the geometry
 #######################
@@ -83,3 +107,26 @@ main chamber) that reads ``prob.prechamber_side_x``,
 ``prob.prechamber_side_y``, ``prob.cylinder_radius`` and
 ``prob.cylinder_length``. They only serve as a template and must be replaced
 for any other geometry.
+
+.. _eb_gpu_support:
+
+GPU support
+###########
+
+All EB-enabled tools compile with CUDA, HIP and SYCL, with and without EB (this
+is checked in CI). Compiling is not the same as running correctly: the table
+below is the result of a code review of how each tool accesses its data on a
+GPU build, where AMReX keeps field data in device memory. The tools have not
+been run on a GPU as part of this review.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 18 60
+
+   * - Tool
+     - Status on GPU
+     - Notes
+   * - ``grad``
+     - Runs on GPU
+     - All field operations are AMReX solvers, ``MultiFab`` operations or
+       ``ParallelFor`` kernels.
