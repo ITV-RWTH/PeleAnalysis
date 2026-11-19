@@ -25,7 +25,7 @@ env:
   EXPECTED_EB_FAILURES: ''
   EXPECTED_EB_2D_FAILURES: ''
   EXPECTED_EB_3D_FAILURES: ''
-  EXPECTED_GPU_FAILURES: 'amrToFE ciao2plt conditionalMean integral jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
+  EXPECTED_GPU_FAILURES: 'amrToFE ciao2plt conditionalMean jpdf makePlotfile partStream stream2plt streamBinTubeStats trimMEFgen turbfile plotQPD'
 
 jobs:
 
