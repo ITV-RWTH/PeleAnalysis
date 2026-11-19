@@ -14,6 +14,8 @@
 #include <PelePhysics.H>
 
 using namespace amrex;
+namespace m2c = pele::physics::utilities::mks2cgs;
+namespace c2m = pele::physics::utilities::cgs2mks;
 
 pele::physics::PeleParams<pele::physics::transport::TransParm<
   pele::physics::PhysicsType::eos_type,
@@ -174,6 +176,13 @@ main(int argc, char* argv[])
       amrData.FillVar(indata, lev, inNames, destFillComps);
       Print() << "Data has been read for level " << lev << std::endl;
 
+      // Plotfile data are in MKS, PelePhysics transport works in CGS:
+      // convert density to g/cm^3. With the ideal-gas EOS (Fuego) the Simple
+      // model ignores density; with SRK it enters the Chung corrections
+      // (mu, lambda) and the dense-gas correction of the binary diffusion
+      // coefficients (rhoD), so it must be in CGS.
+      indata.mult(m2c::Rho(1.0), idRlocal, 1, nGrow);
+
       // Get the transport data pointer
       auto const* ltransparm = trans_parms.device_parm();
 
@@ -198,6 +207,18 @@ main(int argc, char* argv[])
           trans.get_transport_coeffs(
             tbx, Y_a, T_a, rho_a, D_a, chi_a, mu_a, xi_a, lam_a, ltransparm);
         });
+
+        // PelePhysics returns transport coefficients in CGS: convert to MKS
+        amrex::ParallelFor(
+          bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+            for (int n = 0; n < NUM_SPECIES; ++n) {
+              // rhoD has the same units as mu: g/(cm s) -> kg/(m s)
+              D_a(i, j, k, n) = c2m::Mu(D_a(i, j, k, n));
+            }
+            mu_a(i, j, k) = c2m::Mu(mu_a(i, j, k));
+            xi_a(i, j, k) = c2m::Mu(xi_a(i, j, k));
+            lam_a(i, j, k) = c2m::Lambda(lam_a(i, j, k));
+          });
       }
 
       // Copy auxiliary variables unchanged from the input to the output

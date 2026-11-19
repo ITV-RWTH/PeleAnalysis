@@ -8,9 +8,9 @@ The Lewis number for species *n* is defined as:
 
 .. math::
 
-   \mathrm{Le}(n) = \frac{D_n}{\lambda / C_{p,\mathrm{mix}}}
+   \mathrm{Le}(n) = \frac{\lambda}{\rho \, C_{p,\mathrm{mix}} \, D_n}
 
-where :math:`D_n` is the species mass diffusivity, :math:`\lambda` is the mixture thermal conductivity, and :math:`C_{p,\mathrm{mix}}` is the mixture heat capacity at constant pressure. A Lewis number of unity indicates that the species diffuses at the same rate as heat. Transport coefficients are evaluated using the PelePhysics transport library and the computation is GPU-accelerated when built with GPU support.
+where :math:`D_n` is the species mass diffusivity, :math:`\rho` is the mixture density, :math:`\lambda` is the mixture thermal conductivity, and :math:`C_{p,\mathrm{mix}}` is the mixture heat capacity at constant pressure. Transport coefficients are evaluated using the PelePhysics transport library and the computation is GPU-accelerated when built with GPU support.
 
 Usage: ::
 
@@ -69,6 +69,18 @@ The output plot file ``<infile>_Le`` is a standard multi-level AMReX plot file a
    ...
 
 The variables are ordered according to the species ordering defined in the compiled chemical mechanism (``mechanism.H``), followed by any ``Aux_Variables`` requested. The output inherits the domain geometry, coordinate system, and box structure from the input plot file.
+
+Units
+=====
+The input plot file is assumed to be in MKS units, as written by PeleLMeX
+(``density`` in kg/m^3, ``temp`` in K). The density is converted to CGS
+internally before calling PelePhysics. The Lewis numbers ``Le(<species>)``
+are dimensionless, so no conversion of the output is needed.
+
+.. warning::
+
+   Plot files written in CGS (e.g. by PeleC) are not supported: their density
+would be scaled a second time.
 
 Dependencies
 ############
