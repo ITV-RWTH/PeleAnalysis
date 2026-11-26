@@ -123,6 +123,45 @@ writes double-precision AMReX output.
    automatically. Exactly one mesh group must be present; the tool aborts if
    zero or more than one are found.
 
+Flat Layout (``layout = flat``)
+###############################
+
+Post-processed CIAO files (e.g. ``*_plot.h5``) store each field directly as
+``/<group>/<name>`` with cell-centre coordinates:
+
+.. code-block:: text
+
+   /
+   ├── SC/T, SC/H2, ...     3-D datasets (nz, ny, nx), C order
+   ├── PR/H2O, flow/rho ...
+   ├── coords/xm, ym, zm    cell-centre coordinates (N values for N cells)
+   └── flow/time1           time (1 value)
+
+With ``layout = flat`` the tool reads the datasets listed in ``vars`` (paths
+relative to ``/``) and writes them under the names in ``names`` (default:
+the path with ``/`` replaced by ``_``). Periodicity is taken from ``per``.
+
+::
+
+   layout       = flat
+   vars         = SC/T flow/rho flow/u SC/H2 PR/H2O
+   names        = temp density x_velocity Y(H2) I_R(H2O)
+   coords       = coords/xm coords/ym coords/zm   # DEF
+   time_dset    = flow/time1                      # DEF
+   per          = 0 0 1
+   interp_dx    = 1.0e-5     # DEF: spacing of the first uniform direction
+   interp_range = -0.02 0.02 # DEF: full extent of the non-uniform direction
+   interp_align = 1          # DEF: 1
+   uniform_tol  = 1.0e-3     # DEF: 1e-3, relative
+
+z must be uniform. At most one of x and y may be non-uniform (stretched); it is
+linearly interpolated onto ``interp_dx`` over ``interp_range`` (constant
+extrapolation beyond the first/last cell centre). With ``interp_align = 1``
+the target cells are aligned with the finest source cells, so a uniform core
+with the target spacing is copied exactly. The file is read in contiguous
+z-slabs (one per rank) and redistributed into ``max_grid_size`` boxes; all
+fields are kept in memory, so plan for about ``8 B x (nvars + 2) x ncells``.
+
 2D Files
 ########
 
